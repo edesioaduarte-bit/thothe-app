@@ -806,6 +806,37 @@ select option  { background: var(--surface3); color: var(--text); }
   <div class="splash-status" id="splash-status">Iniciando sistema...</div>
 </div>
 
+<!-- ── AUTH GATE — tela de login (Supabase Auth) ─────── -->
+<div id="auth-gate" style="display:none;position:fixed;inset:0;z-index:9998;background:var(--bg-grad);align-items:center;justify-content:center;flex-direction:column">
+  <div style="width:100%;max-width:360px;padding:0 20px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="splash-logo-ring" style="margin:0 auto 20px;width:64px;height:64px">
+        <svg width="32" height="32" viewBox="0 0 52 52" fill="none">
+          <g transform="translate(11,14) rotate(-20)"><ellipse cx="0" cy="9" rx="10" ry="8" fill="#fff"/><ellipse cx="-9" cy="-3" rx="5" ry="4.5" fill="#fff"/><ellipse cx="-3" cy="-11" rx="5" ry="4.5" fill="#fff"/><ellipse cx="4" cy="-11" rx="5" ry="4.5" fill="#fff"/><ellipse cx="9" cy="-3" rx="5" ry="4.5" fill="#fff"/></g>
+          <g transform="translate(37,38) rotate(22)"><ellipse cx="0" cy="9" rx="10" ry="8" fill="#fff"/><ellipse cx="-9" cy="-3" rx="5" ry="4.5" fill="#fff"/><ellipse cx="-3" cy="-11" rx="5" ry="4.5" fill="#fff"/><ellipse cx="4" cy="-11" rx="5" ry="4.5" fill="#fff"/><ellipse cx="9" cy="-3" rx="5" ry="4.5" fill="#fff"/></g>
+        </svg>
+      </div>
+      <div style="font-size:20px;font-weight:600;color:var(--text)">ThoThe</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">Entre para continuar</div>
+    </div>
+    <div class="card" style="padding:22px">
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input class="form-control" type="email" id="auth-email" placeholder="seu@email.com" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input class="form-control" type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="auth-error" style="display:none;font-size:12px;color:var(--red);background:var(--red-l);border:1px solid rgba(248,113,122,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px"></div>
+      <button class="btn btn-primary" id="auth-login-btn" onclick="authLogin()" style="width:100%;justify-content:center;padding:11px">Entrar</button>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text3)">
+      Não tem conta? Peça ao administrador para criar seu acesso no painel do Supabase.
+    </div>
+  </div>
+</div>
+
 <div class="app">
   <!-- ── SIDEBAR ──────────────────────────────────── -->
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
@@ -916,16 +947,17 @@ select option  { background: var(--surface3); color: var(--text); }
       </div>
     </div>
 
-    <div class="sidebar-footer" onclick="openPerfilModal()" title="Editar perfil"
-      style="cursor:pointer;transition:background .15s"
-      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      <div style="display:flex;align-items:center;gap:8px">
+    <div class="sidebar-footer" style="display:flex;align-items:center;gap:6px">
+      <div onclick="openPerfilModal()" title="Editar perfil"
+        style="cursor:pointer;transition:background .15s;flex:1;display:flex;align-items:center;gap:8px;border-radius:8px;padding:2px"
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
         <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(155deg,var(--accent),#2E5FBF);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0" id="user-avatar">E</div>
         <div>
           <div class="sf-name" id="user-name">Edésio Duarte</div>
           <div class="sf-role" id="user-role">Contador responsável</div>
         </div>
       </div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn" onclick="authLogout()" title="Sair do sistema" style="padding:6px 8px;flex-shrink:0"><i class="ti ti-logout" style="font-size:14px"></i></button>
     </div>
   </aside>
 
@@ -946,7 +978,8 @@ select option  { background: var(--surface3); color: var(--text); }
         <span style="font-size:12px;color:var(--text3)" id="today-date"></span>
         <button onclick="abrirBuscaGlobal()" class="btn btn-ghost btn-sm" title="Busca global (/)" style="padding:6px 8px;color:var(--text2)"><i class="ti ti-search" style="font-size:14px"></i></button>
         <button onclick="abrirBackup()" class="btn btn-ghost btn-sm" title="Backup — exportar dados" style="padding:6px 8px;color:var(--text2)"><i class="ti ti-cloud-upload" style="font-size:14px"></i></button>
-        <span id="sync-badge" style="font-size:11px;cursor:pointer;padding:5px 9px;border-radius:99px;background:var(--surface3);display:inline-flex;align-items:center;gap:4px" title="Status de sincronização" onclick="sincronizarAgora()"><i class="ti ti-cloud" style="font-size:13px"></i></span>
+        <span id="sync-badge" style="font-size:11px;cursor:pointer;padding:5px 9px;border-radius:99px;background:var(--surface3);display:inline-flex;align-items:center;gap:4px" title="Status de sincronização — clique para sincronizar agora" onclick="sincronizarAgora()"><i class="ti ti-cloud" style="font-size:13px"></i></span>
+        <button onclick="configurarSupabase()" class="btn btn-ghost btn-sm" title="Editar credenciais da nuvem (Supabase)" style="padding:6px 8px;color:var(--text2)"><i class="ti ti-settings" style="font-size:14px"></i></button>
         <button id="btn-hide-values" onclick="toggleDashValues()" class="btn btn-ghost btn-sm"
           title="Ocultar/mostrar valores financeiros" style="padding:6px 8px"><i class="ti ti-eye" style="font-size:14px"></i></button>
       </div>
@@ -1203,7 +1236,11 @@ select option  { background: var(--surface3); color: var(--text); }
         </div>
 
         <!-- Toolbar secundária com botão de relatório -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:9px;padding:3px">
+            <button class="btn btn-sm" id="task-view-btn-lista" onclick="setTaskView('lista')" style="border-radius:6px;background:var(--surface);box-shadow:var(--shadow-sm)">📋 Lista</button>
+            <button class="btn btn-sm btn-ghost" id="task-view-btn-calendario" onclick="setTaskView('calendario')" style="border-radius:6px;box-shadow:none">📅 Calendário</button>
+          </div>
           <button class="btn btn-ghost btn-sm" onclick="toggleReportPanel()" id="btn-relatorio"
             style="display:flex;align-items:center;gap:6px;font-size:12px">
             📄 Relatório PDF
@@ -1211,6 +1248,45 @@ select option  { background: var(--surface3); color: var(--text); }
         </div>
 
         <div id="tasks-container"></div>
+
+        <!-- Visão de calendário -->
+        <div id="tasks-calendar-container" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start">
+            <div>
+              <div class="cal-nav">
+                <button class="btn btn-ghost btn-sm" onclick="taskCalMove(-1)">← Anterior</button>
+                <div class="cal-month" id="task-cal-month-label"></div>
+                <button class="btn btn-ghost btn-sm" onclick="taskCalMove(1)">Próximo →</button>
+              </div>
+              <div class="cal-grid" id="task-cal-grid"></div>
+            </div>
+            <div>
+              <div class="day-panel">
+                <div class="day-panel-title">
+                  <span id="task-day-panel-title">Selecione um dia</span>
+                  <button class="btn btn-primary btn-sm" id="task-day-panel-add-btn" onclick="openTaskModalForDate()" style="display:none">+ Tarefa</button>
+                </div>
+                <div id="task-day-panel-content">
+                  <div class="empty-state" style="padding:32px 0">
+                    <div class="empty-icon">🗓️</div>
+                    <div class="empty-text">Clique em um dia</div>
+                    <div class="empty-sub">para ver as tarefas com vencimento nele</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card" style="margin-top:14px;padding:14px 16px">
+                <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Categorias</div>
+                <div style="display:flex;flex-direction:column;gap:6px" id="task-cal-legend">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:#4D9EFF;flex-shrink:0"></span>Fiscal</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:#FBB040;flex-shrink:0"></span>Trabalhista</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:#34E0A0;flex-shrink:0"></span>Financeiro</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:#93A1BF;flex-shrink:0"></span>Societário / Administrativo / Outro</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:10px;height:10px;border-radius:3px;background:#F8717A;flex-shrink:0"></span>Atrasada</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ═══════════════════════════════════════════ -->
@@ -3117,7 +3193,110 @@ select option  { background: var(--surface3); color: var(--text); }
 // ══════════════════════════════════════════════════════
 const SUPA_URL = localStorage.getItem('thothe_supa_url') || '';
 const SUPA_KEY = localStorage.getItem('thothe_supa_key') || '';
-const SUPA_USER = 'default'; // futuro: login multi-usuário
+const SUPA_USER = 'default'; // mantém fixo — a segurança vem do login exigido pelo RLS, não da separação por usuário
+
+// ══════════════════════════════════════════════════════
+// SUPABASE AUTH — login real por e-mail/senha
+// ══════════════════════════════════════════════════════
+function authGetSession() {
+  try { return JSON.parse(localStorage.getItem('thothe_supa_session') || 'null'); }
+  catch (e) { return null; }
+}
+function authSaveSession(session) {
+  localStorage.setItem('thothe_supa_session', JSON.stringify(session));
+}
+function authClearSession() {
+  localStorage.removeItem('thothe_supa_session');
+}
+
+// Retorna um access_token válido, renovando via refresh_token se estiver perto de expirar
+async function authGetAccessToken() {
+  const s = authGetSession();
+  if (!s) return null;
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (s.expires_at && s.expires_at - nowSec > 60) return s.access_token;
+  // token expirado ou perto disso — tenta renovar
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ refresh_token: s.refresh_token })
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const newSession = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: nowSec + (data.expires_in || 3600),
+      email: s.email
+    };
+    authSaveSession(newSession);
+    return newSession.access_token;
+  } catch (e) { return null; }
+}
+
+// Ao abrir o app: tenta restaurar a sessão salva (renovando se preciso)
+async function authRestoreSession() {
+  const s = authGetSession();
+  if (!s) return false;
+  const token = await authGetAccessToken();
+  if (!token) { authClearSession(); return false; }
+  return true;
+}
+
+async function authLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-login-btn');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Preencha e-mail e senha.'; errEl.style.display = ''; return; }
+  btn.textContent = 'Entrando...'; btn.disabled = true;
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      errEl.textContent = data.error_description || data.msg || 'E-mail ou senha incorretos.';
+      errEl.style.display = '';
+      btn.textContent = 'Entrar'; btn.disabled = false;
+      return;
+    }
+    const nowSec = Math.floor(Date.now() / 1000);
+    authSaveSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: nowSec + (data.expires_in || 3600),
+      user_id: data.user?.id,
+      email: data.user?.email
+    });
+    document.getElementById('auth-gate').style.display = 'none';
+    const splash = document.getElementById('splash');
+    if (splash) splash.style.display = 'flex';
+    startApp();
+  } catch (e) {
+    errEl.textContent = 'Não foi possível conectar ao servidor. Verifique sua internet.';
+    errEl.style.display = '';
+    btn.textContent = 'Entrar'; btn.disabled = false;
+  }
+}
+
+function authLogout() {
+  if (!confirm('Deseja sair do sistema?')) return;
+  authClearSession();
+  location.reload();
+}
+
+function showAuthGate() {
+  const splash = document.getElementById('splash');
+  if (splash) splash.style.display = 'none';
+  document.getElementById('auth-gate').style.display = 'flex';
+  document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') authLogin(); });
+  document.getElementById('auth-email').addEventListener('keydown', e => { if (e.key === 'Enter') authLogin(); });
+}
 
 // ══════════════════════════════════════════════════════
 // DATA LAYER — Supabase + localStorage (fallback offline)
@@ -3135,12 +3314,13 @@ const DB = {
   // ─── Supabase: push (upsert) ───────────────────────
   _push: async (chave, valor) => {
     try {
+      const token = (await authGetAccessToken()) || SUPA_KEY;
       await fetch(`${SUPA_URL}/rest/v1/thothe_data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPA_KEY,
-          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Authorization': `Bearer ${token}`,
           'Prefer': 'resolution=merge-duplicates'
         },
         body: JSON.stringify({ user_id: SUPA_USER, chave, valor })
@@ -3152,9 +3332,10 @@ const DB = {
   pull: async () => {
     if (!SUPA_URL || !SUPA_KEY) return false;
     try {
+      const token = (await authGetAccessToken()) || SUPA_KEY;
       const r = await fetch(
         `${SUPA_URL}/rest/v1/thothe_data?user_id=eq.${SUPA_USER}&select=chave,valor`,
-        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}` } }
       );
       if (!r.ok) return false;
       const rows = await r.json();
@@ -3193,8 +3374,9 @@ async function verificarSincronia() {
   badge.innerHTML = '<i class="ti ti-refresh" style="font-size:13px"></i> Sincronizando...';
   badge.style.color = 'var(--amber)';
   try {
+    const token = (await authGetAccessToken()) || SUPA_KEY;
     const r = await fetch(`${SUPA_URL}/rest/v1/thothe_data?select=chave&limit=1`,
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } });
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}` } });
     if (r.ok) {
       badge.innerHTML = '<i class="ti ti-cloud-check" style="font-size:13px"></i> Online';
       badge.style.color = 'var(--green)';
@@ -3777,6 +3959,106 @@ function renderTasks(container = 'tasks-container', limit = null) {
   }
 
   el.innerHTML = html;
+  if (container === 'tasks-container' && taskViewMode === 'calendario') renderTaskCalendar();
+}
+
+let taskViewMode = 'lista';
+let taskCalMonth = new Date().getMonth();
+let taskCalYear  = new Date().getFullYear();
+let taskCalSelectedDate = null;
+
+function setTaskView(mode) {
+  taskViewMode = mode;
+  const listBtn = document.getElementById('task-view-btn-lista');
+  const calBtn  = document.getElementById('task-view-btn-calendario');
+  document.getElementById('tasks-container').style.display          = mode === 'lista' ? '' : 'none';
+  document.getElementById('tasks-calendar-container').style.display = mode === 'calendario' ? '' : 'none';
+  [listBtn, calBtn].forEach(b => { b.classList.add('btn-ghost'); b.style.background = ''; b.style.boxShadow = 'none'; });
+  const active = mode === 'lista' ? listBtn : calBtn;
+  active.classList.remove('btn-ghost');
+  active.style.background = 'var(--surface)';
+  active.style.boxShadow = 'var(--shadow-sm)';
+  if (mode === 'calendario') renderTaskCalendar();
+}
+
+function taskCalMove(dir) {
+  taskCalMonth += dir;
+  if (taskCalMonth < 0) { taskCalMonth = 11; taskCalYear--; }
+  if (taskCalMonth > 11) { taskCalMonth = 0; taskCalYear++; }
+  renderTaskCalendar();
+}
+
+function taskCalTasksForDate(dateStr) {
+  let tasks = DB.get('tasks').filter(t => t.status !== 'futura' && t.data === dateStr);
+  if (taskEmpresaFilter) tasks = tasks.filter(t => t.cliente === taskEmpresaFilter);
+  if (taskSearch) tasks = tasks.filter(t => t.titulo.toLowerCase().includes(taskSearch.toLowerCase()) || (t.cliente || '').toLowerCase().includes(taskSearch.toLowerCase()));
+  return tasks;
+}
+
+function renderTaskCalendar() {
+  document.getElementById('task-cal-month-label').textContent = `${MONTH_NAMES[taskCalMonth]} ${taskCalYear}`;
+
+  const firstDay    = new Date(taskCalYear, taskCalMonth, 1).getDay();
+  const daysInMonth = new Date(taskCalYear, taskCalMonth + 1, 0).getDate();
+  const daysInPrev  = new Date(taskCalYear, taskCalMonth, 0).getDate();
+  const todayStr    = today();
+  const catDot = { Fiscal:'#4D9EFF', Trabalhista:'#FBB040', Financeiro:'#34E0A0', Societário:'#93A1BF', Administrativo:'#93A1BF', Outro:'#93A1BF' };
+
+  const grid = document.getElementById('task-cal-grid');
+  let html = '';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d => html += `<div class="cal-dow">${d}</div>`);
+
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = daysInPrev - i;
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${day}</div></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${taskCalYear}-${String(taskCalMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday2 = dateStr === todayStr;
+    const isSel    = dateStr === taskCalSelectedDate;
+    const tasksDue = taskCalTasksForDate(dateStr);
+    const late     = dateStr < todayStr;
+
+    let pills = '';
+    tasksDue.slice(0,3).forEach(t => {
+      const color = t.status === 'concluida' ? 'var(--text3)' : (late ? '#F8717A' : (catDot[t.categoria] || '#93A1BF'));
+      pills += `<div class="cal-event-pill" style="background:${color}22;color:${color};text-decoration:${t.status==='concluida'?'line-through':'none'}">${t.titulo}</div>`;
+    });
+    if (tasksDue.length > 3) pills += `<div class="cal-event-pill" style="background:var(--border);color:var(--text3)">+${tasksDue.length-3} mais</div>`;
+
+    html += `<div class="cal-day${isToday2?' today':''}${isSel?' selected':''}" onclick="showTaskDayPanel('${dateStr}')">
+      <div class="cal-day-num">${day}</div>
+      ${pills}
+    </div>`;
+  }
+
+  const total = firstDay + daysInMonth;
+  const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= remaining; i++) html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+
+  grid.innerHTML = html;
+  if (taskCalSelectedDate) showTaskDayPanel(taskCalSelectedDate);
+}
+
+function showTaskDayPanel(dateStr) {
+  taskCalSelectedDate = dateStr;
+  renderTaskCalendar();
+  const [y,m,d] = dateStr.split('-');
+  document.getElementById('task-day-panel-title').textContent = `${d}/${m}/${y}`;
+  document.getElementById('task-day-panel-add-btn').style.display = '';
+  const tasks = taskCalTasksForDate(dateStr);
+  const content = document.getElementById('task-day-panel-content');
+  if (!tasks.length) {
+    content.innerHTML = `<div class="empty-state" style="padding:24px 0"><div class="empty-icon">✅</div><div class="empty-text">Nada com vencimento neste dia</div></div>`;
+    return;
+  }
+  content.innerHTML = tasks.map(t => taskHTML(t)).join('');
+}
+
+function openTaskModalForDate() {
+  openTaskModal();
+  if (taskCalSelectedDate) setTimeout(() => { const el = document.getElementById('task-data'); if (el) el.value = taskCalSelectedDate; }, 30);
 }
 
 function taskHTML(t) {
@@ -6411,7 +6693,10 @@ function garantirModelos() {
   if (!localStorage.getItem('cf_fechamentos')) DB.set('fechamentos', DB.get('fechamentos'));
 }
 
-(function init() {
+function startApp() {
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = authGetSession() ? '' : 'none';
+
   // Seed demo data if first run
   if (!localStorage.getItem('cf_init')) {
     localStorage.setItem('cf_init', '1');
@@ -6574,6 +6859,18 @@ function garantirModelos() {
       }, 500);
     }
   }, 550);
+}
+
+// ── Bootstrap: decide entre tela de login e iniciar o app ──
+(async function boot() {
+  if (SUPA_URL && SUPA_KEY) {
+    const ok = await authRestoreSession();
+    if (ok) { startApp(); }
+    else { showAuthGate(); }
+  } else {
+    // Sem Supabase configurado ainda — sem login remoto para validar, segue local
+    startApp();
+  }
 })();
 
 // ══════════════════════════════════════════════════════
