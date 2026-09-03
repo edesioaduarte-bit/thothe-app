@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ── Reset & Base ─────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -148,7 +149,7 @@ html, body {
 }
 
 .sidebar-brand {
-  padding: 20px 16px 16px;
+  padding: 22px 18px 18px;
 }
 .brand-logo {
   width: 32px; height: 32px; border-radius: 9px;
@@ -162,14 +163,14 @@ html, body {
 .brand-name { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.3px; }
 .brand-sub  { font-size: 10px; color: var(--text3); margin-top: 1px; }
 
-.nav-group { padding: 6px 10px 10px; }
-.nav-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: .02em; padding: 0 10px 6px; margin-top: 6px; }
+.nav-group { padding: 8px 12px 14px; }
+.nav-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: .04em; padding: 0 10px 8px; margin-top: 10px; text-transform: uppercase; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px; border-radius: 8px;
+  padding: 8px 12px; border-radius: 8px;
   font-size: 13px; color: var(--text2);
   cursor: pointer; transition: background .12s, color .12s; user-select: none;
-  margin-bottom: 1px; font-weight: 400;
+  margin-bottom: 2px; font-weight: 400;
 }
 .nav-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
 .nav-item.active {
@@ -188,7 +189,7 @@ html, body {
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-top: 0.5px solid var(--border);
   font-size: 12px;
   transition: background .1s;
@@ -205,20 +206,20 @@ html, body {
   background: rgba(9,13,23,0.75);
   -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
   border-bottom: 0.5px solid var(--border);
-  padding: 0 24px;
-  height: 52px;
+  padding: 0 32px;
+  height: 60px;
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
 }
 .topbar-left { display: flex; align-items: center; gap: 10px; }
-.page-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.3px; }
-.page-sub   { font-size: 11px; color: var(--text3); }
-.topbar-right { display: flex; gap: 6px; align-items: center; }
+.page-title { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -.3px; }
+.page-sub   { font-size: 11.5px; color: var(--text3); margin-top: 1px; }
+.topbar-right { display: flex; gap: 8px; align-items: center; }
 
 /* ── Buttons ──────────────────────────────────────── */
 .btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; font-size: 13px;
   font-family: inherit; font-weight: 500;
   cursor: pointer; border: none; transition: all .15s;
   -webkit-font-smoothing: antialiased;
@@ -240,7 +241,7 @@ html, body {
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 
 /* ── Content area ─────────────────────────────────── */
-.content { flex: 1; overflow-y: auto; padding: 22px 24px; background: var(--bg); }
+.content { flex: 1; overflow-y: auto; padding: 32px 40px 48px; background: var(--bg); }
 
 /* ── Pages ────────────────────────────────────────── */
 .page { display: none; }
@@ -256,18 +257,18 @@ html, body {
 
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 16px;
+  padding: 17px 22px;
   border-bottom: 0.5px solid var(--border);
 }
-.card-title { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: -.1px; }
-.card-body  { padding: 16px; }
+.card-title { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -.05px; }
+.card-body  { padding: 22px; }
 
 /* ── Metrics strip ────────────────────────────────── */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
 .metric-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 18px;
+  border-radius: var(--radius-lg); padding: 21px 22px;
   box-shadow: var(--shadow-sm), var(--shine);
   cursor: pointer;
   transition: transform .15s, box-shadow .15s, border-color .15s;
@@ -293,8 +294,8 @@ html, body {
 .delta-neu  { color: var(--text3); }
 
 /* ── Grid layouts ─────────────────────────────────── */
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
 
 /* ── Badges / chips ───────────────────────────────── */
 .chip {
@@ -343,9 +344,9 @@ html, body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 13px 16px;
-  display: flex; align-items: flex-start; gap: 12px;
-  margin-bottom: 6px;
+  padding: 15px 18px;
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 8px;
   transition: box-shadow .15s, border-color .15s;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -399,25 +400,25 @@ html, body {
 .modal-overlay.open .modal { transform: scale(1) translateY(0); }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 18px; border-bottom: 0.5px solid var(--border);
+  padding: 20px 22px; border-bottom: 0.5px solid var(--border);
 }
-.modal-title { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
+.modal-title { font-size: 16px; font-weight: 600; letter-spacing: -.2px; }
 .modal-close {
   background: var(--surface3); border: none;
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; color: var(--text2); cursor: pointer;
   transition: all .1s;
 }
 .modal-close:hover { background: var(--border2); color: var(--text); }
-.modal-body { padding: 18px; }
-.modal-footer { padding: 14px 18px; border-top: 0.5px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.modal-body { padding: 22px; }
+.modal-footer { padding: 16px 22px; border-top: 0.5px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
 
 /* ── Forms ────────────────────────────────────────── */
-.form-group { margin-bottom: 14px; }
-.form-label { font-size: 12px; font-weight: 500; color: var(--text2); display: block; margin-bottom: 6px; }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--text2); display: block; margin-bottom: 7px; }
 .form-control {
-  width: 100%; padding: 8px 12px; border-radius: 9px;
+  width: 100%; padding: 10px 13px; border-radius: 9px;
   border: none; font-size: 13px;
   font-family: inherit; color: var(--text);
   background: var(--surface3); transition: background .15s, box-shadow .15s;
@@ -452,14 +453,14 @@ select.form-control { cursor: pointer; }
 /* ── Clients page ─────────────────────────────────── */
 .client-table { width: 100%; border-collapse: collapse; }
 .client-table th {
-  text-align: left; font-size: 10px; font-weight: 500;
-  color: var(--text3); text-transform: uppercase; letter-spacing: .08em;
-  padding: 9px 14px; background: rgba(255,255,255,.03);
+  text-align: left; font-size: 10.5px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .07em;
+  padding: 12px 18px; background: rgba(255,255,255,.03);
   border-bottom: 0.5px solid var(--border);
 }
 .client-table td {
-  padding: 9px 14px; border-bottom: 0.5px solid var(--border);
-  font-size: 12.5px; color: var(--text);
+  padding: 12px 18px; border-bottom: 0.5px solid var(--border);
+  font-size: 13px; color: var(--text);
 }
 .client-table tr:last-child td { border-bottom: none; }
 .client-table tr:hover td { background: rgba(255,255,255,.04); }
@@ -922,6 +923,9 @@ select option  { background: var(--surface3); color: var(--text); }
       <div class="nav-item" onclick="showPage('clientes')">
         <span class="ico"><i class="ti ti-users"></i></span> Clientes
       </div>
+      <div class="nav-item" onclick="showPage('fornecedores')">
+        <span class="ico"><i class="ti ti-truck-delivery"></i></span> Fornecedores
+      </div>
       <div class="nav-item" onclick="showPage('financeiro')">
         <span class="ico"><i class="ti ti-currency-dollar"></i></span> Financeiro
       </div>
@@ -934,6 +938,13 @@ select option  { background: var(--surface3); color: var(--text); }
       </div>
       <div class="nav-item" onclick="showPage('analise')">
         <span class="ico"><i class="ti ti-chart-line"></i></span> Análise Financeira
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Integrações</div>
+      <div class="nav-item" onclick="showPage('outlook')">
+        <span class="ico"><i class="ti ti-calendar-event"></i></span> Agenda
       </div>
     </div>
 
@@ -1412,6 +1423,35 @@ select option  { background: var(--surface3); color: var(--text); }
               </tr>
             </thead>
             <tbody id="clients-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- PAGE: FORNECEDORES                          -->
+      <!-- ═══════════════════════════════════════════ -->
+      <div class="page" id="page-fornecedores">
+        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center;flex-wrap:wrap">
+          <div class="search-box" style="margin-right:0">
+            <input type="text" placeholder="Buscar fornecedores..." style="width:220px" oninput="filterFornecedores(this.value)">
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="openFornecedorModal()">+ Novo fornecedor</button>
+          </div>
+        </div>
+        <div class="card">
+          <table class="client-table" id="fornecedores-table">
+            <thead>
+              <tr>
+                <th>Razão Social</th>
+                <th>CNPJ / CPF</th>
+                <th>Categoria</th>
+                <th>Contato</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="fornecedores-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -1949,6 +1989,57 @@ select option  { background: var(--surface3); color: var(--text); }
 
       </div>
 
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- PAGE: INTEGRAÇÕES (Google Agenda) -->
+      <!-- ═══════════════════════════════════════════ -->
+      <div class="page" id="page-outlook">
+
+        <div id="google-disconnected" class="card" style="text-align:center;padding:48px 32px">
+          <div style="width:52px;height:52px;border-radius:16px;background:var(--green-l);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <i class="ti ti-calendar-event" style="font-size:26px;color:var(--green)"></i>
+          </div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Conecte sua Google Agenda</div>
+          <div style="font-size:13px;color:var(--text2);max-width:420px;margin:0 auto 20px;line-height:1.6">
+            Veja seus próximos compromissos da Google Agenda direto aqui no ThoThe.
+          </div>
+          <button class="btn btn-primary" onclick="googleConectar()" id="google-connect-btn" style="margin:0 auto;background:var(--green)">
+            <i class="ti ti-plug" style="font-size:15px"></i> Conectar Google Agenda
+          </button>
+          <div style="font-size:11px;color:var(--text3);margin-top:14px">
+            Na primeira vez, vai pedir o "Client ID" do Google Cloud — veja o guia enviado pelo Claude.
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">
+            Errou o Client ID? <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="googleResetClientId()">Clique aqui para trocar</span>
+          </div>
+        </div>
+
+        <div id="google-connected" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--green-l);display:flex;align-items:center;justify-content:center">
+                <i class="ti ti-calendar-event" style="font-size:17px;color:var(--green)"></i>
+              </div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">Google Agenda conectada</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="googleAtualizar()" id="google-refresh-btn"><i class="ti ti-refresh" style="font-size:14px"></i> Atualizar</button>
+              <button class="btn btn-ghost btn-sm" onclick="googleDesconectar()">Desconectar</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📅 Próximos compromissos</span>
+              <span id="google-cal-count" style="font-size:11px;color:var(--text3)"></span>
+            </div>
+            <div id="google-cal-list" style="max-height:420px;overflow-y:auto">
+              <div class="empty-state" style="padding:32px"><div class="empty-text">Carregando...</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -2245,6 +2336,58 @@ select option  { background: var(--surface3); color: var(--text); }
   </div>
 </div>
 
+<!-- Fornecedor modal -->
+<div class="modal-overlay" id="modal-fornecedor">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-fornecedor-title">Novo fornecedor</span>
+      <button class="modal-close" onclick="closeModal('modal-fornecedor')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fornecedor-edit-id">
+      <div class="form-group">
+        <label class="form-label">Razão Social / Nome *</label>
+        <input class="form-control" id="fornecedor-razao" placeholder="Nome completo ou razão social">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">CNPJ / CPF</label>
+          <input class="form-control" id="fornecedor-cnpj" placeholder="00.000.000/0000-00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <input class="form-control" id="fornecedor-categoria" placeholder="Ex: Software, Aluguel, Material...">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input class="form-control" id="fornecedor-tel" placeholder="(00) 00000-0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input class="form-control" type="email" id="fornecedor-email" placeholder="contato@fornecedor.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-control" id="fornecedor-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-control" id="fornecedor-obs" rows="2" placeholder="Informações adicionais..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fornecedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFornecedor()">Salvar fornecedor</button>
+    </div>
+  </div>
+</div>
+
 <!-- Obrigação modal -->
 <div class="modal-overlay" id="modal-obrig">
   <div class="modal">
@@ -2432,7 +2575,10 @@ select option  { background: var(--surface3); color: var(--text); }
             </select>
             <button id="fin-novo-cliente-btn" class="btn btn-ghost btn-sm" style="display:none;white-space:nowrap;flex-shrink:0" onclick="abrirCadastroRapidoCliente()" title="Cadastrar novo cliente">+ Novo</button>
             <!-- shown when tipo = pagar -->
-            <input class="form-control" id="fin-cliente" placeholder="Nome do fornecedor" style="display:none;flex:1">
+            <select class="form-control" id="fin-fornecedor-select" onchange="onFinFornecedorChange()" style="display:none;flex:1">
+              <option value="">— Selecione o fornecedor —</option>
+            </select>
+            <button id="fin-novo-fornecedor-btn" class="btn btn-ghost btn-sm" style="display:none;white-space:nowrap;flex-shrink:0" onclick="abrirCadastroRapidoFornecedor()" title="Cadastrar novo fornecedor">+ Novo</button>
             <!-- hidden value always synced -->
             <input type="hidden" id="fin-cliente-val">
           </div>
@@ -3199,14 +3345,14 @@ const SUPA_USER = 'default'; // mantém fixo — a segurança vem do login exigi
 // SUPABASE AUTH — login real por e-mail/senha
 // ══════════════════════════════════════════════════════
 function authGetSession() {
-  try { return JSON.parse(localStorage.getItem('thothe_supa_session') || 'null'); }
+  try { return JSON.parse(sessionStorage.getItem('thothe_supa_session') || 'null'); }
   catch (e) { return null; }
 }
 function authSaveSession(session) {
-  localStorage.setItem('thothe_supa_session', JSON.stringify(session));
+  sessionStorage.setItem('thothe_supa_session', JSON.stringify(session));
 }
 function authClearSession() {
-  localStorage.removeItem('thothe_supa_session');
+  sessionStorage.removeItem('thothe_supa_session');
 }
 
 // Retorna um access_token válido, renovando via refresh_token se estiver perto de expirar
@@ -3358,7 +3504,7 @@ const DB = {
 };
 
 // Todas as chaves de dados do sistema — usadas em backup, push/pull e sincronização
-const TODAS_AS_CHAVES = ['tasks','clients','obrig','fin','checklists','fechamentos','analises','habits','eventos','senhas','perfil','calendarios','extratoItens','contasBancarias','recibos'];
+const TODAS_AS_CHAVES = ['tasks','clients','obrig','fin','checklists','fechamentos','analises','habits','eventos','senhas','perfil','calendarios','extratoItens','contasBancarias','recibos','fornecedores'];
 
 // ─── Indicador de status de sincronização ──────────
 async function verificarSincronia() {
@@ -3462,9 +3608,11 @@ const pageConfigs = {
   tarefas:     { title: 'Tarefas',            sub: 'gerenciamento de atividades',     actions: '' },
   checklist:   { title: 'Fechamento Mensal',  sub: 'fechamentos e modelos de checklist', actions: '' },
   clientes:    { title: 'Clientes',           sub: 'cadastro de clientes',            actions: '' },
+  fornecedores:{ title: 'Fornecedores',       sub: 'cadastro de fornecedores',        actions: '' },
   obrigacoes:  { title: 'Obrigações',         sub: 'calendário fiscal e trabalhista', actions: '' },
   financeiro:  { title: 'Financeiro',         sub: 'receitas e lançamentos',          actions: '' },
   recibos:     { title: 'Recibos',            sub: 'emissão de recibos de pagamento', actions: '' },
+  outlook:     { title: 'Agenda',              sub: 'compromissos da Google Agenda',    actions: '' },
   conciliacao: { title: 'Conciliação Bancária', sub: 'importe o extrato e concilie com seus lançamentos', actions: '' },
   analise:     { title: 'Análise Financeira', sub: 'KPIs e indicadores por cliente',  actions: '' },
   inteligencia:{ title: 'Inteligência', sub: 'diagnósticos e alertas cruzados',     actions: '' },
@@ -3511,9 +3659,11 @@ function _showPage(id) {
   if (id === 'dashboard')  renderDashboard();
   if (id === 'tarefas')    renderTasks();
   if (id === 'clientes')   renderClients();
+  if (id === 'fornecedores') renderFornecedores();
   if (id === 'obrigacoes') renderObrig();
   if (id === 'financeiro') { finUpdateLabel(); renderFin(); }
   if (id === 'recibos')    renderRecibos();
+  if (id === 'outlook')    initGooglePage();
   if (id === 'conciliacao') renderConciliacao();
   if (id === 'checklist')  { clUpdateLabel(); renderFechamentos(); }
   if (id === 'analise')       renderAnalise();
@@ -4231,6 +4381,97 @@ function renderClients() {
 }
 
 // ══════════════════════════════════════════════════════
+// FORNECEDORES
+// ══════════════════════════════════════════════════════
+let fornecedorSearch = '';
+
+function openFornecedorModal(id) {
+  document.getElementById('fornecedor-edit-id').value = id || '';
+  document.getElementById('modal-fornecedor-title').textContent = id ? 'Editar fornecedor' : 'Novo fornecedor';
+  if (id) {
+    const f = DB.get('fornecedores').find(x => x.id === id);
+    if (f) {
+      document.getElementById('fornecedor-razao').value     = f.razao     || '';
+      document.getElementById('fornecedor-cnpj').value      = f.cnpj      || '';
+      document.getElementById('fornecedor-categoria').value = f.categoria || '';
+      document.getElementById('fornecedor-tel').value       = f.tel       || '';
+      document.getElementById('fornecedor-email').value     = f.email     || '';
+      document.getElementById('fornecedor-status').value    = f.status    || 'ativo';
+      document.getElementById('fornecedor-obs').value       = f.obs       || '';
+    }
+  } else {
+    ['fornecedor-razao','fornecedor-cnpj','fornecedor-categoria','fornecedor-tel','fornecedor-email','fornecedor-obs']
+      .forEach(i => document.getElementById(i).value = '');
+    document.getElementById('fornecedor-status').value = 'ativo';
+  }
+  openModal('modal-fornecedor');
+}
+
+function saveFornecedor() {
+  const razao = document.getElementById('fornecedor-razao').value.trim();
+  if (!razao) { alert('Informe o nome/razão social.'); return; }
+  const editId = document.getElementById('fornecedor-edit-id').value;
+  const fornecedores = DB.get('fornecedores');
+  const item = {
+    id:        editId || DB.id(),
+    razao,
+    cnpj:      document.getElementById('fornecedor-cnpj').value.trim(),
+    categoria: document.getElementById('fornecedor-categoria').value.trim(),
+    tel:       document.getElementById('fornecedor-tel').value.trim(),
+    email:     document.getElementById('fornecedor-email').value.trim(),
+    status:    document.getElementById('fornecedor-status').value,
+    obs:       document.getElementById('fornecedor-obs').value.trim(),
+    criadoEm:  editId ? (fornecedores.find(x=>x.id===editId)?.criadoEm || new Date().toISOString()) : new Date().toISOString()
+  };
+  if (editId) { const i = fornecedores.findIndex(x => x.id === editId); if (i > -1) fornecedores[i] = item; }
+  else fornecedores.push(item);
+  DB.set('fornecedores', fornecedores);
+  closeModal('modal-fornecedor');
+  toast('🚚 Fornecedor salvo');
+  renderFornecedores();
+}
+
+function deleteFornecedor(id) {
+  if (!confirm('Excluir este fornecedor? Esta ação não pode ser desfeita.')) return;
+  DB.set('fornecedores', DB.get('fornecedores').filter(x => x.id !== id));
+  renderFornecedores();
+  toast('🗑️ Fornecedor excluído');
+}
+
+function filterFornecedores(v) { fornecedorSearch = v; renderFornecedores(); }
+
+function renderFornecedores() {
+  let fornecedores = DB.get('fornecedores');
+  if (fornecedorSearch) fornecedores = fornecedores.filter(f =>
+    f.razao.toLowerCase().includes(fornecedorSearch.toLowerCase()) ||
+    (f.cnpj||'').includes(fornecedorSearch) ||
+    (f.categoria||'').toLowerCase().includes(fornecedorSearch.toLowerCase()) ||
+    (f.email||'').toLowerCase().includes(fornecedorSearch.toLowerCase())
+  );
+  fornecedores.sort((a, b) => a.razao.localeCompare(b.razao, 'pt-BR', { sensitivity: 'base' }));
+  const tbody = document.getElementById('fornecedores-tbody');
+  if (!fornecedores.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Nenhum fornecedor cadastrado. Clique em "+ Novo fornecedor" para cadastrar, ou cadastre direto ao lançar uma conta a pagar.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = fornecedores.map(f => `
+    <tr>
+      <td>
+        <strong>${f.razao}</strong>
+        ${f.obs ? `<div style="font-size:11px;color:var(--text3)">${f.obs}</div>` : ''}
+      </td>
+      <td class="mono">${f.cnpj || '—'}</td>
+      <td>${f.categoria ? `<span class="chip chip-blue" style="font-size:10px">${f.categoria}</span>` : '—'}</td>
+      <td style="font-size:12px">${f.tel ? `📱 ${f.tel}` : ''}${f.email ? `<div style="margin-top:2px">✉️ ${f.email}</div>` : ''}</td>
+      <td><span class="chip ${f.status === 'ativo' ? 'chip-green' : 'chip-gray'}">${f.status}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openFornecedorModal('${f.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFornecedor('${f.id}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
 // OBRIGAÇÕES
 // ══════════════════════════════════════════════════════
 let obrigFilter = 'todas';
@@ -4466,6 +4707,43 @@ function abrirCadastroRapidoCliente() {
   });
 }
 
+function populateFornecedorSelect(selectedVal) {
+  const sel = document.getElementById('fin-fornecedor-select');
+  if (!sel) return;
+  const ativos   = DB.get('fornecedores').filter(f => f.status === 'ativo').sort((a,b) => a.razao.localeCompare(b.razao));
+  const inativos = DB.get('fornecedores').filter(f => f.status !== 'ativo').sort((a,b) => a.razao.localeCompare(b.razao));
+  const mkOpt = f => `<option value="${f.id}" data-razao="${f.razao}">${f.razao}${f.categoria?' · '+f.categoria:''}${f.status!=='ativo'?' (inativo)':''}</option>`;
+  sel.innerHTML = '<option value="">— Selecione o fornecedor —</option>' +
+    (ativos.length   ? `<optgroup label="Ativos">${ativos.map(mkOpt).join('')}</optgroup>`   : '') +
+    (inativos.length ? `<optgroup label="Inativos">${inativos.map(mkOpt).join('')}</optgroup>` : '');
+  if (selectedVal) sel.value = selectedVal;
+}
+
+function onFinFornecedorChange() {
+  const sel = document.getElementById('fin-fornecedor-select');
+  const opt = sel.options[sel.selectedIndex];
+  const razao = opt ? (opt.getAttribute('data-razao') || opt.value) : '';
+  document.getElementById('fin-cliente-val').value = razao;
+  const descEl = document.getElementById('fin-desc');
+  if (razao && !descEl.value) descEl.value = razao;
+}
+
+function abrirCadastroRapidoFornecedor() {
+  modalPrompt('Novo fornecedor rápido', 'Nome / Razão Social do fornecedor:', '').then(razao => {
+    if (!razao || !razao.trim()) return;
+    const fornecedores = DB.get('fornecedores');
+    const novo = {
+      id: DB.id(), razao: razao.trim(), cnpj: '', categoria: '',
+      tel: '', email: '', status: 'ativo', obs: '', criadoEm: new Date().toISOString()
+    };
+    fornecedores.push(novo);
+    DB.set('fornecedores', fornecedores);
+    populateFornecedorSelect(novo.id);
+    onFinFornecedorChange();
+    toast(`✅ Fornecedor "${razao.trim()}" cadastrado — complete o cadastro em Fornecedores`);
+  });
+}
+
 function setFinTipo(tipo) {
   // CRÍTICO: atualiza o campo hidden que saveFin() lê para decidir o tipo do lançamento
   document.getElementById('fin-tipo').value = tipo;
@@ -4473,7 +4751,7 @@ function setFinTipo(tipo) {
   const btnR = document.getElementById('fin-tipo-receber');
   const btnP = document.getElementById('fin-tipo-pagar');
   const selCliente  = document.getElementById('fin-cliente-select');
-  const inpCliente  = document.getElementById('fin-cliente');
+  const selFornecedor = document.getElementById('fin-fornecedor-select');
 
   if (tipo === 'receber') {
     btnR.style.borderColor = 'var(--green)'; btnR.style.background = 'var(--green-l)';
@@ -4483,7 +4761,9 @@ function setFinTipo(tipo) {
     document.getElementById('fin-data-label').textContent = 'Data de vencimento *';
     document.getElementById('fin-parte-label').textContent = 'Cliente';
     if (selCliente) { selCliente.style.display = ''; populateClientSelect(); }
-    if (inpCliente) inpCliente.style.display = 'none';
+    if (selFornecedor) selFornecedor.style.display = 'none';
+    const novoBtnF = document.getElementById('fin-novo-fornecedor-btn');
+    if (novoBtnF) novoBtnF.style.display = 'none';
     const novoBtn = document.getElementById('fin-novo-cliente-btn');
     if (novoBtn) novoBtn.style.display = '';
     document.getElementById('fin-status').innerHTML = `
@@ -4498,9 +4778,11 @@ function setFinTipo(tipo) {
     document.getElementById('fin-data-label').textContent = 'Data de vencimento *';
     document.getElementById('fin-parte-label').textContent = 'Fornecedor';
     if (selCliente) selCliente.style.display = 'none';
-    if (inpCliente) { inpCliente.style.display = ''; }
     const novoBtn2 = document.getElementById('fin-novo-cliente-btn');
     if (novoBtn2) novoBtn2.style.display = 'none';
+    if (selFornecedor) { selFornecedor.style.display = ''; populateFornecedorSelect(); }
+    const novoBtnF2 = document.getElementById('fin-novo-fornecedor-btn');
+    if (novoBtnF2) novoBtnF2.style.display = '';
     document.getElementById('fin-status').innerHTML = `
       <option value="previsto">Previsão (ainda não venceu)</option>
       <option value="pendente">Pendente (vencido, não pago)</option>
@@ -4570,12 +4852,12 @@ function openFinModal(id, tipoDefault) {
       document.getElementById('fin-cartao-nome').value = f.cartaoNome || '';
       document.getElementById('fin-cartao-parcela').value = f.cartaoParcela || '';
       toggleCartaoNome();
-      // restore client
+      // restore client/fornecedor
       if (f.tipo === 'receber') {
         populateClientSelect(f.clienteId || '');
         document.getElementById('fin-cliente-val').value = f.cliente || '';
       } else {
-        document.getElementById('fin-cliente').value = f.cliente || '';
+        populateFornecedorSelect(f.clienteId || '');
         document.getElementById('fin-cliente-val').value = f.cliente || '';
       }
       const g = document.getElementById('fin-data-baixa-group');
@@ -4597,7 +4879,7 @@ function openFinModal(id, tipoDefault) {
     document.getElementById('fin-cartao-nome').value = '';
     document.getElementById('fin-cartao-parcela').value = '';
     toggleCartaoNome();
-    document.getElementById('fin-cliente').value = '';
+    populateFornecedorSelect('');
     document.getElementById('fin-cliente-val').value = '';
     toggleDataBaixaGroup();
   }
@@ -4633,7 +4915,7 @@ function saveFin() {
   const parcelasVal = document.getElementById('fin-parcelas').value;
   const qtdParcelas = recorrencia ? (parcelasVal === 'indeterminado' ? 12 : parseInt(parcelasVal)) : 1;
 
-  // resolve client name
+  // resolve client/fornecedor name
   let clienteNome = '';
   let clienteId   = '';
   if (tipo === 'receber') {
@@ -4642,7 +4924,10 @@ function saveFin() {
     clienteNome = opt ? opt.getAttribute('data-razao') : '';
     clienteId   = opt ? sel.value : '';
   } else {
-    clienteNome = document.getElementById('fin-cliente').value.trim();
+    const sel = document.getElementById('fin-fornecedor-select');
+    const opt = sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex] : null;
+    clienteNome = opt ? opt.getAttribute('data-razao') : '';
+    clienteId   = opt ? sel.value : '';
   }
 
   const baseData        = document.getElementById('fin-data').value;
@@ -6872,6 +7157,133 @@ function startApp() {
     startApp();
   }
 })();
+
+// ══════════════════════════════════════════════════════
+// GOOGLE AGENDA (via Google Identity Services + Calendar API)
+// ══════════════════════════════════════════════════════
+function fmtDateHora(iso) {
+  const d = new Date(iso);
+  const hoje = new Date();
+  const amanha = new Date(); amanha.setDate(hoje.getDate() + 1);
+  const mesmodia = (a,b) => a.toDateString() === b.toDateString();
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (mesmodia(d, hoje)) return `Hoje, ${hora}`;
+  if (mesmodia(d, amanha)) return `Amanhã, ${hora}`;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ', ' + hora;
+}
+
+const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+let googleTokenClient = null;
+let googleAccessToken = null;
+
+function googleGetClientId() {
+  return localStorage.getItem('thothe_google_client_id') || '';
+}
+
+function googleInitClient() {
+  const clientId = googleGetClientId();
+  if (!clientId || typeof google === 'undefined' || !google.accounts) return null;
+  if (googleTokenClient) return googleTokenClient;
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: GOOGLE_SCOPE,
+    callback: (resp) => {
+      const btn = document.getElementById('google-connect-btn');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-plug" style="font-size:15px"></i> Conectar Google Agenda'; }
+      if (resp.error) { alert('Não foi possível conectar ao Google: ' + resp.error); return; }
+      googleAccessToken = resp.access_token;
+      document.getElementById('google-disconnected').style.display = 'none';
+      document.getElementById('google-connected').style.display = '';
+      googleAtualizar();
+    }
+  });
+  return googleTokenClient;
+}
+
+function googleResetClientId() {
+  localStorage.removeItem('thothe_google_client_id');
+  googleTokenClient = null;
+  alert('Client ID removido. Clique em "Conectar Google Agenda" para inserir o novo.');
+}
+
+function googleConectar() {
+  let clientId = googleGetClientId();
+  if (!clientId) {
+    clientId = prompt('Cole o "Client ID" do app OAuth criado no Google Cloud Console:');
+    if (!clientId) return;
+    localStorage.setItem('thothe_google_client_id', clientId.trim());
+  }
+  const client = googleInitClient();
+  if (!client) {
+    if (typeof google === 'undefined') {
+      alert('A biblioteca de login do Google não carregou (sem internet ou bloqueada). Recarregue a página e tente de novo.');
+    } else {
+      alert('Não foi possível iniciar a conexão. Verifique o Client ID e tente de novo.');
+    }
+    return;
+  }
+  const btn = document.getElementById('google-connect-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
+  client.requestAccessToken();
+}
+
+function googleDesconectar() {
+  if (!confirm('Desconectar sua Google Agenda do ThoThe?')) return;
+  if (googleAccessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
+    google.accounts.oauth2.revoke(googleAccessToken, () => {});
+  }
+  googleAccessToken = null;
+  googleTokenClient = null;
+  localStorage.removeItem('thothe_google_client_id');
+  document.getElementById('google-connected').style.display = 'none';
+  document.getElementById('google-disconnected').style.display = '';
+}
+
+function initGooglePage() {
+  const connected = !!googleAccessToken;
+  document.getElementById('google-disconnected').style.display = connected ? 'none' : '';
+  document.getElementById('google-connected').style.display    = connected ? '' : 'none';
+  if (connected) googleAtualizar();
+}
+
+async function googleAtualizar() {
+  const refreshBtn = document.getElementById('google-refresh-btn');
+  if (refreshBtn) refreshBtn.disabled = true;
+  if (!googleAccessToken) { if (refreshBtn) refreshBtn.disabled = false; return; }
+
+  try {
+    const now = new Date();
+    const end = new Date(); end.setDate(now.getDate() + 30);
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=20`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${googleAccessToken}` } });
+    if (r.status === 401) {
+      document.getElementById('google-cal-list').innerHTML = `<div class="empty-state" style="padding:32px"><div class="empty-text">Sessão expirada</div><div class="empty-sub">Clique em Conectar Google Agenda novamente</div></div>`;
+      document.getElementById('google-connected').style.display = 'none';
+      document.getElementById('google-disconnected').style.display = '';
+      if (refreshBtn) refreshBtn.disabled = false;
+      return;
+    }
+    const data = await r.json();
+    const events = data.items || [];
+    document.getElementById('google-cal-count').textContent = events.length ? `${events.length} próximos` : '';
+    document.getElementById('google-cal-list').innerHTML = events.length ? events.map(ev => {
+      const startIso = ev.start?.dateTime || ev.start?.date;
+      const isAllDay = !ev.start?.dateTime;
+      return `
+      <div onclick="window.open('${ev.htmlLink}','_blank')" style="padding:12px 18px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">
+          <span style="font-size:12.5px;font-weight:600;color:var(--text)">${ev.summary || '(sem título)'}</span>
+          <span style="font-size:10.5px;color:var(--green);flex-shrink:0">${isAllDay ? 'Dia inteiro' : fmtDateHora(startIso)}</span>
+        </div>
+        ${ev.location ? `<div style="font-size:11.5px;color:var(--text3)">📍 ${ev.location}</div>` : ''}
+      </div>`;
+    }).join('') : `<div class="empty-state" style="padding:32px"><div class="empty-text">Nenhum compromisso nos próximos 30 dias</div></div>`;
+  } catch (e) {
+    document.getElementById('google-cal-list').innerHTML = `<div class="empty-state" style="padding:32px"><div class="empty-text">Não foi possível carregar a agenda</div></div>`;
+  }
+
+  if (refreshBtn) refreshBtn.disabled = false;
+}
 
 // ══════════════════════════════════════════════════════
 // SENHAS & PORTAIS
