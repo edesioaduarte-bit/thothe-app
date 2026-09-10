@@ -950,9 +950,6 @@ select option  { background: var(--surface3); color: var(--text); }
 
     <div class="nav-group">
       <div class="nav-label">Recursos</div>
-      <div class="nav-item" onclick="showPage('senhas')">
-        <span class="ico"><i class="ti ti-lock"></i></span> Senhas & Portais
-      </div>
       <div class="nav-item" onclick="showPage('pessoal')">
         <span class="ico"><i class="ti ti-leaf"></i></span> Rotinas & Hábitos
       </div>
@@ -1851,37 +1848,6 @@ select option  { background: var(--surface3); color: var(--text); }
       <!-- ═══════════════════════════════════════════ -->
       <!-- PAGE: SENHAS & PORTAIS                      -->
       <!-- ═══════════════════════════════════════════ -->
-      <div class="page" id="page-senhas">
-
-        <!-- Aviso de segurança -->
-        <div style="display:flex;align-items:center;gap:10px;background:var(--accent-l);border:0.5px solid rgba(99,102,241,.2);border-radius:var(--radius);padding:10px 14px;margin-bottom:18px;font-size:12px;color:var(--accent)">
-          <span style="font-size:16px">🔒</span>
-          <span>Senhas salvas <strong>apenas neste dispositivo</strong> · Nunca enviadas para a internet · Copie e cole diretamente nos portais</span>
-        </div>
-
-        <!-- Toolbar -->
-        <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
-          <div class="search-box" style="flex:1;min-width:200px;max-width:260px">
-            <input type="text" placeholder="Buscar..." oninput="renderSenhas(this.value)" id="senhas-search">
-          </div>
-          <select class="form-control" id="senhas-cat-filter" style="width:150px;font-size:12px" onchange="renderSenhas()">
-            <option value="">Todas as categorias</option>
-            <option value="gov">🏛️ Governo</option>
-            <option value="prefeitura">🏢 Prefeitura</option>
-            <option value="banco">🏦 Banco</option>
-            <option value="sistema">💻 Sistema</option>
-            <option value="outro">📦 Outros</option>
-          </select>
-          <select class="form-control" id="senhas-cli-filter" style="width:180px;font-size:12px" onchange="renderSenhas()">
-            <option value="">Todos os clientes</option>
-          </select>
-          <button class="btn btn-primary" onclick="openSenhaModal()">+ Novo acesso</button>
-        </div>
-
-        <!-- Cards -->
-        <div id="senhas-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
-      </div>
-
       <!-- PAGE: PESSOAL — ROTINAS & HÁBITOS           -->
       <!-- ═══════════════════════════════════════════ -->
       <div class="page" id="page-pessoal">
@@ -2323,6 +2289,13 @@ select option  { background: var(--surface3); color: var(--text); }
             <option value="inativo">Inativo</option>
           </select>
         </div>
+      </div>
+      <div class="form-group" id="client-senhas-section" style="display:none">
+        <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🔐 Senhas & Acessos deste cliente</span>
+          <span style="color:var(--accent);cursor:pointer;font-weight:500" onclick="openSenhaModal(null, document.getElementById('client-razao').value)">+ Novo acesso</span>
+        </label>
+        <div id="client-senhas-list" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
       <div class="form-group">
         <label class="form-label">Observações</label>
@@ -3181,6 +3154,7 @@ select option  { background: var(--surface3); color: var(--text); }
     </div>
     <div class="modal-body">
       <input type="hidden" id="senha-edit-id">
+      <input type="hidden" id="senha-cliente-fixo">
 
       <div class="form-row">
         <div class="form-group">
@@ -3197,13 +3171,6 @@ select option  { background: var(--surface3); color: var(--text); }
             <option value="outro">📦 Outros</option>
           </select>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Cliente vinculado (opcional)</label>
-        <select class="form-control" id="senha-cliente">
-          <option value="">— Geral (sem vínculo) —</option>
-        </select>
       </div>
 
       <div class="form-group">
@@ -3617,7 +3584,6 @@ const pageConfigs = {
   analise:     { title: 'Análise Financeira', sub: 'KPIs e indicadores por cliente',  actions: '' },
   inteligencia:{ title: 'Inteligência', sub: 'diagnósticos e alertas cruzados',     actions: '' },
   calendario:  { title: 'Calendário',         sub: 'eventos e compromissos',          actions: '' },
-  senhas:      { title: 'Senhas & Portais', sub: 'credenciais de acesso aos portais', actions: '' },
   pessoal:     { title: 'Rotinas & Hábitos', sub: 'hábitos pessoais e controle diário', actions: '' },
 };
 
@@ -3669,7 +3635,6 @@ function _showPage(id) {
   if (id === 'analise')       renderAnalise();
   if (id === 'inteligencia')  renderInteligencia();
   if (id === 'pessoal')    renderHabits();
-  if (id === 'senhas')     renderSenhas();
 }
 
 // ── Senha do Financeiro ───────────────────────────────
@@ -4274,6 +4239,7 @@ const contratoLabels = {
 function openClientModal(id) {
   document.getElementById('client-edit-id').value = id || '';
   document.getElementById('modal-client-title').textContent = id ? 'Editar cliente' : 'Novo cliente';
+  const senhasSection = document.getElementById('client-senhas-section');
   if (id) {
     const c = DB.get('clients').find(x => x.id === id);
     if (c) {
@@ -4288,14 +4254,38 @@ function openClientModal(id) {
       document.getElementById('client-status').value   = c.status   || 'ativo';
       document.getElementById('client-obs').value      = c.obs      || '';
     }
+    senhasSection.style.display = '';
+    renderClientSenhas(c ? c.razao : '');
   } else {
     ['client-razao','client-cnpj','client-honorario','client-resp','client-tel','client-email','client-obs']
       .forEach(i => document.getElementById(i).value = '');
     document.getElementById('client-regime').value   = 'Simples Nacional';
     document.getElementById('client-contrato').value = 'assessoria_contabil';
     document.getElementById('client-status').value   = 'ativo';
+    senhasSection.style.display = 'none'; // só disponível depois que o cliente for salvo
   }
   openModal('modal-client');
+}
+
+function renderClientSenhas(clienteRazao) {
+  const listEl = document.getElementById('client-senhas-list');
+  if (!listEl) return;
+  const senhas = DB.get('senhas').filter(s => s.cliente === clienteRazao);
+  if (!senhas.length) {
+    listEl.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 2px">Nenhum acesso cadastrado ainda.</div>`;
+    return;
+  }
+  const cats = { gov:'🏛️', prefeitura:'🏢', banco:'🏦', sistema:'💻', outro:'📦' };
+  listEl.innerHTML = senhas.map(s => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:7px">
+      <span style="font-size:14px;flex-shrink:0">${cats[s.cat]||'🔐'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--text)">${s.nome}</div>
+        ${s.login ? `<div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">${s.login}</div>` : ''}
+      </div>
+      <button onclick="openSenhaModal('${s.id}', ${JSON.stringify(clienteRazao)})" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px" title="Editar">✏️</button>
+      <button onclick="deleteSenhaFromClient('${s.id}', ${JSON.stringify(clienteRazao)})" class="btn btn-danger btn-sm" style="padding:3px 7px;font-size:10px" title="Excluir">🗑️</button>
+    </div>`).join('');
 }
 
 function saveClient() {
@@ -4316,7 +4306,19 @@ function saveClient() {
     status:    document.getElementById('client-status').value,
     obs:       document.getElementById('client-obs').value.trim(),
   };
-  if (editId) { const i = clients.findIndex(x => x.id === editId); if (i > -1) clients[i] = item; }
+  if (editId) {
+    const i = clients.findIndex(x => x.id === editId);
+    if (i > -1) {
+      const oldRazao = clients[i].razao;
+      clients[i] = item;
+      if (oldRazao && oldRazao !== razao) {
+        const senhas = DB.get('senhas');
+        let mudou = false;
+        senhas.forEach(s => { if (s.cliente === oldRazao) { s.cliente = razao; mudou = true; } });
+        if (mudou) DB.set('senhas', senhas);
+      }
+    }
+  }
   else clients.push(item);
   DB.set('clients', clients);
   closeModal('modal-client');
@@ -7312,29 +7314,10 @@ async function googleAtualizar() {
 // ══════════════════════════════════════════════════════
 // SENHAS & PORTAIS
 // ══════════════════════════════════════════════════════
-const SENHA_CATS = {
-  gov:        { icon:'🏛️', label:'Governo',          color:'var(--accent)' },
-  prefeitura: { icon:'🏢', label:'Prefeitura',        color:'#A78BFA' },
-  banco:      { icon:'🏦', label:'Banco / Financeiro', color:'var(--green)' },
-  sistema:    { icon:'💻', label:'Sistema / Software', color:'var(--amber)' },
-  outro:      { icon:'📦', label:'Outros',             color:'var(--text3)' },
-};
-
-// Seed padrão: Gov.br e Prefeitura
-function garantirSenhasDefault() {
-  const senhas = DB.get('senhas');
-  if (senhas.length === 0) {
-    DB.set('senhas', [
-      { id: DB.id(), nome: 'Gov.br', cat: 'gov', cpf_cnpj: '', login: '', senha: '', senha2: '', cliente: '', obs: 'Senha única gov.br', criadoEm: new Date().toISOString() },
-      { id: DB.id(), nome: 'Prefeitura Municipal', cat: 'prefeitura', cpf_cnpj: '', login: '', senha: '', senha2: '', cliente: '', obs: '', criadoEm: new Date().toISOString() },
-    ]);
-  }
-}
-
-function openSenhaModal(id) {
+function openSenhaModal(id, clienteFixo) {
   document.getElementById('senha-edit-id').value = id || '';
   document.getElementById('modal-senha-title').textContent = id ? 'Editar acesso' : 'Novo acesso';
-  fillClientSelect('senha-cliente', '', true, '— Geral (sem vínculo) —');
+  document.getElementById('senha-cliente-fixo').value = clienteFixo || '';
 
   const fields = ['senha-nome','senha-cpf-cnpj','senha-login','senha-valor','senha-valor2','senha-obs'];
   if (id) {
@@ -7346,8 +7329,8 @@ function openSenhaModal(id) {
       document.getElementById('senha-login').value   = s.login      || '';
       document.getElementById('senha-valor').value   = s.senha      || '';
       document.getElementById('senha-valor2').value  = s.senha2     || '';
-      document.getElementById('senha-cliente').value = s.cliente    || '';
       document.getElementById('senha-obs').value     = s.obs        || '';
+      document.getElementById('senha-cliente-fixo').value = s.cliente || clienteFixo || '';
     }
   } else {
     fields.forEach(f => { const el = document.getElementById(f); if (el) el.value = ''; });
@@ -7382,6 +7365,7 @@ function saveSenha() {
   const nome = document.getElementById('senha-nome').value.trim();
   if (!nome) { toast('⚠️ Informe o nome do portal'); return; }
   const editId = document.getElementById('senha-edit-id').value;
+  const clienteFixo = document.getElementById('senha-cliente-fixo').value;
   const senhas = DB.get('senhas');
   const item = {
     id:        editId || DB.id(),
@@ -7391,7 +7375,7 @@ function saveSenha() {
     login:     document.getElementById('senha-login').value.trim(),
     senha:     document.getElementById('senha-valor').value.trim(),
     senha2:    document.getElementById('senha-valor2').value.trim(),
-    cliente:   document.getElementById('senha-cliente').value,
+    cliente:   clienteFixo,
     obs:       document.getElementById('senha-obs').value.trim(),
     criadoEm: editId ? (senhas.find(x=>x.id===editId)||{}).criadoEm : new Date().toISOString(),
   };
@@ -7400,13 +7384,13 @@ function saveSenha() {
   DB.set('senhas', senhas);
   closeModal('modal-senha');
   toast('🔐 Acesso salvo');
-  renderSenhas();
+  renderClientSenhas(clienteFixo);
 }
 
-function deleteSenha(id) {
+function deleteSenhaFromClient(id, clienteRazao) {
   if (!confirm('Excluir este acesso?')) return;
   DB.set('senhas', DB.get('senhas').filter(x=>x.id!==id));
-  renderSenhas();
+  renderClientSenhas(clienteRazao);
   toast('🗑️ Excluído');
 }
 
@@ -7425,108 +7409,6 @@ async function copiarLogin(id) {
 async function copiarSenha(id) {
   const s = DB.get('senhas').find(x=>x.id===id);
   if (s) copiarCampo(s.senha, 'Senha');
-}
-
-function toggleVerSenha(id, btn) {
-  const el = document.getElementById('senha-display-' + id);
-  const s  = DB.get('senhas').find(x=>x.id===id);
-  if (!el || !s) return;
-  if (el.dataset.shown === '1') {
-    el.textContent = '••••••••'; el.dataset.shown = '0'; btn.textContent = '👁';
-  } else {
-    el.textContent = s.senha || '(vazia)'; el.dataset.shown = '1'; btn.textContent = '🙈';
-    setTimeout(() => { if(el.dataset.shown==='1'){el.textContent='••••••••';el.dataset.shown='0';btn.textContent='👁';} }, 10000);
-  }
-}
-function toggleVerSenha2(id, btn) {
-  const el = document.getElementById('senha-display2-' + id);
-  const s  = DB.get('senhas').find(x=>x.id===id);
-  if (!el || !s) return;
-  if (el.dataset.shown === '1') {
-    el.textContent = '••••••••'; el.dataset.shown = '0'; btn.textContent = '👁';
-  } else {
-    el.textContent = s.senha2 || '(vazia)'; el.dataset.shown = '1'; btn.textContent = '🙈';
-    setTimeout(() => { if(el.dataset.shown==='1'){el.textContent='••••••••';el.dataset.shown='0';btn.textContent='👁';} }, 10000);
-  }
-}
-
-function renderSenhas(search) {
-  garantirSenhasDefault();
-
-  // Popular filtro de clientes
-  const cliSel = document.getElementById('senhas-cli-filter');
-  if (cliSel && cliSel.options.length <= 1) {
-    DB.get('clients').filter(c=>c.status==='ativo').sort((a,b)=>a.razao.localeCompare(b.razao,'pt-BR')).forEach(c => {
-      const opt = document.createElement('option'); opt.value = c.razao; opt.textContent = c.razao;
-      cliSel.appendChild(opt);
-    });
-  }
-  const q   = search !== undefined ? search : (document.getElementById('senhas-search')?.value || '');
-  const cat = document.getElementById('senhas-cat-filter')?.value || '';
-  const cli = document.getElementById('senhas-cli-filter')?.value || '';
-  let senhas = DB.get('senhas');
-  if (q)   senhas = senhas.filter(s => [s.nome,s.login,s.cpf_cnpj,s.obs,s.cliente].join(' ').toLowerCase().includes(q.toLowerCase()));
-  if (cat) senhas = senhas.filter(s => s.cat === cat);
-  if (cli) senhas = senhas.filter(s => s.cliente === cli);
-
-  const catOrder = ['gov','prefeitura','banco','sistema','outro'];
-  senhas.sort((a,b) => {
-    const d = catOrder.indexOf(a.cat) - catOrder.indexOf(b.cat);
-    return d !== 0 ? d : a.nome.localeCompare(b.nome,'pt-BR');
-  });
-
-  const el = document.getElementById('senhas-container');
-  if (!el) return;
-
-  if (!senhas.length) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-text">Nenhum acesso encontrado</div><div class="empty-sub">Clique em "+ Novo acesso" para cadastrar</div></div>`;
-    return;
-  }
-
-  const campo = (label, valor, idCard, campoCopiar) => {
-    if (!valor) return '';
-    const isHidden = campoCopiar === 'senha' || campoCopiar === 'senha2';
-    const displayId = `senha-display${campoCopiar==='senha2'?'2':''}-${idCard}`;
-    return `
-    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:5px">
-      <div style="min-width:0;flex:1">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">${label}</div>
-        ${isHidden
-          ? `<div id="${displayId}" data-shown="0" style="font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace;letter-spacing:2px">••••••••</div>`
-          : `<div style="font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace;word-break:break-all">${valor}</div>`}
-      </div>
-      <div style="display:flex;gap:3px;flex-shrink:0;margin-left:8px">
-        ${isHidden ? `<button onclick="toggleVerSenha${campoCopiar==='senha2'?'2':''}('${idCard}',this)" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px">👁</button>` : ''}
-        <button onclick="copiarCampo('${valor.replace(/'/g,"\\'")}','${label}')" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px" title="Copiar">📋</button>
-      </div>
-    </div>`;
-  };
-
-  el.innerHTML = senhas.map(s => {
-    const c = SENHA_CATS[s.cat] || SENHA_CATS.outro;
-    return `
-    <div class="card" style="overflow:hidden">
-      <div style="height:2px;background:${c.color};opacity:.5"></div>
-      <div style="padding:13px 14px">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
-          <div style="width:34px;height:34px;border-radius:8px;background:${c.color}18;border:0.5px solid ${c.color}30;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${s.nome}</div>
-            <div style="font-size:10px;color:${c.color};margin-top:1px">${c.label}${s.cliente?' · <span style="color:var(--text3)">'+s.cliente+'</span>':''}</div>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="openSenhaModal('${s.id}')" style="padding:3px 7px;font-size:11px" title="Editar">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSenha('${s.id}')" style="padding:3px 7px;font-size:11px">🗑️</button>
-        </div>
-        <!-- Campos -->
-        ${campo('CPF / CNPJ', s.cpf_cnpj, s.id, 'cpf')}
-        ${campo('Login / Usuário', s.login, s.id, 'login')}
-        ${campo('Senha', s.senha, s.id, 'senha')}
-        ${campo('Senha 2 / Token', s.senha2, s.id, 'senha2')}
-        ${s.obs ? `<div style="margin-top:6px;font-size:10px;color:var(--text3);padding:6px 8px;background:rgba(255,255,255,.03);border-radius:5px">${s.obs}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
 }
 
 // ══════════════════════════════════════════════════════
