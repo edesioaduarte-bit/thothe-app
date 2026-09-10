@@ -818,11 +818,9 @@ select option  { background: var(--surface3); color: var(--text); }
         </svg>
       </div>
       <div style="font-size:20px;font-weight:600;color:var(--text)">ThoThe</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px" id="auth-gate-tagline">Entre para continuar</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">Entre para continuar</div>
     </div>
-
-    <!-- ── Formulário: login ─────────────────────────── -->
-    <div class="card" style="padding:22px" id="auth-panel-login">
+    <div class="card" style="padding:22px">
       <div class="form-group">
         <label class="form-label">E-mail</label>
         <input class="form-control" type="email" id="auth-email" placeholder="seu@email.com" autocomplete="username">
@@ -833,45 +831,8 @@ select option  { background: var(--surface3); color: var(--text); }
       </div>
       <div id="auth-error" style="display:none;font-size:12px;color:var(--red);background:var(--red-l);border:1px solid rgba(248,113,122,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px"></div>
       <button class="btn btn-primary" id="auth-login-btn" onclick="authLogin()" style="width:100%;justify-content:center;padding:11px">Entrar</button>
-      <div style="text-align:center;margin-top:14px">
-        <span style="font-size:12px;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="authShowPanel('recover')">Esqueci minha senha</span>
-      </div>
     </div>
-
-    <!-- ── Formulário: solicitar recuperação ─────────── -->
-    <div class="card" style="padding:22px;display:none" id="auth-panel-recover">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">
-        Informe seu e-mail cadastrado. Vamos enviar um link para você definir uma senha nova.
-      </div>
-      <div class="form-group">
-        <label class="form-label">E-mail</label>
-        <input class="form-control" type="email" id="auth-recover-email" placeholder="seu@email.com" autocomplete="username">
-      </div>
-      <div id="auth-recover-msg" style="display:none;font-size:12px;border-radius:8px;padding:8px 10px;margin-bottom:12px"></div>
-      <button class="btn btn-primary" id="auth-recover-btn" onclick="authForgotPassword()" style="width:100%;justify-content:center;padding:11px">Enviar link de recuperação</button>
-      <div style="text-align:center;margin-top:14px">
-        <span style="font-size:12px;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="authShowPanel('login')">← Voltar para o login</span>
-      </div>
-    </div>
-
-    <!-- ── Formulário: definir nova senha (via link do e-mail) ── -->
-    <div class="card" style="padding:22px;display:none" id="auth-panel-newpass">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">
-        Defina sua nova senha de acesso ao ThoThe.
-      </div>
-      <div class="form-group">
-        <label class="form-label">Nova senha</label>
-        <input class="form-control" type="password" id="auth-newpass1" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Confirmar nova senha</label>
-        <input class="form-control" type="password" id="auth-newpass2" placeholder="Repita a senha" autocomplete="new-password">
-      </div>
-      <div id="auth-newpass-msg" style="display:none;font-size:12px;border-radius:8px;padding:8px 10px;margin-bottom:12px"></div>
-      <button class="btn btn-primary" id="auth-newpass-btn" onclick="authSetNewPassword()" style="width:100%;justify-content:center;padding:11px">Salvar nova senha</button>
-    </div>
-
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text3)" id="auth-gate-footer-note">
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text3)">
       Não tem conta? Peça ao administrador para criar seu acesso no painel do Supabase.
     </div>
   </div>
@@ -3445,7 +3406,7 @@ async function authLogin() {
     });
     const data = await r.json();
     if (!r.ok) {
-      errEl.textContent = data.error_description || data.msg || 'E-mail ou senha incorretos.';
+      errEl.textContent = data.error_description || data.msg || data.message || 'E-mail ou senha incorretos.';
       errEl.style.display = '';
       btn.textContent = 'Entrar'; btn.disabled = false;
       return;
@@ -3481,91 +3442,6 @@ function showAuthGate() {
   document.getElementById('auth-gate').style.display = 'flex';
   document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') authLogin(); });
   document.getElementById('auth-email').addEventListener('keydown', e => { if (e.key === 'Enter') authLogin(); });
-  document.getElementById('auth-recover-email').addEventListener('keydown', e => { if (e.key === 'Enter') authForgotPassword(); });
-
-  // Se o link veio do e-mail de recuperação, o Supabase manda o token no hash da URL
-  const hash = new URLSearchParams(window.location.hash.replace('#', '?'));
-  if (hash.get('type') === 'recovery' && hash.get('access_token')) {
-    window.__recoveryToken = hash.get('access_token');
-    authShowPanel('newpass');
-    history.replaceState(null, '', window.location.pathname); // limpa o token da URL visível
-  }
-}
-
-function authShowPanel(name) {
-  document.getElementById('auth-panel-login').style.display    = name === 'login'    ? '' : 'none';
-  document.getElementById('auth-panel-recover').style.display  = name === 'recover'  ? '' : 'none';
-  document.getElementById('auth-panel-newpass').style.display  = name === 'newpass'  ? '' : 'none';
-  document.getElementById('auth-gate-footer-note').style.display = name === 'newpass' ? 'none' : '';
-  document.getElementById('auth-gate-tagline').textContent =
-    name === 'login' ? 'Entre para continuar' :
-    name === 'recover' ? 'Recuperar senha' : 'Nova senha';
-}
-
-async function authForgotPassword() {
-  const email = document.getElementById('auth-recover-email').value.trim();
-  const msgEl = document.getElementById('auth-recover-msg');
-  const btn   = document.getElementById('auth-recover-btn');
-  if (!email) {
-    msgEl.style.display = ''; msgEl.style.background = 'var(--red-l)'; msgEl.style.color = 'var(--red)';
-    msgEl.textContent = 'Informe seu e-mail.';
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'Enviando...';
-  try {
-    const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
-      body: JSON.stringify({ email, options: { redirect_to: window.location.origin + window.location.pathname } })
-    });
-    msgEl.style.display = '';
-    if (r.ok) {
-      msgEl.style.background = 'var(--green-l)'; msgEl.style.color = 'var(--green)';
-      msgEl.textContent = 'Link enviado! Confira sua caixa de entrada (e o spam) e clique no link para definir a nova senha.';
-    } else {
-      const data = await r.json().catch(() => ({}));
-      msgEl.style.background = 'var(--red-l)'; msgEl.style.color = 'var(--red)';
-      msgEl.textContent = data.error_description || data.msg || 'Não foi possível enviar o e-mail. Verifique se o endereço está correto.';
-    }
-  } catch (e) {
-    msgEl.style.display = '';
-    msgEl.style.background = 'var(--red-l)'; msgEl.style.color = 'var(--red)';
-    msgEl.textContent = 'Erro de conexão. Verifique sua internet e tente de novo.';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Enviar link de recuperação';
-  }
-}
-
-async function authSetNewPassword() {
-  const p1 = document.getElementById('auth-newpass1').value;
-  const p2 = document.getElementById('auth-newpass2').value;
-  const msgEl = document.getElementById('auth-newpass-msg');
-  const btn   = document.getElementById('auth-newpass-btn');
-  const showMsg = (bg, color, text) => { msgEl.style.display=''; msgEl.style.background=bg; msgEl.style.color=color; msgEl.textContent=text; };
-
-  if (!p1 || p1.length < 6) { showMsg('var(--red-l)','var(--red)','A senha precisa ter pelo menos 6 caracteres.'); return; }
-  if (p1 !== p2) { showMsg('var(--red-l)','var(--red)','As senhas não coincidem.'); return; }
-  if (!window.__recoveryToken) { showMsg('var(--red-l)','var(--red)','Link inválido ou expirado. Solicite a recuperação novamente.'); return; }
-
-  btn.disabled = true; btn.textContent = 'Salvando...';
-  try {
-    const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${window.__recoveryToken}` },
-      body: JSON.stringify({ password: p1 })
-    });
-    if (r.ok) {
-      showMsg('var(--green-l)','var(--green)','Senha alterada com sucesso! Faça login com a nova senha.');
-      setTimeout(() => { window.__recoveryToken = null; authShowPanel('login'); }, 1800);
-    } else {
-      const data = await r.json().catch(() => ({}));
-      showMsg('var(--red-l)','var(--red)', data.error_description || data.msg || 'Não foi possível alterar a senha. O link pode ter expirado.');
-    }
-  } catch (e) {
-    showMsg('var(--red-l)','var(--red)','Erro de conexão. Verifique sua internet e tente de novo.');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Salvar nova senha';
-  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -6114,7 +5990,8 @@ function abrirFechamentoDetalhe(id) {
   // Senhas vinculadas ao cliente + CPF/CNPJ do cliente (para copiar rápido no eCAC)
   const senhasEl     = document.getElementById('fech-det-senhas');
   const senhasListEl = document.getElementById('fech-det-senhas-list');
-  const clienteObj   = DB.get('clients').find(c => c.razao === f.clienteNome);
+  const normNome = s => (s || '').trim().toLowerCase();
+  const clienteObj   = DB.get('clients').find(c => normNome(c.razao) === normNome(f.clienteNome));
   const clienteSenhas = DB.get('senhas').filter(s =>
     s.cliente === f.clienteNome ||
     (s.cliente === '' && s.cat === 'gov')  // sempre mostrar Gov.br geral
@@ -6122,21 +5999,22 @@ function abrirFechamentoDetalhe(id) {
 
   const docLimpo = clienteObj && clienteObj.cnpj ? clienteObj.cnpj.replace(/\D/g, '') : '';
 
-  if (senhasEl && senhasListEl && (clienteSenhas.length || docLimpo)) {
+  if (senhasEl && senhasListEl) {
     senhasEl.style.display = '';
     let html = '';
 
-    if (docLimpo) {
-      html += `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:7px;margin-bottom:6px">
-        <span style="font-size:16px;flex-shrink:0">🪪</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:500;color:var(--text)">${docLimpo.length > 11 ? 'CNPJ' : 'CPF'} do cliente</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px">${docLimpo}</div>
-        </div>
-        <button onclick="copiarCampo('${docLimpo}','${docLimpo.length > 11 ? 'CNPJ' : 'CPF'}')" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px" title="Copiar sem pontuação">📋</button>
-      </div>`;
-    }
+    // CPF/CNPJ do cliente — sempre aparece, mesmo sem cadastro
+    html += `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:7px;margin-bottom:6px">
+      <span style="font-size:16px;flex-shrink:0">🪪</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--text)">${docLimpo.length > 11 ? 'CNPJ' : 'CPF'} do cliente</div>
+        <div style="font-size:10px;color:${docLimpo ? 'var(--text3)' : 'var(--red)'};font-family:'JetBrains Mono',monospace;margin-top:1px">${docLimpo || 'não cadastrado'}</div>
+      </div>
+      ${docLimpo
+        ? `<button onclick="copiarCampo('${docLimpo}','${docLimpo.length > 11 ? 'CNPJ' : 'CPF'}')" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px" title="Copiar sem pontuação">📋</button>`
+        : (clienteObj ? `<button onclick="closeModal('modal-fech-detalhe');openClientModal('${clienteObj.id}')" class="btn btn-ghost btn-sm" style="padding:3px 7px;font-size:10px" title="Cadastrar CNPJ/CPF">✏️</button>` : '')}
+    </div>`;
 
     html += clienteSenhas.map(s => {
       const cats = { gov:'🏛️', banco:'🏦', sistema:'💻', cliente:'👤', outro:'📦' };
@@ -6158,9 +6036,11 @@ function abrirFechamentoDetalhe(id) {
       </div>`;
     }).join('');
 
+    if (!clienteSenhas.length) {
+      html += `<div style="font-size:11px;color:var(--text3);padding:6px 2px">Nenhuma senha cadastrada para este cliente ainda — adicione em Senhas & Portais.</div>`;
+    }
+
     senhasListEl.innerHTML = html;
-  } else if (senhasEl) {
-    senhasEl.style.display = 'none';
   }
 
   openModal('modal-fech-detalhe');
@@ -7292,10 +7172,9 @@ function startApp() {
 
 // ── Bootstrap: decide entre tela de login e iniciar o app ──
 (async function boot() {
-  const isRecoveryLink = window.location.hash.includes('type=recovery');
   if (SUPA_URL && SUPA_KEY) {
     const ok = await authRestoreSession();
-    if (ok && !isRecoveryLink) { startApp(); }
+    if (ok) { startApp(); }
     else { showAuthGate(); }
   } else {
     // Sem Supabase configurado ainda — sem login remoto para validar, segue local
