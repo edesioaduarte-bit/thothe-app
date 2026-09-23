@@ -268,7 +268,6 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
     <div class="nav-group">
       <div class="nav-item" data-page="dashboard" onclick="showPage('dashboard')" title="Dashboard"><span class="ico"><i class="ti ti-layout-dashboard"></i></span><span class="nav-text">Dashboard</span></div>
       <div class="nav-item" data-page="clientes" onclick="showPage('clientes')" title="Clientes"><span class="ico"><i class="ti ti-users"></i></span><span class="nav-text">Clientes</span></div>
-      <div class="nav-item" data-page="horas" onclick="showPage('horas')" title="Controle de Horas"><span class="ico"><i class="ti ti-clock"></i></span><span class="nav-text">Controle de Horas</span></div>
       <div class="nav-item" data-page="gestao" onclick="showPage('gestao')" title="Gestão Financeira"><span class="ico"><i class="ti ti-chart-infographic"></i></span><span class="nav-text">Gestão Financeira</span></div>
       <div class="nav-item" data-page="fechamento" onclick="showPage('fechamento')" title="Fechamento Mensal"><span class="ico"><i class="ti ti-clipboard-check"></i></span><span class="nav-text">Fechamento Mensal</span></div>
       <div class="nav-item" data-page="obrigacoes" onclick="showPage('obrigacoes')" title="Obrigações"><span class="ico"><i class="ti ti-calendar-due"></i></span><span class="nav-text">Obrigações</span></div>
@@ -323,7 +322,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
             <div class="metric-value" id="m-gf-count" style="color:var(--accent)">0</div>
             <div class="metric-delta">clientes premium ativos</div>
           </div>
-          <div class="metric-card hud" style="cursor:pointer" onclick="showPage('horas')" title="Ver Controle de Horas">
+          <div class="metric-card hud" style="cursor:pointer" onclick="irParaHorasNaAgenda()" title="Ver Controle de Horas">
             <div class="metric-label">Horas — este mês</div>
             <div class="metric-value" id="m-horas-mes">0h</div>
             <div class="metric-delta" id="m-horas-sub">—</div>
@@ -343,7 +342,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
           <circle cx="87.5" cy="6" r="1.5" fill="#60A5FA"/>
         </svg>
         <div class="grid3-charts" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;margin-bottom:18px">
-          <div class="card hud" style="cursor:pointer" onclick="showPage('horas')">
+          <div class="card hud" style="cursor:pointer" onclick="irParaHorasNaAgenda()">
             <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FBBF24;margin-right:7px"></span>Cronômetro rápido</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;justify-content:center;min-height:150px;padding:0" id="dash-timer-widget"></div>
           </div>
@@ -425,61 +424,6 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
       </div>
 
       <!-- ══════════ CONTROLE DE HORAS ══════════ -->
-      <div class="page" id="page-horas">
-        <div class="card hud" style="margin-bottom:18px">
-          <div class="card-header"><span class="card-title">⏱️ Novo cronômetro</span></div>
-          <div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-            <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px">
-              <select class="form-control" id="timer-cliente"><option value="">— Geral / Interno —</option></select>
-              <input class="form-control" id="timer-desc" placeholder="O que você está fazendo? (opcional)">
-            </div>
-            <button class="btn btn-primary" onclick="iniciarCronometro()">▶ Iniciar cronômetro</button>
-          </div>
-        </div>
-
-        <div class="card hud" style="margin-bottom:18px" id="horas-ativos-card">
-          <div class="card-header"><span class="card-title">🔴 Cronômetros ativos</span></div>
-          <div id="horas-ativos-lista" style="padding:6px 0"></div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
-              <button class="btn btn-ghost btn-sm" id="btn-horas-hoje" onclick="setHorasPeriodo('hoje')">Hoje</button>
-              <button class="btn btn-ghost btn-sm" id="btn-horas-semana" onclick="setHorasPeriodo('semana')">Semana</button>
-              <button class="btn btn-ghost btn-sm" id="btn-horas-mes" onclick="setHorasPeriodo('mes')">Mês</button>
-              <button class="btn btn-ghost btn-sm" id="btn-horas-tudo" onclick="setHorasPeriodo('tudo')">Tudo</button>
-            </div>
-            <select class="form-control" id="horas-filtro-cliente" style="max-width:200px" onchange="renderHoras()">
-              <option value="">Todos os clientes</option>
-            </select>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="abrirRegistroManualModal()">+ Registro manual</button>
-        </div>
-
-        <div class="grid2" style="margin-bottom:18px">
-          <div class="card hud">
-            <div class="card-header"><span class="card-title">Total por cliente</span></div>
-            <div class="card-body" id="horas-relatorio-cliente"></div>
-          </div>
-          <div class="card hud">
-            <div class="card-header"><span class="card-title">Resumo do período</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-              <div><div class="metric-label">Total de horas</div><div style="font-family:var(--font-mono);font-size:26px;font-weight:700" id="horas-total-periodo">0h 0m</div></div>
-              <div><div class="metric-label">Registros</div><div style="font-family:var(--font-mono);font-size:20px;font-weight:700" id="horas-qtd-registros">0</div></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card hud">
-          <div class="card-header"><span class="card-title">Registros</span></div>
-          <table class="tbl">
-            <thead><tr><th>Data</th><th>Cliente</th><th>Descrição</th><th>Origem</th><th style="text-align:right">Duração</th><th></th></tr></thead>
-            <tbody id="horas-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- ══════════ GESTÃO FINANCEIRA ══════════ -->
       <div class="page" id="page-gestao">
         <div class="card hud" style="margin-bottom:16px">
@@ -577,6 +521,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
               <option value="profissional">💼 Só Profissional</option>
               <option value="pessoal">🏠 Só Pessoal</option>
             </select>
+            <button class="btn btn-ghost" id="btn-toggle-horas" onclick="toggleHorasSection()">⏱️ Controle de Horas</button>
             <button class="btn btn-primary" style="margin-left:auto" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
         </div>
@@ -614,6 +559,61 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
               </div>
               <div id="agenda-lista" style="display:flex;flex-direction:column;gap:8px;padding:14px 20px"></div>
             </div>
+          </div>
+        </div>
+
+        <div id="agenda-horas-section" style="display:none;margin-top:16px">
+          <div class="card hud" style="margin-bottom:18px">
+            <div class="card-header"><span class="card-title">⏱️ Novo cronômetro</span></div>
+            <div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+              <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px">
+                <select class="form-control" id="timer-cliente"><option value="">— Geral / Interno —</option></select>
+                <input class="form-control" id="timer-desc" placeholder="O que você está fazendo? (opcional)">
+              </div>
+              <button class="btn btn-primary" onclick="iniciarCronometro()">▶ Iniciar cronômetro</button>
+            </div>
+          </div>
+
+          <div class="card hud" style="margin-bottom:18px" id="horas-ativos-card">
+            <div class="card-header"><span class="card-title">🔴 Cronômetros ativos</span></div>
+            <div id="horas-ativos-lista" style="padding:6px 0"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
+                <button class="btn btn-ghost btn-sm" id="btn-horas-hoje" onclick="setHorasPeriodo('hoje')">Hoje</button>
+                <button class="btn btn-ghost btn-sm" id="btn-horas-semana" onclick="setHorasPeriodo('semana')">Semana</button>
+                <button class="btn btn-ghost btn-sm" id="btn-horas-mes" onclick="setHorasPeriodo('mes')">Mês</button>
+                <button class="btn btn-ghost btn-sm" id="btn-horas-tudo" onclick="setHorasPeriodo('tudo')">Tudo</button>
+              </div>
+              <select class="form-control" id="horas-filtro-cliente" style="max-width:200px" onchange="renderHoras()">
+                <option value="">Todos os clientes</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="abrirRegistroManualModal()">+ Registro manual</button>
+          </div>
+
+          <div class="grid2" style="margin-bottom:18px">
+            <div class="card hud">
+              <div class="card-header"><span class="card-title">Total por cliente</span></div>
+              <div class="card-body" id="horas-relatorio-cliente"></div>
+            </div>
+            <div class="card hud">
+              <div class="card-header"><span class="card-title">Resumo do período</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+                <div><div class="metric-label">Total de horas</div><div style="font-family:var(--font-mono);font-size:26px;font-weight:700" id="horas-total-periodo">0h 0m</div></div>
+                <div><div class="metric-label">Registros</div><div style="font-family:var(--font-mono);font-size:20px;font-weight:700" id="horas-qtd-registros">0</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card hud">
+            <div class="card-header"><span class="card-title">Registros</span></div>
+            <table class="tbl">
+              <thead><tr><th>Data</th><th>Cliente</th><th>Descrição</th><th>Origem</th><th style="text-align:right">Duração</th><th></th></tr></thead>
+              <tbody id="horas-tbody"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1777,7 +1777,7 @@ function linhaAgendaComAcoes(item, ehTarefa) {
           ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();retomarTimer('${timer.id}')" title="Retomar">▶</button>`
           : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();pausarTimer('${timer.id}')" title="Pausar">⏸</button>`}`;
     } else {
-      acoesHtml = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${item.clienteId||''}',${JSON.stringify(item.titulo)},'${item.id}')" title="Iniciar tarefa e cronômetro">▶ Iniciar</button>`;
+      acoesHtml = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${item.clienteId||''}','${(item.titulo||'').replace(/'/g,"\\'")}','${item.id}')" title="Iniciar tarefa e cronômetro">▶ Iniciar</button>`;
     }
   }
   acoesHtml += `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();${deleteFn}" title="Excluir">🗑️</button>`;
@@ -1829,7 +1829,6 @@ function fillClienteSelect(sel, selected) {
 const PAGE_CONFIG = {
   dashboard:   { title: 'Dashboard', sub: 'visão geral do crescimento' },
   clientes:    { title: 'Clientes', sub: 'cadastro e status de upsell' },
-  horas:       { title: 'Controle de Horas',  sub: 'cronômetro e relatório de horas por cliente' },
   gestao:      { title: 'Gestão Financeira', sub: 'entregas mensais por cliente premium' },
   fechamento:  { title: 'Fechamento Mensal', sub: 'checklist de fechamento por cliente' },
   obrigacoes:  { title: 'Obrigações', sub: 'prazos fiscais, trabalhistas e afins' },
@@ -1851,7 +1850,6 @@ function showPage(id) {
 
   if (id === 'dashboard')  renderDashboard();
   if (id === 'clientes')   { gerarCodigosClientes(true); renderClientes(); }
-  if (id === 'horas') renderHoras();
   if (id === 'gestao')     renderGestao();
   if (id === 'fechamento') renderFechamento();
   if (id === 'obrigacoes') renderObrigacoes();
@@ -2131,7 +2129,8 @@ function pararTimer(id) {
   if (idx === -1) return;
   const t = timers[idx];
   const segundos = Math.round(elapsedSegundos(t));
-  if (segundos >= 5) {
+  let registrou = false;
+  if (segundos >= 1) {
     const registros = DB.get('horas');
     const fmtHM = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const registro = {
@@ -2141,17 +2140,35 @@ function pararTimer(id) {
     if (!t.tevePausa) { registro.horaInicio = fmtHM(new Date(t.iniciadoEm)); registro.horaFim = fmtHM(new Date()); }
     registros.push(registro);
     DB.set('horas', registros);
-    toast(`⏱️ ${fmtDuracaoCurta(segundos)} registrado`);
+    registrou = true;
   }
   timers.splice(idx, 1);
   setTimersAtivos(timers);
+
+  let tarefaConcluida = false;
+  if (t.tarefaId) {
+    const tarefas = DB.get('tarefas');
+    const tarefa = tarefas.find(x=>x.id===t.tarefaId);
+    if (tarefa && tarefa.status !== 'concluida') {
+      tarefa.status = 'concluida';
+      const agora = new Date();
+      tarefa.horaConclusao = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+      DB.set('tarefas', tarefas);
+      tarefaConcluida = true;
+    }
+  }
+
+  if (registrou && tarefaConcluida) toast(`✅ Tarefa concluída · ${fmtDuracaoCurta(segundos)} registrado`);
+  else if (registrou) toast(`⏱️ ${fmtDuracaoCurta(segundos)} registrado`);
+  else if (tarefaConcluida) toast('✅ Tarefa concluída');
+
   renderAll();
 }
 
 // Conclui a tarefa e, se tiver cronômetro (rodando ou pausado), já para e salva o tempo
 function concluirTarefaComTimer(tarefaId) {
   const t = getTimerPorTarefa(tarefaId);
-  if (t) pararTimer(t.id);
+  if (t) { pararTimer(t.id); return; } // pararTimer já marca a tarefa como concluída e avisa
   const tarefas = DB.get('tarefas');
   const tarefa = tarefas.find(x=>x.id===tarefaId);
   if (tarefa) { tarefa.status = 'concluida'; DB.set('tarefas', tarefas); }
@@ -2640,6 +2657,23 @@ function renderAgendaUnificada() {
     if (timersAtivos.length) renderTimersAtivos('agenda-em-andamento-lista', 'agenda-em-andamento-timer');
   }
   if (timersAtivos.length) iniciarLoopTimer();
+  if (horasSectionAberta) renderHoras();
+}
+
+let horasSectionAberta = false;
+
+function toggleHorasSection() {
+  horasSectionAberta = !horasSectionAberta;
+  const secao = document.getElementById('agenda-horas-section');
+  secao.style.display = horasSectionAberta ? '' : 'none';
+  document.getElementById('btn-toggle-horas').style.background = horasSectionAberta ? 'var(--surface3)' : '';
+  if (horasSectionAberta) { renderHoras(); secao.scrollIntoView({ behavior:'smooth', block:'start' }); }
+}
+
+// Atalho usado no Dashboard: vai pra Agenda e já abre a seção de horas
+function irParaHorasNaAgenda() {
+  showPage('agenda');
+  if (!horasSectionAberta) toggleHorasSection();
 }
 
 const AGENDA_HORA_INICIO = 6;
@@ -3193,7 +3227,7 @@ function renderPrevisaoRecebimento() {
         <td>${l.statusChip}</td>
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
-          ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', ${JSON.stringify(l.desc||'Valor avulso')})" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}</td>
       </tr>`;
@@ -4431,7 +4465,7 @@ function renderDashboard() {
     widgetEl.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px">
         <div style="font-size:12px;color:var(--text2);text-align:center">Nenhum cronômetro rodando</div>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('horas')">▶ Iniciar na página Horas</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();irParaHorasNaAgenda()">▶ Iniciar cronômetro</button>
       </div>`;
   }
 
