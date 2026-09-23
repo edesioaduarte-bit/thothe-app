@@ -577,23 +577,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
               <option value="profissional">💼 Só Profissional</option>
               <option value="pessoal">🏠 Só Pessoal</option>
             </select>
-            <button class="btn btn-ghost" id="btn-toggle-hora-dia" onclick="toggleAgendaHoraView()">🕐 Dia por hora</button>
             <button class="btn btn-primary" style="margin-left:auto" onclick="openTarefaModal()">+ Nova tarefa</button>
-          </div>
-        </div>
-
-        <div class="card" id="agenda-hora-card" style="display:none;margin-bottom:16px">
-          <div class="card-header">
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn btn-ghost btn-sm" onclick="agendaHoraMoveDay(-1)">←</button>
-              <span class="card-title" id="agenda-hora-titulo" style="font-size:13px"></span>
-              <button class="btn btn-ghost btn-sm" onclick="agendaHoraMoveDay(1)">→</button>
-              <button class="btn btn-ghost btn-sm" onclick="agendaHoraIrHoje()">Hoje</button>
-            </div>
-            <span style="font-size:10.5px;color:var(--text3)">tarefas profissionais + hábitos pessoais, lado a lado quando coincidem no horário</span>
-          </div>
-          <div class="card-body" style="padding:14px 20px">
-            <div id="agenda-hora-lista" style="display:flex;flex-direction:column;gap:1px"></div>
           </div>
         </div>
 
@@ -1221,19 +1205,28 @@ const DB = {
   get: (k) => JSON.parse(localStorage.getItem('gw_' + k) || '[]'),
   set: (k, v) => {
     localStorage.setItem('gw_' + k, JSON.stringify(v));
-    if (SUPA_URL && SUPA_KEY) DB._push(k, v);
+    if (SUPA_URL && SUPA_KEY) {
+      DB._push(k, v).catch(e => {
+        const badge = document.getElementById('sync-badge');
+        if (badge) { badge.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; badge.style.color = 'var(--red)'; }
+        console.error('Erro ao sincronizar com o Supabase:', e.message);
+      });
+    }
   },
   id: () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
 
   _push: async (chave, valor) => {
-    try {
-      const token = (await authGetAccessToken()) || SUPA_KEY;
-      await fetch(`${SUPA_URL}/rest/v1/thothe_data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}`, 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ user_id: SUPA_USER, chave: 'growth_' + chave, valor })
-      });
-    } catch (e) { /* offline — localStorage já salvou */ }
+    const token = (await authGetAccessToken()) || SUPA_KEY;
+    const r = await fetch(`${SUPA_URL}/rest/v1/thothe_data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${token}`, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ user_id: SUPA_USER, chave: 'growth_' + chave, valor })
+    });
+    if (!r.ok) {
+      const corpo = await r.text().catch(()=> '');
+      console.error(`Falha ao sincronizar "${chave}" (${r.status}):`, corpo);
+      throw new Error(`push falhou (${r.status}): ${corpo}`);
+    }
   },
 
   pull: async () => {
@@ -1576,8 +1569,7 @@ const ESFERA_LABEL = { nacional:'Feriado nacional', estadual:'Feriado estadual (
    ══════════════════════════════════════════════════════ */
 let calMonth = new Date().getMonth();
 let calYear  = new Date().getFullYear();
-let calSelectedDate = null;
-let dashSelectedDay = null;
+let calSelectedDate = today();
 
 function calMoveMonth(dir) {
   calMonth += dir;
@@ -1694,7 +1686,7 @@ function renderMiniCalendarioDashboard() {
     const feriados = feriadosNoDia(dateStr);
     const itens = itensAgendaNoDia(dateStr, { feriados:true, tarefas:true, obrigacoes:true, clienteId:'' });
     const isToday = dateStr === todayStr;
-    const isSel = dateStr === dashSelectedDay;
+    const isSel = dateStr === calSelectedDate;
     const isFimDeSemana = new Date(calYear, calMonth, day).getDay() % 6 === 0;
     const dots = [...feriados.map(()=>1), ...itens].slice(0,3).map((it,i) => {
       const cor = i < feriados.length ? ESFERA_COR[feriados[i].esfera] : (itens[i-feriados.length]?.cor || '#5FE3A6');
@@ -1717,9 +1709,9 @@ function renderMiniCalendarioDashboard() {
   gridEl.innerHTML = html;
 }
 
-// Clique num dia do mini-calendário do Dashboard: sincroniza com o card "Próximas tarefas" (sem trocar de página)
+// Clique num dia do mini-calendário do Dashboard: usa a MESMA seleção da Agenda (sem trocar de página)
 function dashCalSelectDay(dateStr) {
-  dashSelectedDay = dashSelectedDay === dateStr ? null : dateStr; // clicar de novo no mesmo dia desmarca
+  calSelectedDate = calSelectedDate === dateStr ? null : dateStr; // clicar de novo no mesmo dia desmarca
   renderMiniCalendarioDashboard();
   renderDashTarefasCard();
 }
@@ -1729,21 +1721,19 @@ function renderDashTarefasCard() {
   const tarefasEl = document.getElementById('dash-tarefas');
   if (!tituloEl || !tarefasEl) return;
 
-  if (dashSelectedDay) {
-    const [y,m,d] = dashSelectedDay.split('-');
-    tituloEl.innerHTML = `📆 ${d}/${m} <span onclick="event.stopPropagation();dashSelectedDay=null;renderMiniCalendarioDashboard();renderDashTarefasCard()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:400;margin-left:6px">← próximas tarefas</span>`;
-    const feriados = feriadosNoDia(dashSelectedDay);
-    const itens = itensAgendaNoDia(dashSelectedDay, { feriados:true, tarefas:true, obrigacoes:true, clienteId:'' });
+  if (calSelectedDate) {
+    const [y,m,d] = calSelectedDate.split('-');
+    tituloEl.innerHTML = `📆 ${d}/${m} <span onclick="event.stopPropagation();calSelectedDate=null;renderMiniCalendarioDashboard();renderDashTarefasCard()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:400;margin-left:6px">← próximas tarefas</span>`;
+    const feriados = feriadosNoDia(calSelectedDate);
+    const tarefasDoDia = DB.get('tarefas').filter(t => t.data === calSelectedDate).sort((a,b)=>(a.hora||'99:99').localeCompare(b.hora||'99:99'));
+    const obrigDoDia = DB.get('obrigacoes').filter(o => o.venc === calSelectedDate);
     let html = feriados.map(f => `
       <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border)">
         <span style="width:8px;height:8px;border-radius:50%;background:${ESFERA_COR[f.esfera]};flex-shrink:0"></span>
         <div style="font-size:13px">${f.nome}</div>
       </div>`).join('');
-    html += itens.map(it => `
-      <div onclick="${it.tipo==='tarefa'?`openTarefaModal('${it.id}')`:`openObrigModal('${it.id}')`}" style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
-        <span style="width:8px;height:8px;border-radius:50%;background:${it.cor};flex-shrink:0"></span>
-        <div style="flex:1"><div style="font-size:13px">${it.titulo}</div><div style="font-size:11px;color:var(--text3)">${it.tipo==='tarefa'?(it.tarefaTipo==='pessoal'?'🏠 Pessoal':'💼 Profissional'):'Obrigação'}</div></div>
-      </div>`).join('');
+    html += tarefasDoDia.map(t => linhaAgendaComAcoes(t, true)).join('');
+    html += obrigDoDia.map(o => linhaAgendaComAcoes(o, false)).join('');
     tarefasEl.innerHTML = html || `<div class="empty-state" style="padding:24px"><div class="txt">Nada neste dia</div></div>`;
   } else {
     tituloEl.textContent = '📆 Próximas tarefas';
@@ -1770,9 +1760,11 @@ function linhaAgendaComAcoes(item, ehTarefa) {
   const concluida = item.status === 'concluida';
   const toggleFn = ehTarefa ? `toggleTarefa('${item.id}')` : `toggleObrigStatus('${item.id}')`;
   const openFn = ehTarefa ? `abrirDetalhesTarefa('${item.id}')` : `openObrigModal('${item.id}')`;
+  const deleteFn = ehTarefa ? `excluirTarefaComOpcoes('${item.id}')` : `deleteObrig('${item.id}')`;
   const tipoChip = ehTarefa
     ? `<span class="chip ${item.tipo==='pessoal'?'chip-purple':'chip-green'}" style="margin-left:6px">${item.tipo==='pessoal'?'🏠':'💼'}</span>`
     : `<span class="chip chip-blue" style="margin-left:6px">Obrigação</span>`;
+  const recorrenteBadge = (ehTarefa && item.recorrencia) ? '<span title="Recorrente" style="margin-left:6px">🔁</span>' : '';
 
   let acoesHtml = '';
   if (ehTarefa && !concluida) {
@@ -1788,16 +1780,35 @@ function linhaAgendaComAcoes(item, ehTarefa) {
       acoesHtml = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${item.clienteId||''}',${JSON.stringify(item.titulo)},'${item.id}')" title="Iniciar tarefa e cronômetro">▶ Iniciar</button>`;
     }
   }
+  acoesHtml += `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();${deleteFn}" title="Excluir">🗑️</button>`;
 
   return `
   <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface3);border:1px solid var(--border);margin-bottom:6px">
     <div onclick="event.stopPropagation();${toggleFn}" title="Marcar como OK" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">${concluida?'✓':''}</div>
     <div onclick="${openFn}" style="flex:1;min-width:0;cursor:pointer">
-      <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${item.titulo}${tipoChip}</div>
+      <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${item.titulo}${tipoChip}${recorrenteBadge}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
     </div>
     ${acoesHtml}
   </div>`;
+}
+
+// Excluir tarefa — se for recorrente, pergunta se é só esta ocorrência ou toda a série
+function excluirTarefaComOpcoes(id) {
+  const tarefas = DB.get('tarefas');
+  const t = tarefas.find(x=>x.id===id);
+  if (!t) return;
+  if (!t.recorrencia) { deleteTarefa(id); return; }
+
+  const excluirSerie = confirm(`Essa tarefa é recorrente (🔁 ${t.recorrencia}).\n\nOK = excluir TODA a série (essa e as próximas ocorrências pendentes)\nCancelar = excluir só essa ocorrência`);
+  if (excluirSerie) {
+    const restantes = tarefas.filter(x => !(x.titulo===t.titulo && x.clienteId===t.clienteId && x.recorrencia===t.recorrencia && x.status!=='concluida'));
+    DB.set('tarefas', restantes);
+    toast('🗑️ Série recorrente excluída');
+    renderAll();
+  } else {
+    deleteTarefa(id);
+  }
 }
 
 function openTarefaModalForDate(dateStr) {
@@ -2629,92 +2640,10 @@ function renderAgendaUnificada() {
     if (timersAtivos.length) renderTimersAtivos('agenda-em-andamento-lista', 'agenda-em-andamento-timer');
   }
   if (timersAtivos.length) iniciarLoopTimer();
-  if (agendaHoraViewAtivo) renderAgendaHoraDia();
 }
 
-/* ══════════════════════════════════════════════════════
-   AGENDA — "Dia por hora" (tarefas profissionais + hábitos pessoais juntos)
-   ══════════════════════════════════════════════════════ */
-let agendaHoraViewAtivo = false;
-let agendaHoraDiaAtual = today();
 const AGENDA_HORA_INICIO = 6;
 const AGENDA_HORA_FIM = 22;
-
-function toggleAgendaHoraView() {
-  agendaHoraViewAtivo = !agendaHoraViewAtivo;
-  document.getElementById('agenda-hora-card').style.display = agendaHoraViewAtivo ? '' : 'none';
-  document.getElementById('btn-toggle-hora-dia').style.background = agendaHoraViewAtivo ? 'var(--surface3)' : '';
-  if (agendaHoraViewAtivo) renderAgendaHoraDia();
-}
-
-function agendaHoraMoveDay(dir) {
-  const d = new Date(agendaHoraDiaAtual + 'T12:00:00');
-  d.setDate(d.getDate() + dir);
-  agendaHoraDiaAtual = toISO(d);
-  renderAgendaHoraDia();
-}
-
-function agendaHoraIrHoje() {
-  agendaHoraDiaAtual = today();
-  renderAgendaHoraDia();
-}
-
-function renderAgendaHoraDia() {
-  const dataStr = agendaHoraDiaAtual;
-  const d = new Date(dataStr + 'T12:00:00');
-  const isFimDeSemana = d.getDay() % 6 === 0;
-  const DOW_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const tituloEl = document.getElementById('agenda-hora-titulo');
-  tituloEl.textContent = `${DOW_FULL[d.getDay()]}, ${fmtDate(dataStr)}${dataStr===today()?' (hoje)':''}`;
-  tituloEl.style.color = isFimDeSemana ? 'var(--red)' : 'var(--text)';
-
-  // Tarefas e obrigações do dia
-  const filtros = calFiltros();
-  let tarefasDoDia = DB.get('tarefas').filter(t => t.data === dataStr);
-  if (filtros.tipoTarefa) tarefasDoDia = tarefasDoDia.filter(t => (t.tipo||'profissional') === filtros.tipoTarefa);
-  const obrigDoDia = DB.get('obrigacoes').filter(o => o.venc === dataStr);
-  const feriadosDoDia = feriadosNoDia(dataStr);
-
-  const semHorario = tarefasDoDia.filter(t => !t.hora);
-  const listaEl = document.getElementById('agenda-hora-lista');
-  let html = '';
-
-  if (feriadosDoDia.length || obrigDoDia.length || semHorario.length) {
-    html += `<div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:8px">`;
-    html += feriadosDoDia.map(f => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0"><span style="width:7px;height:7px;border-radius:50%;background:${ESFERA_COR[f.esfera]}"></span><span style="font-size:12.5px;color:${ESFERA_COR[f.esfera]}">${f.nome}</span></div>`).join('');
-    html += obrigDoDia.map(o => `<div onclick="openObrigModal('${o.id}')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer"><span style="width:7px;height:7px;border-radius:50%;background:#57B8FF"></span><span style="font-size:12.5px">${o.titulo}</span><span class="chip chip-blue" style="margin-left:4px">Obrigação</span></div>`).join('');
-    html += semHorario.map(t => `<div onclick="openTarefaModal('${t.id}')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer"><span style="width:7px;height:7px;border-radius:50%;background:#5FE3A6"></span><span style="font-size:12.5px;text-decoration:${t.status==='concluida'?'line-through':'none'}">${t.titulo}</span><span class="chip ${t.tipo==='pessoal'?'chip-purple':'chip-green'}" style="margin-left:4px">${t.tipo==='pessoal'?'🏠 Pessoal':'💼 Profissional'} · sem horário</span></div>`).join('');
-    html += `</div>`;
-  }
-
-  for (let h = AGENDA_HORA_INICIO; h <= AGENDA_HORA_FIM; h++) {
-    const horaLabel = String(h).padStart(2,'0') + ':00';
-    const tarefasHora = tarefasDoDia.filter(t => t.hora && parseInt(t.hora.split(':')[0],10) === h).sort((a,b)=>a.hora.localeCompare(b.hora));
-    const isAgora = dataStr === today() && new Date().getHours() === h;
-    html += `
-    <div style="display:flex;gap:12px;padding:7px 0;border-bottom:0.5px solid var(--border);${isAgora?'background:rgba(87,184,255,.06)':''}">
-      <div style="width:48px;flex-shrink:0;font-size:11px;color:${isAgora?'var(--accent-m)':'var(--text3)'};font-family:var(--font-mono);padding-top:2px">${horaLabel}</div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:20px">
-        ${tarefasHora.map(t => {
-          const cliente = t.clienteId ? DB.get('clientes').find(c=>c.id===t.clienteId) : null;
-          const corTipo = t.tipo==='pessoal' ? 'var(--purple)' : 'var(--green)';
-          const concluida = t.status === 'concluida';
-          return `
-          <div style="display:flex;align-items:center;gap:9px">
-            <div onclick="event.stopPropagation();toggleTarefa('${t.id}')" title="Marcar como OK" style="width:18px;height:18px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04321f">${concluida?'✓':''}</div>
-            <span style="width:6px;height:6px;border-radius:50%;background:${corTipo};flex-shrink:0" title="${t.tipo==='pessoal'?'Pessoal':'Profissional'}"></span>
-            <div onclick="openTarefaModal('${t.id}')" style="cursor:pointer;flex:1;min-width:0;${concluida?'opacity:.5':''}">
-              <span style="font-size:12.5px;font-weight:500;text-decoration:${concluida?'line-through':'none'}">${t.titulo}</span>
-              ${cliente ? `<span style="font-size:10.5px;color:var(--text3);margin-left:8px">${cliente.nome}</span>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }
-
-  listaEl.innerHTML = html;
-}
 
 function setTarTipo(tipo) {
   document.getElementById('tar-tipo').value = tipo;
@@ -2786,7 +2715,7 @@ function openTarefaModal(id) {
     }
   } else {
     document.getElementById('tar-titulo').value = '';
-    document.getElementById('tar-data').value = today();
+    document.getElementById('tar-data').value = calSelectedDate || today();
     document.getElementById('tar-hora').value = '';
     document.getElementById('tar-prioridade').value = 'normal';
     document.getElementById('tar-recorrencia').value = '';
@@ -3006,6 +2935,21 @@ function renderAgendaLista() {
     tituloEl.innerHTML = `📅 ${d}/${m} <span onclick="limparSelecaoDiaAgenda()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:400;margin-left:6px">✕ limpar seleção</span>`;
     toggleEl.style.display = 'none';
 
+    const hoje = today();
+    let tarefasVencidas = [];
+    if (filtros.tarefas) {
+      tarefasVencidas = DB.get('tarefas')
+        .filter(t => t.status!=='concluida' && t.data && t.data < hoje && t.data !== calSelectedDate && (!filtros.clienteId || t.clienteId === filtros.clienteId) && (!filtros.tipoTarefa || (t.tipo||'profissional') === filtros.tipoTarefa))
+        .sort((a,b)=>a.data.localeCompare(b.data));
+    }
+    let obrigVencidas = [];
+    if (filtros.obrigacoes) {
+      obrigVencidas = DB.get('obrigacoes')
+        .filter(o => o.status!=='concluida' && o.venc && o.venc < hoje && o.venc !== calSelectedDate && (!filtros.clienteId || o.clienteId === filtros.clienteId))
+        .sort((a,b)=>a.venc.localeCompare(b.venc));
+    }
+    const totalVencidas = tarefasVencidas.length + obrigVencidas.length;
+
     const feriados = filtros.feriados ? feriadosNoDia(calSelectedDate) : [];
     let tarefasDoDia = [];
     if (filtros.tarefas) {
@@ -3017,12 +2961,19 @@ function renderAgendaLista() {
       obrigDoDia = DB.get('obrigacoes').filter(o => o.venc === calSelectedDate && (!filtros.clienteId || o.clienteId === filtros.clienteId));
     }
 
-    if (!feriados.length && !tarefasDoDia.length && !obrigDoDia.length) {
+    if (!totalVencidas && !feriados.length && !tarefasDoDia.length && !obrigDoDia.length) {
       el.innerHTML = `<div class="card hud"><div class="empty-state"><div class="ico">✨</div><div class="txt">Nada agendado nesse dia</div></div></div>`;
       return;
     }
 
     let html = '';
+
+    if (totalVencidas) {
+      html += `<div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px">⚠️ Vencidas e pendentes <span class="chip chip-red">${totalVencidas}</span></div>`;
+      html += tarefasVencidas.map(t => linhaAgendaComAcoes(t, true)).join('');
+      html += obrigVencidas.map(o => linhaAgendaComAcoes(o, false)).join('');
+      html += `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+    }
 
     if (feriados.length) {
       html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🎉 Feriado</div>`;
@@ -3033,18 +2984,20 @@ function renderAgendaLista() {
         </div>`).join('');
     }
 
-    // 1) Concluídas
+    // 1) Concluídas — ordenadas pela hora real de conclusão (ou hora planejada, como fallback)
     const concluidas = [
-      ...tarefasDoDia.filter(t=>t.status==='concluida').map(t=>({item:t, ehTarefa:true})),
-      ...obrigDoDia.filter(o=>o.status==='concluida').map(o=>({item:o, ehTarefa:false})),
-    ];
+      ...tarefasDoDia.filter(t=>t.status==='concluida').map(t=>({item:t, ehTarefa:true, ordem:t.horaConclusao||t.hora||'99:99'})),
+      ...obrigDoDia.filter(o=>o.status==='concluida').map(o=>({item:o, ehTarefa:false, ordem:'99:99'})),
+    ].sort((a,b)=>a.ordem.localeCompare(b.ordem));
     if (concluidas.length) {
       html += `<div style="font-size:10px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin:${html?'14px':'0'} 0 6px">✅ Concluídas</div>`;
       html += concluidas.map(x => linhaAgendaComAcoes(x.item, x.ehTarefa)).join('');
     }
 
-    // 2) Em andamento (tarefa com cronômetro rodando)
-    const emAndamento = tarefasDoDia.filter(t => t.status!=='concluida' && (() => { const tm=getTimerPorTarefa(t.id); return tm && !tm.pausado; })());
+    // 2) Em andamento (tarefa com cronômetro rodando) — ordenadas pela hora planejada
+    const emAndamento = tarefasDoDia
+      .filter(t => t.status!=='concluida' && (() => { const tm=getTimerPorTarefa(t.id); return tm && !tm.pausado; })())
+      .sort((a,b)=>(a.hora||'99:99').localeCompare(b.hora||'99:99'));
     if (emAndamento.length) {
       html += `<div style="font-size:10px;font-weight:600;color:var(--accent-m);text-transform:uppercase;letter-spacing:.06em;margin:${html?'14px':'0'} 0 6px">🔴 Em andamento</div>`;
       html += emAndamento.map(t => linhaAgendaComAcoes(t, true)).join('');
