@@ -1755,6 +1755,21 @@ function calSelectDay(dateStr) {
 }
 
 // Linha compartilhada: OK, título, cliente, e controles de cronômetro (Iniciar/Pausar) quando é tarefa
+// Linha de um registro de horas (cronômetro/manual) mostrada junto das concluídas do dia na Agenda
+function linhaHorasNaAgenda(r) {
+  const cliente = r.clienteId ? DB.get('clientes').find(c=>c.id===r.clienteId) : null;
+  return `
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface3);border:1px solid var(--border);margin-bottom:6px">
+    <div style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--green);background:var(--green);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">✓</div>
+    <div onclick="abrirRegistroManualModal('${r.id}')" style="flex:1;min-width:0;cursor:pointer">
+      <div style="font-size:13px;text-decoration:line-through;color:var(--text3)">${r.descricao || '(sem descrição)'}<span class="chip chip-blue" style="margin-left:6px">⏱️ ${fmtDuracaoCurta(r.segundos)}</span></div>
+      ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirRegistroManualModal('${r.id}')">✏️</button>
+    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRegistroHoras('${r.id}')">🗑️</button>
+  </div>`;
+}
+
 function linhaAgendaComAcoes(item, ehTarefa) {
   const cliente = item.clienteId ? DB.get('clientes').find(c=>c.id===item.clienteId) : null;
   const concluida = item.status === 'concluida';
@@ -2994,8 +3009,9 @@ function renderAgendaLista() {
     if (filtros.obrigacoes) {
       obrigDoDia = DB.get('obrigacoes').filter(o => o.venc === calSelectedDate && (!filtros.clienteId || o.clienteId === filtros.clienteId));
     }
+    const registrosHorasDoDia = DB.get('horas').filter(r => r.data === calSelectedDate && (!filtros.clienteId || r.clienteId === filtros.clienteId));
 
-    if (!totalVencidas && !feriados.length && !tarefasDoDia.length && !obrigDoDia.length) {
+    if (!totalVencidas && !feriados.length && !tarefasDoDia.length && !obrigDoDia.length && !registrosHorasDoDia.length) {
       el.innerHTML = `<div class="card hud"><div class="empty-state"><div class="ico">✨</div><div class="txt">Nada agendado nesse dia</div></div></div>`;
       return;
     }
@@ -3018,14 +3034,15 @@ function renderAgendaLista() {
         </div>`).join('');
     }
 
-    // 1) Concluídas — ordenadas pela hora real de conclusão (ou hora planejada, como fallback)
+    // 1) Concluídas — tarefas, obrigações E registros de horas do dia, ordenados pela hora real
     const concluidas = [
-      ...tarefasDoDia.filter(t=>t.status==='concluida').map(t=>({item:t, ehTarefa:true, ordem:t.horaConclusao||t.hora||'99:99'})),
-      ...obrigDoDia.filter(o=>o.status==='concluida').map(o=>({item:o, ehTarefa:false, ordem:'99:99'})),
+      ...tarefasDoDia.filter(t=>t.status==='concluida').map(t=>({tipo:'tarefa', item:t, ordem:t.horaConclusao||t.hora||'99:99'})),
+      ...obrigDoDia.filter(o=>o.status==='concluida').map(o=>({tipo:'obrigacao', item:o, ordem:'99:99'})),
+      ...registrosHorasDoDia.map(r=>({tipo:'horas', item:r, ordem:r.horaFim||r.horaInicio||'99:99'})),
     ].sort((a,b)=>a.ordem.localeCompare(b.ordem));
     if (concluidas.length) {
       html += `<div style="font-size:10px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin:${html?'14px':'0'} 0 6px">✅ Concluídas</div>`;
-      html += concluidas.map(x => linhaAgendaComAcoes(x.item, x.ehTarefa)).join('');
+      html += concluidas.map(x => x.tipo==='horas' ? linhaHorasNaAgenda(x.item) : linhaAgendaComAcoes(x.item, x.tipo==='tarefa')).join('');
     }
 
     // 2) Em andamento (tarefa com cronômetro rodando) — ordenadas pela hora planejada
