@@ -2,8 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem('growth_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#0A0A0C">
+<meta name="theme-color" content="#F6F6F7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="ThoThe">
@@ -14,10 +15,43 @@
 <style>
 
 :root {
+  --bg:        #F6F6F7;
+  --bg-grad:   #F6F6F7;
+  --surface:   #FFFFFF;
+  --surface2:  #FBFBFC;
+  --surface2b: #F5F5F6;
+  --surface3:  #F1F1F3;
+  --border:    rgba(20,20,25,.09);
+  --border2:   rgba(20,20,25,.16);
+  --text:      #18181B;
+  --text2:     #68686F;
+  --text3:     #9C9CA3;
+  --accent:    #18181B;
+  --accent-l:  rgba(20,20,25,.06);
+  --accent-m:  #3F3F46;
+  --accent2:   #D97706;
+  --accent2-l: rgba(217,119,6,.12);
+  --green:     #16A34A;
+  --green-l:   rgba(22,163,74,.12);
+  --amber:     #D97706;
+  --amber-l:   rgba(217,119,6,.12);
+  --red:       #E0323F;
+  --red-l:     rgba(224,50,63,.11);
+  --purple:    #7C3AED;
+  --purple-l:  rgba(124,58,237,.12);
+  --radius:    10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(20,20,25,.05);
+  --shadow:    0 8px 24px rgba(20,20,25,.07);
+  --shadow-lg: 0 24px 60px rgba(20,20,25,.12);
+  --shine: none;
+  --ink: 20,20,25;
+  --font-display: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'Inter', -apple-system, sans-serif;
+}
+:root[data-theme="dark"] {
   --bg:        #0A0A0C;
-  --bg-grad:
-    radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px) 0 0/26px 26px,
-    #0A0A0C;
+  --bg-grad:   #0A0A0C;
   --surface:   #161619;
   --surface2:  #0D0D10;
   --surface2b: #131316;
@@ -40,15 +74,14 @@
   --red-l:     rgba(248,113,113,.13);
   --purple:    #A78BFA;
   --purple-l:  rgba(167,139,250,.13);
-  --radius:    10px;
-  --radius-lg: 14px;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
   --shadow:    0 8px 24px rgba(0,0,0,.5);
   --shadow-lg: 0 24px 60px rgba(0,0,0,.6);
-  --shine: none;
-  --font-display: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'Inter', -apple-system, sans-serif;
+  --ink: 255,255,255;
 }
+:root[data-theme="dark"] .topbar { background: rgba(10,10,12,.85); }
+:root[data-theme="dark"] .btn-primary { background: #fff; color: #0A0A0C; }
+:root[data-theme="dark"] .btn-primary:hover { background: #E4E4E7; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%;
@@ -60,8 +93,8 @@ html, body {
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.24); }
+::-webkit-scrollbar-thumb { background: rgba(var(--ink),.16); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--ink),.3); }
 
 .hud { position: relative; }
 .hud::before, .hud::after { content: none; }
@@ -111,7 +144,7 @@ html, body {
 .nav-group { padding: 8px 12px 14px; }
 .nav-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; padding: 0 10px 8px; margin-top: 10px; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--text2); cursor: pointer; margin-bottom: 2px; transition: background .12s, color .12s; white-space: nowrap; }
-.nav-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
+.nav-item:hover { background: rgba(var(--ink),.05); color: var(--text); }
 .nav-item.active { background: var(--surface3); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--border2); }
 .nav-item .ico { font-size: 15px; opacity: .8; width: 18px; text-align: center; flex-shrink: 0; }
 .nav-item.active .ico { opacity: 1; }
@@ -121,7 +154,7 @@ html, body {
 .sf-name { font-size: 12.5px; font-weight: 600; flex: 1; white-space: nowrap; }
 
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.topbar { height: 58px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(10,10,12,.85); backdrop-filter: blur(10px); flex-shrink: 0; }
+.topbar { height: 58px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.82); backdrop-filter: blur(10px); flex-shrink: 0; }
 .page-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
 .page-sub { font-size: 11.5px; color: var(--text3); }
 .content { flex: 1; overflow-y: auto; padding: 28px 32px 48px; }
@@ -152,8 +185,8 @@ html, body {
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 99px; font-size: 12.5px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
-.btn-primary { background: #fff; color: #0A0A0C; }
-.btn-primary:hover { background: #E4E4E7; }
+.btn-primary { background: #18181B; color: #fff; }
+.btn-primary:hover { background: #303035; }
 .btn-ghost { background: var(--surface3); color: var(--text2); box-shadow: inset 0 0 0 1px var(--border); }
 .btn-ghost:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--border2); }
 .btn-danger { background: var(--red-l); color: var(--red); }
@@ -181,18 +214,18 @@ textarea.form-control { resize: vertical; font-family: inherit; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
 
 table.tbl { width: 100%; border-collapse: collapse; }
-table.tbl th { text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; padding: 11px 16px; background: rgba(255,255,255,.02); border-bottom: 1px solid var(--border); }
+table.tbl th { text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; padding: 11px 16px; background: rgba(var(--ink),.02); border-bottom: 1px solid var(--border); }
 table.tbl td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
 table.tbl tr:last-child td { border-bottom: none; }
-table.tbl tr:hover td { background: rgba(255,255,255,.03); }
+table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
 .chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 10.5px; font-weight: 600; }
-.chip-blue { background: rgba(255,255,255,.08); color: var(--text); }
+.chip-blue { background: rgba(var(--ink),.07); color: var(--text); }
 .chip-green { background: var(--green-l); color: var(--green); }
 .chip-amber { background: var(--amber-l); color: var(--amber); }
 .chip-red { background: var(--red-l); color: var(--red); }
 .chip-purple { background: var(--purple-l); color: var(--purple); }
-.chip-gray { background: rgba(255,255,255,.06); color: var(--text2); }
+.chip-gray { background: rgba(var(--ink),.06); color: var(--text2); }
 
 .empty-state { text-align: center; padding: 48px 20px; color: var(--text3); }
 .empty-state .ico { font-size: 28px; margin-bottom: 10px; opacity: .5; }
@@ -202,7 +235,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface3); border: 1px solid var(--border2); color: var(--text); padding: 11px 18px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow-lg); z-index: 500; opacity: 0; pointer-events: none; transition: all .25s; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-.gauge-track { height: 7px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.gauge-track { height: 7px; border-radius: 99px; background: rgba(var(--ink),.08); overflow: hidden; }
 .gauge-fill { height: 100%; border-radius: 99px; transition: width .4s; }
 
 .check-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--surface3); color: var(--text2); transition: all .15s; }
@@ -266,7 +299,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
     </div>
 
     <div class="nav-group">
-      <div class="nav-item" data-page="dashboard" onclick="showPage('dashboard')" title="Dashboard"><span class="ico"><i class="ti ti-layout-dashboard"></i></span><span class="nav-text">Dashboard</span></div>
+      <div class="nav-item" data-page="dashboard" onclick="showPage('dashboard')" title="Início"><span class="ico"><i class="ti ti-layout-dashboard"></i></span><span class="nav-text">Início</span></div>
       <div class="nav-item" data-page="clientes" onclick="showPage('clientes')" title="Clientes"><span class="ico"><i class="ti ti-users"></i></span><span class="nav-text">Clientes</span></div>
       <div class="nav-item" data-page="gestao" onclick="showPage('gestao')" title="Gestão Financeira"><span class="ico"><i class="ti ti-chart-infographic"></i></span><span class="nav-text">Gestão Financeira</span></div>
       <div class="nav-item" data-page="fechamento" onclick="showPage('fechamento')" title="Fechamento Mensal"><span class="ico"><i class="ti ti-clipboard-check"></i></span><span class="nav-text">Fechamento Mensal</span></div>
@@ -298,6 +331,7 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
         <button onclick="exportarBackup()" class="btn btn-ghost btn-sm" title="Baixar backup dos seus dados (JSON)"><i class="ti ti-download"></i></button>
         <span id="sync-badge" onclick="sincronizarAgora()" style="font-size:11px;cursor:pointer;padding:6px 10px;border-radius:99px;background:var(--surface3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-cloud"></i></span>
         <button onclick="configurarSupabase()" class="btn btn-ghost btn-sm" title="Configurar nuvem"><i class="ti ti-settings"></i></button>
+        <button onclick="toggleTheme()" class="btn btn-ghost btn-sm" id="btn-theme-toggle" title="Alternar tema claro/escuro"><i class="ti ti-moon" id="theme-toggle-icon"></i></button>
         <button class="btn btn-ghost btn-sm" id="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none"><i class="ti ti-menu-2"></i></button>
       </div>
     </div>
@@ -306,9 +340,76 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
 
       <!-- ══════════ DASHBOARD ══════════ -->
       <div class="page" id="page-dashboard">
+        <div class="card hud" style="margin-bottom:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 24px;flex-wrap:wrap">
+            <div>
+              <div id="home-saudacao" style="font-family:var(--font-display);font-size:21px;font-weight:700;letter-spacing:-.2px">Olá</div>
+              <div id="home-data" style="font-size:12.5px;color:var(--text2);margin-top:4px;text-transform:capitalize"></div>
+            </div>
+            <div id="home-clima" onclick="carregarClima(1)" title="Clique para atualizar o clima" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:var(--radius);background:var(--surface3);border:1px solid var(--border)">
+              <span id="home-clima-icone" style="font-size:26px">⏳</span>
+              <div>
+                <div style="display:flex;align-items:baseline;gap:6px">
+                  <span id="home-clima-temp" style="font-family:var(--font-mono);font-size:18px;font-weight:700;line-height:1">--°C</span>
+                  <span id="home-clima-chuva" style="font-size:11px;color:#3B82F6;font-weight:600"></span>
+                </div>
+                <div id="home-clima-local" style="font-size:10px;color:var(--text3);margin-top:2px">São Paulo, SP</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div id="home-relogio" style="font-family:var(--font-mono);font-size:32px;font-weight:700;letter-spacing:.5px;line-height:1">--:--</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-top:2px">horário local</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hud" style="margin-bottom:18px" id="home-clima-card">
+          <div class="card-header">
+            <span class="card-title">🌦️ Clima — <span id="home-clima-card-local">Vila Prudente, São Paulo - SP</span></span>
+            <button class="btn btn-ghost btn-sm" onclick="carregarClima(1)" title="Atualizar clima"><i class="ti ti-refresh"></i></button>
+          </div>
+          <div id="home-clima-card-corpo" style="padding:16px 20px">
+            <div style="font-size:12.5px;color:var(--text2)">Carregando clima...</div>
+          </div>
+        </div>
+
+        <div class="card hud" style="margin-bottom:18px" id="home-cotacoes-card">
+          <div class="card-header">
+            <span class="card-title">💹 Cotações</span>
+            <span id="cotacoes-atualizado" style="font-size:10.5px;color:var(--text3)"></span>
+          </div>
+          <div id="home-cotacoes-lista" style="padding:16px 20px;display:flex;gap:32px;flex-wrap:wrap">
+            <div style="font-size:12.5px;color:var(--text2)">Carregando cotações...</div>
+          </div>
+        </div>
+
+        <div class="card hud" style="margin-bottom:18px" id="home-agenda-card">
+          <div class="card-header">
+            <span class="card-title">📅 Sua agenda hoje</span>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('agenda')">Ver agenda completa →</button>
+          </div>
+          <div id="home-agenda-lista" style="padding:6px 0"></div>
+        </div>
+
         <div class="card hud" style="margin-bottom:18px" id="guia-card">
           <div class="card-header"><span class="card-title">🧭 Seu guia hoje</span></div>
           <div id="guia-lista" style="padding:6px 0"></div>
+        </div>
+
+        <div class="card hud" style="margin-bottom:18px" id="noticias-card">
+          <div class="card-header">
+            <span class="card-title">📰 Manchetes</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="noticias-atualizado" style="font-size:10.5px;color:var(--text3)"></span>
+              <button class="btn btn-ghost btn-sm" onclick="carregarNoticias(noticiasAba, true)" title="Atualizar notícias"><i class="ti ti-refresh"></i></button>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px;margin:0 20px 10px;width:fit-content">
+            <button class="btn btn-ghost btn-sm" id="btn-noticias-saopaulo" onclick="setNoticiasAba('saopaulo')">🌆 São Paulo</button>
+            <button class="btn btn-ghost btn-sm" id="btn-noticias-mundo" onclick="setNoticiasAba('mundo')">🌍 Mundo</button>
+            <button class="btn btn-ghost btn-sm" id="btn-noticias-brasil" onclick="setNoticiasAba('brasil')">🇧🇷 Brasil</button>
+          </div>
+          <div id="noticias-lista" style="padding:6px 0"></div>
         </div>
 
         <div class="metrics">
@@ -620,7 +721,12 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
 
       <!-- ══════════ FINANCEIRO THOTHE ══════════ -->
       <div class="page" id="page-financeiro">
-        <div class="metrics" style="grid-template-columns:repeat(4,1fr)">
+        <div class="metrics" style="grid-template-columns:repeat(5,1fr)">
+          <div class="metric-card hud" style="border-color:var(--red);background:linear-gradient(180deg,rgba(248,113,113,.08),transparent);cursor:pointer" onclick="setPrevisaoFiltro('pendentes');document.getElementById('previsao-tbody').scrollIntoView({behavior:'smooth',block:'center'})" title="Ver quem ainda deve">
+            <div class="metric-label">⚠️ Em aberto (mês)</div>
+            <div class="metric-value" id="fin-em-aberto" style="color:var(--red)">R$ 0</div>
+            <div class="metric-delta" id="fin-em-aberto-qtd">—</div>
+          </div>
           <div class="metric-card hud">
             <div class="metric-label">Previsto (mês)</div>
             <div class="metric-value" id="fin-previsto" style="color:var(--accent-m)">R$ 0</div>
@@ -1195,6 +1301,24 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ══════════════════════════════════════════════════════
+   TEMA — claro/escuro
+   ══════════════════════════════════════════════════════ */
+const INK = (document.documentElement.getAttribute('data-theme') === 'dark') ? '255,255,255' : '20,20,25';
+function toggleTheme() {
+  const atual = document.documentElement.getAttribute('data-theme') || 'light';
+  const novo = atual === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('growth_theme', novo);
+  location.reload();
+}
+function aplicarIconeTema() {
+  const atual = document.documentElement.getAttribute('data-theme') || 'light';
+  const icone = document.getElementById('theme-toggle-icon');
+  if (icone) icone.className = atual === 'dark' ? 'ti ti-sun' : 'ti ti-moon';
+  const metaTema = document.querySelector('meta[name="theme-color"]');
+  if (metaTema) metaTema.setAttribute('content', atual === 'dark' ? '#0A0A0C' : '#F6F6F7');
+}
+
+/* ══════════════════════════════════════════════════════
    DB LAYER — localStorage first, Supabase sync in background
    ══════════════════════════════════════════════════════ */
 const SUPA_URL = localStorage.getItem('growth_supa_url') || '';
@@ -1406,7 +1530,7 @@ function svgRadialGauge(pct, color, size, label, sub) {
   const gid = 'g' + Math.random().toString(36).slice(2,8);
   return `
   <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter:drop-shadow(0 0 10px ${color}55)">
-    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="10"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(${INK},.09)" stroke-width="10"/>
     <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
       stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
       transform="rotate(-90 ${c} ${c})" style="transition:stroke-dashoffset .6s ease"/>
@@ -1487,7 +1611,7 @@ function svgDonut(segments, size) {
       stroke-dasharray="${dash} ${gap}" transform="rotate(${rotate} ${c} ${c})" style="filter:drop-shadow(0 0 5px ${seg.color}66)"/>`;
   }).join('');
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(${INK},.08)" stroke-width="14"/>
     ${circles}
     <text x="${c}" y="${c+5}" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="${size*0.16}" font-weight="700" fill="#D9F8FF">${total}</text>
   </svg>`;
@@ -1644,10 +1768,10 @@ function renderCalendarioGrid() {
       const cor = i < feriados.length ? ESFERA_COR[feriados[i].esfera] : (itens[i-feriados.length]?.cor || '#5FE3A6');
       return `<span style="width:4px;height:4px;border-radius:50%;background:${cor};display:inline-block;margin:.5px"></span>`;
     }).join('');
-    const bg = isSel ? 'rgba(255,255,255,.18)' : feriados.length ? 'rgba(255,107,157,.1)' : 'transparent';
+    const bg = isSel ? 'rgba(${INK},.1)' : feriados.length ? 'rgba(255,107,157,.1)' : 'transparent';
     const feriadoLabel = feriados.length ? `<div style="font-size:6.5px;line-height:1.1;color:#FF6B9D;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${feriados[0].nome}</div>` : '';
     html += `
-    <div onclick="calSelectDay('${dateStr}')" title="${feriados.map(f=>f.nome).join(', ')}" style="aspect-ratio:1;padding:3px;border-radius:7px;cursor:pointer;overflow:hidden;background:${bg};border:1px solid ${isToday?'var(--accent)':'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='${bg}'">
+    <div onclick="calSelectDay('${dateStr}')" title="${feriados.map(f=>f.nome).join(', ')}" style="aspect-ratio:1;padding:3px;border-radius:7px;cursor:pointer;overflow:hidden;background:${bg};border:1px solid ${isToday?'var(--accent)':'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background .12s" onmouseover="this.style.background='rgba(${INK},.07)'" onmouseout="this.style.background='${bg}'">
       <div style="font-size:10px;font-weight:${isToday?700:400};color:${isToday?'var(--accent-m)':feriados.length?'#FF6B9D':isFimDeSemana?'var(--red)':'var(--text)'}">${day}</div>
       ${feriadoLabel}
       <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:100%">${dots}</div>
@@ -1692,9 +1816,9 @@ function renderMiniCalendarioDashboard() {
       const cor = i < feriados.length ? ESFERA_COR[feriados[i].esfera] : (itens[i-feriados.length]?.cor || '#5FE3A6');
       return `<span style="width:3px;height:3px;border-radius:50%;background:${cor};display:inline-block;margin:0 .5px"></span>`;
     }).join('');
-    const bg = isSel ? 'rgba(255,255,255,.16)' : feriados.length ? 'rgba(255,107,157,.1)' : 'transparent';
+    const bg = isSel ? 'rgba(${INK},.09)' : feriados.length ? 'rgba(255,107,157,.1)' : 'transparent';
     html += `
-    <div onclick="dashCalSelectDay('${dateStr}')" title="${feriados.map(f=>f.nome).join(', ')}" style="height:19px;border-radius:5px;cursor:pointer;background:${bg};border:1px solid ${isToday?'var(--accent)':'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='${bg}'">
+    <div onclick="dashCalSelectDay('${dateStr}')" title="${feriados.map(f=>f.nome).join(', ')}" style="height:19px;border-radius:5px;cursor:pointer;background:${bg};border:1px solid ${isToday?'var(--accent)':'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:background .12s" onmouseover="this.style.background='rgba(${INK},.06)'" onmouseout="this.style.background='${bg}'">
       <span style="font-size:8.5px;font-weight:${isToday?700:400};color:${isToday?'var(--accent-m)':feriados.length?'#FF6B9D':isFimDeSemana?'var(--red)':'var(--text)'}">${day}</span>
       <span style="display:flex;height:4px">${dots}</span>
     </div>`;
@@ -1739,7 +1863,7 @@ function renderDashTarefasCard() {
     tituloEl.textContent = '📆 Próximas tarefas';
     const tarefas = DB.get('tarefas').filter(t=>t.status!=='concluida').sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999')).slice(0,5);
     tarefasEl.innerHTML = tarefas.length ? tarefas.map(t => `
-      <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border)" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border)" onmouseover="this.style.background='rgba(${INK},.035)'" onmouseout="this.style.background=''">
         <span style="font-size:13px">${t.prioridade==='urgente'?'🔴':'⚪'}</span>
         <div onclick="openTarefaModal('${t.id}')" style="flex:1;cursor:pointer"><div style="font-size:13px">${t.titulo}</div><div style="font-size:11px;color:var(--text3)">${fmtDate(t.data)}${t.hora?' às '+t.hora:''}</div></div>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${t.clienteId||''}','${t.titulo.replace(/'/g,"\\'")}','${t.id}')" title="Iniciar tarefa e cronômetro">▶ Iniciar</button>
@@ -1842,7 +1966,7 @@ function fillClienteSelect(sel, selected) {
    NAVIGATION
    ══════════════════════════════════════════════════════ */
 const PAGE_CONFIG = {
-  dashboard:   { title: 'Dashboard', sub: 'visão geral do crescimento' },
+  dashboard:   { title: 'Início', sub: 'tudo sobre o seu dia, em um só lugar' },
   clientes:    { title: 'Clientes', sub: 'cadastro e status de upsell' },
   gestao:      { title: 'Gestão Financeira', sub: 'entregas mensais por cliente premium' },
   fechamento:  { title: 'Fechamento Mensal', sub: 'checklist de fechamento por cliente' },
@@ -3216,6 +3340,7 @@ function renderPrevisaoRecebimento() {
   });
 
   linhas = [...linhas, ...linhasAvulsas, ...linhasManuais];
+  const todasLinhas = linhas;
   if (previsaoFiltro === 'pendentes') linhas = linhas.filter(l => l.status !== 'recebido');
 
   const totalPrevisto = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0) + avulsos.reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
@@ -3225,6 +3350,14 @@ function renderPrevisaoRecebimento() {
   }, 0) + avulsos.filter(a=>a.status==='recebido').reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
   document.getElementById('fin-previsto').textContent = fmtMoney(totalPrevisto);
   document.getElementById('fin-recebido-pct').textContent = totalPrevisto > 0 ? `${Math.round(totalRecebido/totalPrevisto*100)}% do previsto` : '—';
+
+  // ⚠️ Em aberto — quanto ainda falta receber no mês (previsto - recebido), somando quem ainda deve
+  const totalEmAberto = Math.max(0, totalPrevisto - totalRecebido);
+  const devedores = todasLinhas.filter(l => l.status !== 'recebido');
+  const emAbertoEl = document.getElementById('fin-em-aberto');
+  const emAbertoQtdEl = document.getElementById('fin-em-aberto-qtd');
+  if (emAbertoEl) emAbertoEl.textContent = fmtMoney(totalEmAberto);
+  if (emAbertoQtdEl) emAbertoQtdEl.textContent = devedores.length ? `${devedores.length} em aberto` : 'Tudo em dia 🎉';
 
   const origemLabel = { recorrente:'Recorrente', avulso:'Avulso', manual:'Lançamento' };
   const origemChip = { recorrente:'chip-blue', avulso:'chip-purple', manual:'chip-gray' };
@@ -4395,6 +4528,375 @@ function mostrarResumoImportacao(r) {
    DASHBOARD
    ══════════════════════════════════════════════════════ */
 // "Seu guia hoje" — painel proativo que aponta o que precisa de atenção
+/* ══════════════════════════════════════════════════════
+   INÍCIO — saudação, relógio e notícias do dia
+   ══════════════════════════════════════════════════════ */
+function saudacaoPorHorario() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return { texto: 'Bom dia', emoji: '☀️' };
+  if (h >= 12 && h < 18) return { texto: 'Boa tarde', emoji: '🌤️' };
+  return { texto: 'Boa noite', emoji: '🌙' };
+}
+function atualizarRelogioHome() {
+  const relEl = document.getElementById('home-relogio');
+  if (!relEl) return;
+  const agora = new Date();
+  const hh = String(agora.getHours()).padStart(2,'0');
+  const mm = String(agora.getMinutes()).padStart(2,'0');
+  const ss = String(agora.getSeconds()).padStart(2,'0');
+  relEl.textContent = `${hh}:${mm}:${ss}`;
+
+  const saud = saudacaoPorHorario();
+  const saudEl = document.getElementById('home-saudacao');
+  if (saudEl) saudEl.textContent = `${saud.texto}, Edésio ${saud.emoji}`;
+
+  const dataEl = document.getElementById('home-data');
+  if (dataEl) {
+    let dataFmt = agora.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    dataEl.textContent = dataFmt;
+  }
+}
+setInterval(atualizarRelogioHome, 1000);
+
+const NOTICIAS_FEEDS = {
+  saopaulo: [ { nome:'G1 SP', url:'https://g1.globo.com/rss/g1/sp/sao-paulo/' } ],
+  mundo:    [ { nome:'G1 Mundo', url:'https://g1.globo.com/rss/g1/mundo/' }, { nome:'BBC Brasil', url:'https://www.bbc.com/portuguese/index.xml' } ],
+  brasil:   [ { nome:'G1', url:'https://g1.globo.com/rss/g1/' }, { nome:'Poder360', url:'https://www.poder360.com.br/feed/' } ],
+};
+let noticiasAba = 'saopaulo';
+
+function ehVideoOuFiller(it) {
+  const titulo = (it.title || '').toUpperCase();
+  const link = it.link || '';
+  const categorias = (it.categories || []).join(' ').toUpperCase();
+  if (titulo.startsWith('VÍDEO') || titulo.startsWith('VIDEO') || titulo.includes('VÍDEOS:')) return true;
+  if (link.includes('/video/') || link.includes('/videos/')) return true;
+  if (categorias.includes('VÍDEO') || categorias.includes('VIDEO')) return true;
+  if (titulo.startsWith('PREVISÃO DO TEMPO')) return true; // blurbs de previsão do tempo por cidade, não são manchete
+  return false;
+}
+
+function setNoticiasAba(aba) {
+  noticiasAba = aba;
+  ['saopaulo','mundo','brasil'].forEach(a => {
+    const btn = document.getElementById('btn-noticias-' + a);
+    if (btn) btn.style.background = a === aba ? 'var(--surface)' : '';
+  });
+  carregarNoticias(aba);
+}
+
+async function carregarNoticias(aba, forcar) {
+  aba = aba || noticiasAba;
+  noticiasAba = aba;
+  const el = document.getElementById('noticias-lista');
+  if (!el) return;
+  ['saopaulo','mundo','brasil'].forEach(a => {
+    const btn = document.getElementById('btn-noticias-' + a);
+    if (btn) btn.style.background = a === aba ? 'var(--surface)' : '';
+  });
+
+  const CACHE_MIN = 20;
+  const cacheKey = 'gw_noticias_cache_' + aba;
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
+  const agoraMs = Date.now();
+
+  if (!forcar && cache && cache.itens && cache.itens.length && (agoraMs - cache.ts) < CACHE_MIN * 60 * 1000) {
+    renderNoticias(cache.itens, cache.ts);
+    return;
+  }
+
+  el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text2);font-size:12.5px">Carregando notícias...</div>`;
+
+  try {
+    const feeds = NOTICIAS_FEEDS[aba] || NOTICIAS_FEEDS.saopaulo;
+    const resultados = await Promise.all(feeds.map(async feed => {
+      const brutos = await buscarFeedComFallback(feed.url);
+      return brutos.filter(it => !ehVideoOuFiller(it)).slice(0, 8).map(it => ({
+        titulo: it.title,
+        link: it.link,
+        fonte: feed.nome,
+        data: it.pubDate,
+        imagem: it.thumbnail || ''
+      }));
+    }));
+    let itens = resultados.flat();
+    if (!itens.length) throw new Error('nenhuma notícia retornada pelas fontes');
+    itens.sort((a,b) => new Date(b.data||0) - new Date(a.data||0));
+    itens = itens.slice(0, 10);
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: agoraMs, itens }));
+    renderNoticias(itens, agoraMs, false);
+  } catch (e) {
+    console.error('Erro ao buscar notícias:', e.message);
+    if (cache && cache.itens && cache.itens.length) {
+      renderNoticias(cache.itens, cache.ts, true);
+    } else {
+      el.innerHTML = `<div style="padding:22px;text-align:center">
+        <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">Não consegui carregar as notícias agora</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn btn-ghost btn-sm" onclick="carregarNoticias('${aba}',true)">🔄 Tentar novamente</button>
+          <a href="https://g1.globo.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Abrir G1 ↗</a>
+        </div>
+      </div>`;
+    }
+  }
+}
+
+// Busca um feed RSS com dois caminhos independentes: primeiro via rss2json (rápido, já traz thumbnail),
+// e se falhar (fora do ar, limite de uso, etc.) cai para buscar o XML cru via proxy CORS e faz o parse aqui mesmo.
+async function buscarFeedComFallback(url) {
+  try {
+    const r = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+    if (r.ok) {
+      const data = await r.json();
+      if (data.status === 'ok' && Array.isArray(data.items) && data.items.length) {
+        return data.items.map(it => ({
+          title: it.title, link: it.link, pubDate: it.pubDate, categories: it.categories || [],
+          thumbnail: it.thumbnail || (it.enclosure && it.enclosure.link) || ''
+        }));
+      }
+    }
+  } catch (e) { /* segue pro fallback abaixo */ }
+
+  try {
+    const r2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    if (!r2.ok) return [];
+    const texto = await r2.text();
+    const xml = new DOMParser().parseFromString(texto, 'text/xml');
+    return Array.from(xml.querySelectorAll('item')).map(it => {
+      const pegar = tag => { const n = it.querySelector(tag); return n ? n.textContent : ''; };
+      let thumb = '';
+      const media = it.getElementsByTagName('media:thumbnail')[0] || it.getElementsByTagName('media:content')[0];
+      if (media) thumb = media.getAttribute('url') || '';
+      const enclosure = it.querySelector('enclosure');
+      if (!thumb && enclosure) thumb = enclosure.getAttribute('url') || '';
+      const categorias = Array.from(it.querySelectorAll('category')).map(c => c.textContent);
+      return { title: pegar('title'), link: pegar('link'), pubDate: pegar('pubDate'), categories: categorias, thumbnail: thumb };
+    });
+  } catch (e2) {
+    return [];
+  }
+}
+function renderNoticias(itens, ts, offline) {
+  const el = document.getElementById('noticias-lista');
+  if (!el) return;
+  const atEl = document.getElementById('noticias-atualizado');
+  if (atEl) {
+    const minsAtras = Math.round((Date.now() - ts) / 60000);
+    atEl.textContent = offline ? 'sem conexão · mostrando últimas salvas' : (minsAtras < 1 ? 'atualizado agora' : `atualizado há ${minsAtras} min`);
+  }
+  if (!itens || !itens.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="txt">Nenhuma notícia disponível agora</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;gap:12px;overflow-x:auto;padding:4px 20px 10px">
+    ${itens.map(n => `
+      <a href="${n.link}" target="_blank" rel="noopener" style="flex:0 0 220px;text-decoration:none;color:inherit;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;background:var(--surface3);transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+        ${n.imagem ? `<div style="width:100%;height:110px;background-image:url('${n.imagem.replace(/'/g,"%27")}');background-size:cover;background-position:center"></div>` : ''}
+        <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:6px">
+          <span class="chip chip-blue" style="align-self:flex-start;font-size:9.5px">${n.fonte}</span>
+          <div style="font-size:12px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${n.titulo}</div>
+        </div>
+      </a>
+    `).join('')}
+  </div>`;
+}
+
+/* ── Clima — São Paulo (CEP 03136-010, Vila Prudente) via Open-Meteo, sem chave ── */
+const CLIMA_LAT = -23.5745, CLIMA_LON = -46.5825, CLIMA_LOCAL = 'Vila Prudente, São Paulo - SP';
+const CLIMA_ICONES = {
+  0:'☀️', 1:'🌤️', 2:'⛅', 3:'☁️', 45:'🌫️', 48:'🌫️',
+  51:'🌦️', 53:'🌦️', 55:'🌦️', 56:'🌧️', 57:'🌧️',
+  61:'🌧️', 63:'🌧️', 65:'🌧️', 66:'🌧️', 67:'🌧️',
+  71:'🌨️', 73:'🌨️', 75:'🌨️', 77:'🌨️',
+  80:'🌦️', 81:'🌧️', 82:'⛈️', 85:'🌨️', 86:'🌨️',
+  95:'⛈️', 96:'⛈️', 99:'⛈️'
+};
+const CLIMA_DESCRICOES = {
+  0:'Céu limpo', 1:'Poucas nuvens', 2:'Parcialmente nublado', 3:'Nublado',
+  45:'Neblina', 48:'Neblina com geada',
+  51:'Garoa fraca', 53:'Garoa', 55:'Garoa forte', 56:'Garoa congelante', 57:'Garoa congelante forte',
+  61:'Chuva fraca', 63:'Chuva', 65:'Chuva forte', 66:'Chuva congelante', 67:'Chuva congelante forte',
+  71:'Neve fraca', 73:'Neve', 75:'Neve forte', 77:'Grãos de neve',
+  80:'Pancadas de chuva fracas', 81:'Pancadas de chuva', 82:'Pancadas de chuva fortes',
+  85:'Pancadas de neve fracas', 86:'Pancadas de neve fortes',
+  95:'Trovoadas', 96:'Trovoadas com granizo', 99:'Trovoadas com granizo forte'
+};
+async function carregarClima(tentativa) {
+  const localEl = document.getElementById('home-clima-local');
+  if (localEl) localEl.textContent = CLIMA_LOCAL;
+  const CACHE_MIN = 30;
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem('gw_clima_cache') || 'null'); } catch (e) {}
+  const agoraMs = Date.now();
+  if (!tentativa && cache && (agoraMs - cache.ts) < CACHE_MIN * 60 * 1000) { renderClima(cache.dados); return; }
+  try {
+    const params = 'current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m'
+      + '&hourly=precipitation_probability'
+      + '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'
+      + '&timezone=America%2FSao_Paulo&forecast_days=1';
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CLIMA_LAT}&longitude=${CLIMA_LON}&${params}`);
+    if (!r.ok) throw new Error(`serviço de clima respondeu ${r.status}`);
+    const data = await r.json();
+    if (!data.current) throw new Error('resposta inválida do serviço de clima');
+    localStorage.setItem('gw_clima_cache', JSON.stringify({ ts: agoraMs, dados: data }));
+    renderClima(data);
+  } catch (e) {
+    console.error('Erro ao buscar clima:', e.message);
+    if (!tentativa) { setTimeout(() => carregarClima(1), 4000); return; } // tenta mais uma vez sozinho antes de desistir
+    if (cache && cache.dados) { renderClima(cache.dados); return; }
+    const icEl = document.getElementById('home-clima-icone');
+    const tpEl = document.getElementById('home-clima-temp');
+    const corpoEl = document.getElementById('home-clima-card-corpo');
+    if (icEl) icEl.textContent = '🔄';
+    if (tpEl) tpEl.textContent = '—';
+    if (corpoEl) corpoEl.innerHTML = `<div style="font-size:12.5px;color:var(--text2)">Não consegui carregar o clima agora. <span style="text-decoration:underline;cursor:pointer" onclick="carregarClima(1)">Tentar de novo</span></div>`;
+  }
+}
+function renderClima(data) {
+  const current = data.current || {};
+  const daily = data.daily || {};
+  const hourly = data.hourly || {};
+
+  const icEl = document.getElementById('home-clima-icone');
+  const tpEl = document.getElementById('home-clima-temp');
+  const chuvaEl = document.getElementById('home-clima-chuva');
+  const chuvaHojeMax = daily.precipitation_probability_max ? daily.precipitation_probability_max[0] : null;
+  if (icEl) icEl.textContent = CLIMA_ICONES[current.weather_code] ?? '🌡️';
+  if (tpEl) tpEl.textContent = `${Math.round(current.temperature_2m)}°C`;
+  if (chuvaEl) chuvaEl.textContent = (chuvaHojeMax !== null) ? `💧 ${chuvaHojeMax}%` : '';
+
+  const localCardEl = document.getElementById('home-clima-card-local');
+  if (localCardEl) localCardEl.textContent = CLIMA_LOCAL;
+
+  const corpoEl = document.getElementById('home-clima-card-corpo');
+  if (!corpoEl) return;
+
+  const descricao = CLIMA_DESCRICOES[current.weather_code] || '—';
+  const max = daily.temperature_2m_max ? Math.round(daily.temperature_2m_max[0]) : null;
+  const min = daily.temperature_2m_min ? Math.round(daily.temperature_2m_min[0]) : null;
+  const chuvaMm = daily.precipitation_sum ? daily.precipitation_sum[0] : null;
+
+  // Próximas horas de chance de chuva, a partir da hora atual
+  let horasHtml = '';
+  if (hourly.time && hourly.precipitation_probability) {
+    const agora = new Date();
+    let idxAtual = hourly.time.findIndex(t => new Date(t) >= agora);
+    if (idxAtual < 0) idxAtual = 0;
+    const proximas = hourly.time.slice(idxAtual, idxAtual + 6).map((t, i) => {
+      const idx = idxAtual + i;
+      const hora = new Date(t).getHours();
+      const prob = hourly.precipitation_probability[idx];
+      return `<div style="flex:1;text-align:center">
+        <div style="font-size:10px;color:var(--text3)">${i===0?'agora':String(hora).padStart(2,'0')+'h'}</div>
+        <div style="font-size:13px;margin:3px 0">${prob >= 60 ? '🌧️' : prob >= 25 ? '🌦️' : '·'}</div>
+        <div style="font-size:11px;font-weight:600;color:${prob>=50?'#3B82F6':'var(--text2)'}">${prob}%</div>
+      </div>`;
+    }).join('');
+    horasHtml = `<div style="display:flex;gap:2px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">${proximas}</div>`;
+  }
+
+  corpoEl.innerHTML = `
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:44px">${CLIMA_ICONES[current.weather_code] ?? '🌡️'}</span>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:30px;font-weight:700;line-height:1">${Math.round(current.temperature_2m)}°C</div>
+          <div style="font-size:12.5px;color:var(--text2);margin-top:3px">${descricao}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
+        <div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Sensação</div><div style="font-weight:600;margin-top:2px">${Math.round(current.apparent_temperature)}°C</div></div>
+        <div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Mín / Máx</div><div style="font-weight:600;margin-top:2px">${min}° / ${max}°</div></div>
+        <div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Umidade</div><div style="font-weight:600;margin-top:2px">${Math.round(current.relative_humidity_2m)}%</div></div>
+        <div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Chance de chuva hoje</div><div style="font-weight:600;margin-top:2px;color:${chuvaHojeMax>=50?'#3B82F6':'inherit'}">${chuvaHojeMax}%${chuvaMm ? ` · ${chuvaMm}mm` : ''}</div></div>
+        <div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Vento</div><div style="font-weight:600;margin-top:2px">${Math.round(current.wind_speed_10m)} km/h</div></div>
+      </div>
+    </div>
+    ${horasHtml}
+  `;
+}
+
+/* ── Cotações — Dólar, Euro e Bitcoin via AwesomeAPI, sem chave ── */
+async function carregarCotacoes() {
+  const el = document.getElementById('home-cotacoes-lista');
+  if (!el) return;
+  const CACHE_MIN = 10;
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem('gw_cotacoes_cache') || 'null'); } catch (e) {}
+  const agoraMs = Date.now();
+  if (cache && (agoraMs - cache.ts) < CACHE_MIN * 60 * 1000) { renderCotacoes(cache.dados, cache.ts); return; }
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,BTC-BRL');
+    if (!r.ok) throw new Error(`serviço de cotação respondeu ${r.status}`);
+    const data = await r.json();
+    localStorage.setItem('gw_cotacoes_cache', JSON.stringify({ ts: agoraMs, dados: data }));
+    renderCotacoes(data, agoraMs);
+  } catch (e) {
+    console.error('Erro ao buscar cotações:', e.message);
+    if (cache && cache.dados) { renderCotacoes(cache.dados, cache.ts, true); return; }
+    el.innerHTML = `<div style="font-size:12.5px;color:var(--text2)">Não consegui carregar as cotações agora. <span style="text-decoration:underline;cursor:pointer" onclick="carregarCotacoes()">Tentar de novo</span></div>`;
+  }
+}
+function renderCotacoes(data, ts, offline) {
+  const el = document.getElementById('home-cotacoes-lista');
+  const atEl = document.getElementById('cotacoes-atualizado');
+  if (!el) return;
+  if (atEl) {
+    const minsAtras = Math.round((Date.now() - ts) / 60000);
+    atEl.textContent = offline ? 'sem conexão · últimas salvas' : (minsAtras < 1 ? 'atualizado agora' : `atualizado há ${minsAtras} min`);
+  }
+  const itens = [
+    { chave:'USDBRL', nome:'Dólar', simbolo:'US$' },
+    { chave:'EURBRL', nome:'Euro', simbolo:'€' },
+    { chave:'BTCBRL', nome:'Bitcoin', simbolo:'₿' },
+  ];
+  el.innerHTML = itens.map(it => {
+    const d = data[it.chave];
+    if (!d) return '';
+    const valor = parseFloat(d.bid);
+    const variacao = parseFloat(d.pctChange);
+    const cor = variacao >= 0 ? 'var(--green)' : 'var(--red)';
+    const seta = variacao >= 0 ? '▲' : '▼';
+    return `<div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${it.nome}</div>
+      <div style="font-family:var(--font-mono);font-size:19px;font-weight:700;margin-top:2px">${it.simbolo} ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="font-size:11.5px;font-weight:600;color:${cor};margin-top:2px">${seta} ${Math.abs(variacao).toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Agenda de hoje — resumo no Início, mesma lógica/linha da Agenda ── */
+function renderAgendaHomeHoje() {
+  const el = document.getElementById('home-agenda-lista');
+  if (!el) return;
+  const hoje = today();
+  const feriados = feriadosNoDia(hoje);
+  const tarefasHoje = DB.get('tarefas').filter(t => t.data === hoje).sort((a,b)=>(a.hora||'99:99').localeCompare(b.hora||'99:99'));
+  const obrigHoje = DB.get('obrigacoes').filter(o => o.venc === hoje);
+  const registrosHoje = DB.get('horas').filter(r => r.data === hoje);
+
+  let html = feriados.map(f => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border)">
+      <span style="width:8px;height:8px;border-radius:50%;background:${ESFERA_COR[f.esfera]};flex-shrink:0"></span>
+      <div style="font-size:13px">${f.nome}</div>
+    </div>`).join('');
+
+  if (!tarefasHoje.length && !obrigHoje.length && !registrosHoje.length && !feriados.length) {
+    html += `<div class="empty-state" style="padding:24px"><div class="txt">Nada agendado para hoje</div><div class="sub">Aproveite ou crie uma nova tarefa</div></div>`;
+  } else {
+    html += tarefasHoje.filter(t=>t.status!=='concluida').map(t => linhaAgendaComAcoes(t, true)).join('');
+    html += obrigHoje.filter(o=>o.status!=='concluida').map(o => linhaAgendaComAcoes(o, false)).join('');
+    const concluidas = [
+      ...tarefasHoje.filter(t=>t.status==='concluida').map(t => linhaAgendaComAcoes(t, true)),
+      ...obrigHoje.filter(o=>o.status==='concluida').map(o => linhaAgendaComAcoes(o, false)),
+      ...registrosHoje.map(r => linhaHorasNaAgenda(r)),
+    ];
+    html += concluidas.join('');
+  }
+  el.innerHTML = html;
+}
+
 function renderGuia() {
   const el = document.getElementById('guia-lista');
   if (!el) return;
@@ -4440,7 +4942,7 @@ function renderGuia() {
   }
 
   el.innerHTML = itens.map(it => `
-    <div onclick="${it.acao}" style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:0.5px solid var(--border);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+    <div onclick="${it.acao}" style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:0.5px solid var(--border);cursor:pointer" onmouseover="this.style.background='rgba(${INK},.035)'" onmouseout="this.style.background=''">
       <span style="font-size:16px">${it.icone}</span>
       <div style="flex:1;font-size:13px;color:var(--text)">${it.texto}</div>
       <span style="font-size:11px;color:${it.cor}">Ver →</span>
@@ -4449,6 +4951,11 @@ function renderGuia() {
 
 
 function renderDashboard() {
+  atualizarRelogioHome();
+  carregarClima();
+  carregarCotacoes();
+  renderAgendaHomeHoje();
+  carregarNoticias(noticiasAba);
   renderGuia();
   const clientes = DB.get('clientes');
   const ativos = clientes.filter(c=>c.status==='ativo');
@@ -4531,7 +5038,7 @@ function renderDashboard() {
     const e = getEntrega(c.id, gfMes) || {};
     const pronto = [e.fluxoCaixa, e.relatorio, e.reuniao].filter(Boolean).length;
     return `
-    <div onclick="showPage('gestao')" style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+    <div onclick="showPage('gestao')" style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border);cursor:pointer" onmouseover="this.style.background='rgba(${INK},.035)'" onmouseout="this.style.background=''">
       <div style="flex:1"><div style="font-size:13px;font-weight:500">${c.nome}</div></div>
       <span class="chip ${pronto===3?'chip-green':pronto>0?'chip-amber':'chip-gray'}">${pronto}/3</span>
     </div>`;
@@ -4548,6 +5055,7 @@ function startApp() {
   window.addEventListener('resize', checkMobile);
   checkMobile();
   aplicarEstadoSidebarSalvo();
+  aplicarIconeTema();
   showPage('dashboard');
   if (getTimersAtivos().length) iniciarLoopTimer();
   verificarSincronia();
