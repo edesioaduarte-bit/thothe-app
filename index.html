@@ -4188,35 +4188,57 @@ function ensureFechamento(clienteId, mes) {
 }
 
 function toggleFechStep(clienteId, stepId) {
-  const f = ensureFechamento(clienteId, fechMesAtual);
-  const fechamentos = DB.get('fechamentos');
-  const idx = fechamentos.findIndex(x=>x.id===f.id);
-  const step = fechamentos[idx].etapas.find(e=>String(e.id)===String(stepId));
-  if (step) {
+  try {
+    const f = ensureFechamento(clienteId, fechMesAtual);
+    const fechamentos = DB.get('fechamentos');
+    const idx = fechamentos.findIndex(x=>x.id===f.id);
+    if (idx < 0) { toast('❌ Não achei esse fechamento — tente reabrir a tela'); return; }
+    const step = fechamentos[idx].etapas.find(e=>String(e.id)===String(stepId));
+    if (!step) { toast('❌ Não achei essa etapa — tente reabrir o card do cliente'); return; }
     step.done = !step.done;
     DB.set('fechamentos', fechamentos);
     sincronizarObrigacoesDoFechamento(f.id);
     renderFechamento();
+  } catch (e) {
+    console.error('Erro ao marcar etapa do fechamento:', e);
+    toast('❌ Erro ao marcar etapa: ' + e.message);
   }
 }
 
 function openFechamentoModal(clienteId) {
-  const f = ensureFechamento(clienteId, fechMesAtual);
-  const cliente = DB.get('clientes').find(c=>c.id===clienteId);
-  document.getElementById('fech-edit-id').value = f.id;
-  document.getElementById('fech-cliente-id').value = clienteId;
-  document.getElementById('fech-mes').value = fechMesAtual;
-  document.getElementById('modal-fechamento-title').textContent = (cliente?cliente.nome:'') + ' — ' + mesLabel(fechMesAtual);
-  document.getElementById('fech-etapas-texto').value = f.etapas.map(e=>e.label).join('\n');
-  document.getElementById('fech-obs').value = f.obs || '';
-  renderFechEtapasLista(f);
-  openModal('modal-fechamento');
+  try {
+    const f = ensureFechamento(clienteId, fechMesAtual);
+    const cliente = DB.get('clientes').find(c=>c.id===clienteId);
+    document.getElementById('fech-edit-id').value = f.id;
+    document.getElementById('fech-cliente-id').value = clienteId;
+    document.getElementById('fech-mes').value = fechMesAtual;
+    document.getElementById('modal-fechamento-title').textContent = (cliente?cliente.nome:'') + ' — ' + mesLabel(fechMesAtual);
+    document.getElementById('fech-etapas-texto').value = f.etapas.map(e=>e.label).join('\n');
+    document.getElementById('fech-obs').value = f.obs || '';
+    renderFechEtapasLista(f);
+    openModal('modal-fechamento');
+  } catch (e) {
+    console.error('Erro ao abrir fechamento:', e);
+    toast('❌ Erro ao abrir o fechamento: ' + e.message);
+  }
 }
+
+// Delegação de clique: um único listener no container, em vez de onclick colado em cada linha —
+// evita que aspas/caracteres especiais no nome da etapa quebrem o HTML silenciosamente.
+document.addEventListener('click', function(ev) {
+  const pill = ev.target.closest('#fech-etapas-lista .check-pill');
+  if (!pill) return;
+  const clienteId = pill.getAttribute('data-cliente-id');
+  const stepId = pill.getAttribute('data-step-id');
+  toggleFechStep(clienteId, stepId);
+  reopenFechamentoModal();
+});
 
 function renderFechEtapasLista(f) {
   const el = document.getElementById('fech-etapas-lista');
+  if (!el) return;
   el.innerHTML = f.etapas.map(e => `
-    <div class="check-pill ${e.done?'done':''}" style="width:100%;justify-content:flex-start" onclick="toggleFechStep('${f.clienteId}','${e.id}');reopenFechamentoModal()">${e.done?'✅':'⬜'} ${e.label}</div>
+    <div class="check-pill ${e.done?'done':''}" data-cliente-id="${f.clienteId}" data-step-id="${e.id}" style="width:100%;justify-content:flex-start">${e.done?'✅':'⬜'} ${(e.label||'').replace(/</g,'&lt;')}</div>
   `).join('') + `<div style="font-size:10.5px;color:var(--text3);margin-top:6px">🔗 Cada etapa gera/atualiza automaticamente uma obrigação em "Obrigações"</div>`;
 }
 
