@@ -4191,7 +4191,7 @@ function toggleFechStep(clienteId, stepId) {
   const f = ensureFechamento(clienteId, fechMesAtual);
   const fechamentos = DB.get('fechamentos');
   const idx = fechamentos.findIndex(x=>x.id===f.id);
-  const step = fechamentos[idx].etapas.find(e=>e.id===stepId);
+  const step = fechamentos[idx].etapas.find(e=>String(e.id)===String(stepId));
   if (step) {
     step.done = !step.done;
     DB.set('fechamentos', fechamentos);
