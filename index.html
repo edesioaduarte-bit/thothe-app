@@ -4147,7 +4147,15 @@ function deleteObrig(id) {
   renderAll();
 }
 
+// Garante que toda etapa de todo fechamento mensal (de qualquer cliente/mês) tenha
+// sua obrigação correspondente na lista de Obrigações, mesmo que o fechamento nunca
+// tenha sido aberto manualmente — roda toda vez que a tela de Obrigações é exibida.
+function sincronizarTodasObrigacoesDosFechamentos() {
+  DB.get('fechamentos').forEach(f => sincronizarObrigacoesDoFechamento(f.id));
+}
+
 function renderObrigacoes() {
+  sincronizarTodasObrigacoesDosFechamentos();
   let obrigacoes = DB.get('obrigacoes');
   if (obrigFiltro === 'pendentes') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida');
   if (obrigFiltro === 'atrasadas') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida' && o.venc && o.venc<today());
