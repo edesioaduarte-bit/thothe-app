@@ -721,6 +721,14 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ FINANCEIRO THOTHE ══════════ -->
       <div class="page" id="page-financeiro">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:9px;padding:3px">
+            <button class="btn btn-ghost btn-sm" onclick="finMoveMes(-1)">←</button>
+            <span style="padding:5px 14px;font-size:13px;font-weight:600;min-width:120px;text-align:center" id="fin-mes-label"></span>
+            <button class="btn btn-ghost btn-sm" onclick="finMoveMes(1)">→</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="finIrMesAtual()" title="Voltar para o mês atual"><i class="ti ti-calendar-event"></i> Hoje</button>
+        </div>
         <div class="metrics" style="grid-template-columns:repeat(5,1fr)">
           <div class="metric-card hud" style="border-color:var(--red);background:linear-gradient(180deg,rgba(248,113,113,.08),transparent);cursor:pointer" onclick="setPrevisaoFiltro('pendentes');document.getElementById('previsao-tbody').scrollIntoView({behavior:'smooth',block:'center'})" title="Ver quem ainda deve">
             <div class="metric-label">⚠️ Em aberto (mês)</div>
@@ -747,9 +755,17 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           </div>
         </div>
 
+        <div class="card hud" style="margin-bottom:18px;border-color:var(--red)" id="fin-devido-anterior-card">
+          <div class="card-header" style="cursor:pointer;user-select:none" onclick="toggleDevidoAnterior()">
+            <span class="card-title"><i class="ti ti-chevron-right" id="fin-devido-anterior-chevron" style="transition:transform .15s;display:inline-block"></i> 📉 Em aberto de meses anteriores</span>
+            <span id="fin-devido-anterior-total" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--red)">R$ 0</span>
+          </div>
+          <div id="fin-devido-anterior-lista" style="padding:14px 20px;display:none"></div>
+        </div>
+
         <div class="card hud" style="margin-bottom:18px">
           <div class="card-header">
-            <span class="card-title">🎯 Previsão de Recebimento — mês atual</span>
+            <span class="card-title">🎯 Previsão de Recebimento — <span id="fin-previsao-mes-label"></span></span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
                 <button class="btn btn-ghost btn-sm" id="btn-prev-todos" onclick="setPrevisaoFiltro('todos')" style="background:var(--surface)">Todos</button>
@@ -3261,7 +3277,7 @@ function openFinanceiroModal(id) {
     document.getElementById('finc-servico').value = 'geral';
     document.getElementById('finc-desc').value = '';
     document.getElementById('finc-valor').value = '';
-    document.getElementById('finc-data').value = today();
+    document.getElementById('finc-data').value = (typeof finMesAtual !== 'undefined' && finMesAtual === mesAtual()) ? today() : ultimoDiaDoMes(finMesAtual);
   }
   openModal('modal-financeiro');
 }
@@ -3296,6 +3312,19 @@ function deleteFinanceiro(id) {
 }
 
 let previsaoFiltro = 'todos';
+let finMesAtual = mesAtual();
+
+function finMoveMes(dir) {
+  const [y,m] = finMesAtual.split('-').map(Number);
+  const d = new Date(y, m-1+dir, 1);
+  finMesAtual = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderFinanceiro();
+}
+
+function finIrMesAtual() {
+  finMesAtual = mesAtual();
+  renderFinanceiro();
+}
 
 function setPrevisaoFiltro(v) {
   previsaoFiltro = v;
@@ -3305,7 +3334,9 @@ function setPrevisaoFiltro(v) {
 }
 
 function renderPrevisaoRecebimento() {
-  const mes = mesAtual();
+  const mes = finMesAtual;
+  const previsaoMesLabelEl = document.getElementById('fin-previsao-mes-label');
+  if (previsaoMesLabelEl) previsaoMesLabelEl.textContent = mes === mesAtual() ? `${mesLabel(mes)} (mês atual)` : mesLabel(mes);
   const financeiro = DB.get('financeiro');
   // Recorrentes: só clientes com fechamento mensal marcado (honorário previsível todo mês)
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario > 0).sort(ordenarPorCodigo);
@@ -3376,8 +3407,8 @@ function renderPrevisaoRecebimento() {
         <td style="text-align:right;font-family:var(--font-mono);color:${l.recebido>0?'var(--green)':'var(--text3)'}">${fmtMoney(l.recebido)}</td>
         <td>${l.statusChip}</td>
         <td>
-          ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
-          ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}</td>
       </tr>`;
@@ -3416,7 +3447,7 @@ function savePrevisaoAvulsa() {
     clienteId: document.getElementById('prevav-cliente').value,
     descricao: desc,
     valor,
-    mes: mesAtual(),
+    mes: finMesAtual,
     status: 'pendente',
     criadoEm: new Date().toISOString(),
   });
@@ -3434,7 +3465,7 @@ function deletePrevisaoAvulsa(id) {
 
 function renderFinanceiro() {
   const financeiro = DB.get('financeiro');
-  const mes = mesAtual();
+  const mes = finMesAtual;
   const doMes = financeiro.filter(f=>f.data && f.data.slice(0,7)===mes);
   const receita = doMes.filter(f=>f.tipo==='receita').reduce((s,f)=>s+f.valor,0);
   const despesa = doMes.filter(f=>f.tipo==='despesa').reduce((s,f)=>s+f.valor,0);
@@ -3443,7 +3474,10 @@ function renderFinanceiro() {
   const resEl = document.getElementById('fin-resultado');
   resEl.textContent = fmtMoney(receita-despesa);
   resEl.style.color = (receita-despesa) >= 0 ? 'var(--green)' : 'var(--red)';
+  const mesNavEl = document.getElementById('fin-mes-label');
+  if (mesNavEl) mesNavEl.textContent = mesLabel(finMesAtual);
 
+  renderDevidoAnterior();
   renderPrevisaoRecebimento();
 
   const meses6 = ultimosMeses(6);
@@ -4284,16 +4318,130 @@ function resetFechamento() {
   renderAll();
 }
 
-function abrirBaixaRecebimentoModal(clienteId, valorSugerido, mesRotulo, avulsoId, descricaoAvulso) {
+function abrirBaixaRecebimentoModal(clienteId, valorSugerido, mesRotulo, avulsoId, descricaoAvulso, dataSugerida) {
   const c = clienteId ? DB.get('clientes').find(x=>x.id===clienteId) : null;
   if (clienteId && !c) return; // clienteId veio preenchido mas não existe — inconsistência, aborta
   document.getElementById('baixa-cliente-id').value = clienteId || '';
   document.getElementById('baixa-avulso-id').value = avulsoId || '';
   document.getElementById('baixa-cliente-nome').textContent = c ? c.nome : (descricaoAvulso || 'Valor avulso');
   document.getElementById('baixa-valor').value = (valorSugerido !== undefined && valorSugerido !== null) ? valorSugerido : (c ? (c.honorario || '') : '');
-  document.getElementById('baixa-data').value = today();
+  document.getElementById('baixa-data').value = dataSugerida || today();
   document.getElementById('baixa-mes-rotulo').value = mesRotulo || mesLabel(fechMesAtual);
   openModal('modal-baixa-recebimento');
+}
+
+// Último dia do mês "AAAA-MM" — usado para datar a baixa de um mês anterior em aberto,
+// assim o pagamento é contado naquele mês (e não no mês corrente) e o "em aberto" realmente zera.
+function ultimoDiaDoMes(mesStr) {
+  const [y,m] = mesStr.split('-').map(Number);
+  const d = new Date(y, m, 0); // dia 0 do mês seguinte = último dia do mês atual
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Meses em que há evidência real de que o cliente estava ativo (fechamento registrado ou
+// algum lançamento financeiro) — evita inventar dívida de antes do cliente existir no sistema.
+function mesesComEvidenciaCliente(clienteId) {
+  const meses = new Set();
+  DB.get('fechamentos').filter(f=>f.clienteId===clienteId).forEach(f=>meses.add(f.mes));
+  DB.get('financeiro').filter(f=>f.clienteId===clienteId && f.data).forEach(f=>meses.add(f.data.slice(0,7)));
+  return meses;
+}
+
+// Tudo que ficou em aberto de meses ANTERIORES ao atual: honorários recorrentes não pagos
+// integralmente + valores avulsos pendentes lançados para meses passados.
+function calcularDevidoMesesAnteriores() {
+  const hoje = mesAtual();
+  const financeiro = DB.get('financeiro');
+  const porChave = {};
+
+  // 1) Recorrentes: honorário - recebido naquele mês
+  const clientesRecorrentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario>0).sort(ordenarPorCodigo);
+  clientesRecorrentes.forEach(c => {
+    const meses = Array.from(mesesComEvidenciaCliente(c.id)).filter(m => m < hoje).sort();
+    meses.forEach(mes => {
+      const recebidoMes = financeiro.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((s,f)=>s+f.valor,0);
+      const falta = Math.round((c.honorario - recebidoMes) * 100) / 100;
+      if (falta > 0.01) {
+        if (!porChave[c.id]) porChave[c.id] = { clienteId: c.id, nome: c.nome, total: 0, itens: [] };
+        porChave[c.id].total += falta;
+        porChave[c.id].itens.push({ tipo: 'recorrente', mes, falta });
+      }
+    });
+  });
+
+  // 2) Valores avulsos pendentes lançados para meses anteriores
+  const avulsosPendentes = DB.get('previsoesAvulsas').filter(a => a.status !== 'recebido' && a.mes && a.mes < hoje);
+  avulsosPendentes.forEach(a => {
+    const cliente = a.clienteId ? DB.get('clientes').find(c=>c.id===a.clienteId) : null;
+    const key = a.clienteId || ('avulso-' + a.id);
+    if (!porChave[key]) porChave[key] = { clienteId: a.clienteId || null, nome: cliente ? cliente.nome : (a.descricao || 'Valor avulso'), total: 0, itens: [] };
+    porChave[key].total += a.valor;
+    porChave[key].itens.push({ tipo: 'avulso', mes: a.mes, falta: a.valor, avulsoId: a.id, desc: a.descricao });
+  });
+
+  let totalGeral = 0;
+  const porCliente = Object.values(porChave).map(p => {
+    p.total = Math.round(p.total * 100) / 100;
+    p.itens.sort((x,y) => x.mes < y.mes ? -1 : (x.mes > y.mes ? 1 : 0));
+    totalGeral += p.total;
+    return p;
+  });
+  porCliente.sort((a,b)=>b.total-a.total);
+  return { totalGeral: Math.round(totalGeral*100)/100, porCliente };
+}
+
+let devidoAnteriorExpandido = false;
+
+function toggleDevidoAnterior() {
+  devidoAnteriorExpandido = !devidoAnteriorExpandido;
+  const el = document.getElementById('fin-devido-anterior-lista');
+  const chevron = document.getElementById('fin-devido-anterior-chevron');
+  if (el) el.style.display = devidoAnteriorExpandido ? 'block' : 'none';
+  if (chevron) chevron.style.transform = devidoAnteriorExpandido ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+function renderDevidoAnterior() {
+  const card = document.getElementById('fin-devido-anterior-card');
+  const el = document.getElementById('fin-devido-anterior-lista');
+  if (!card || !el) return;
+  const { totalGeral, porCliente } = calcularDevidoMesesAnteriores();
+
+  const tituloValorEl = document.getElementById('fin-devido-anterior-total');
+  if (tituloValorEl) tituloValorEl.textContent = fmtMoney(totalGeral);
+
+  el.style.display = devidoAnteriorExpandido ? 'block' : 'none';
+  const chevron = document.getElementById('fin-devido-anterior-chevron');
+  if (chevron) chevron.style.transform = devidoAnteriorExpandido ? 'rotate(90deg)' : 'rotate(0deg)';
+
+  if (!porCliente.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="txt">Nenhuma pendência de meses anteriores 🎉</div></div>`;
+    return;
+  }
+
+  el.innerHTML = porCliente.map(p => `
+    <div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface3);${p.clienteId?'cursor:pointer':''}" ${p.clienteId?`onclick="openClienteModal('${p.clienteId}')"`:''}>
+        <strong style="font-size:13px">${p.nome}</strong>
+        <span class="chip chip-red" style="font-family:var(--font-mono)">${fmtMoney(p.total)}</span>
+      </div>
+      <div>
+        ${p.itens.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border)">
+            <span style="font-size:12px;color:var(--text2)">
+              ${mesLabel(m.mes)}
+              <span class="chip ${m.tipo==='avulso'?'chip-purple':'chip-blue'}" style="margin-left:6px;font-size:10px">${m.tipo==='avulso'?'Avulso':'Recorrente'}</span>
+              ${m.tipo==='avulso' && m.desc ? `<div style="font-size:11px;color:var(--text3)">${m.desc}</div>` : ''}
+            </span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--red)">${fmtMoney(m.falta)}</span>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${p.clienteId||''}', ${m.falta.toFixed(2)}, '${mesLabel(m.mes)}', ${m.tipo==='avulso'?`'${m.avulsoId}'`:'null'}, ${m.tipo==='avulso'?`'${(m.desc||'Valor avulso').replace(/'/g,"\\'")}'`:'null'}, '${ultimoDiaDoMes(m.mes)}')">💰 Baixar</button>
+              ${m.tipo==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${m.avulsoId}')">🗑️</button>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 
 function confirmarBaixaRecebimento() {
