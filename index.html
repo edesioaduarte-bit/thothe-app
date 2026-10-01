@@ -1184,9 +1184,18 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" type="number" step="0.01" id="finc-valor" placeholder="0,00">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Data</label>
-        <input class="form-control" type="date" id="finc-data">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data</label>
+          <input class="form-control" type="date" id="finc-data">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="finc-status">
+            <option value="pendente">⏳ Em aberto</option>
+            <option value="recebido">✅ Já baixado (recebido/pago)</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1972,6 +1981,9 @@ function openTarefaModalForDate(dateStr) {
 }
 function mesAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 function mesLabel(m) { const [y,mm] = m.split('-'); return `${MONTH_NAMES[parseInt(mm,10)-1]} ${y}`; }
+// Lançamentos financeiros realizados (de fato recebidos/pagos) — entradas sem status (dados antigos) contam como realizadas;
+// entradas com status:'pendente' (lançadas como "em aberto") ficam de fora até serem baixadas.
+function financeiroRealizado() { return DB.get('financeiro').filter(f => (f.status || 'recebido') !== 'pendente'); }
 function fillClienteSelect(sel, selected) {
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
   sel.innerHTML = '<option value="">— Nenhum —</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
@@ -3271,6 +3283,7 @@ function openFinanceiroModal(id) {
       document.getElementById('finc-cliente').value = f.clienteId || '';
       document.getElementById('finc-valor').value = f.valor || '';
       document.getElementById('finc-data').value = f.data || '';
+      document.getElementById('finc-status').value = f.status || 'recebido';
     }
   } else {
     document.getElementById('finc-tipo').value = 'receita';
@@ -3278,6 +3291,7 @@ function openFinanceiroModal(id) {
     document.getElementById('finc-desc').value = '';
     document.getElementById('finc-valor').value = '';
     document.getElementById('finc-data').value = (typeof finMesAtual !== 'undefined' && finMesAtual === mesAtual()) ? today() : ultimoDiaDoMes(finMesAtual);
+    document.getElementById('finc-status').value = 'pendente';
   }
   openModal('modal-financeiro');
 }
@@ -3296,6 +3310,7 @@ function saveFinanceiro() {
     desc, valor,
     clienteId: document.getElementById('finc-cliente').value,
     data: document.getElementById('finc-data').value || today(),
+    status: document.getElementById('finc-status').value || 'pendente',
   };
   if (editId) { const i = financeiro.findIndex(x=>x.id===editId); if (i>-1) financeiro[i]=item; }
   else financeiro.push(item);
@@ -3308,6 +3323,17 @@ function saveFinanceiro() {
 function deleteFinanceiro(id) {
   DB.set('financeiro', DB.get('financeiro').filter(x=>x.id!==id));
   toast('🗑️ Excluído');
+  renderAll();
+}
+
+// Marca um lançamento manual (receita ou despesa) que estava "em aberto" como já baixado (recebido/pago)
+function marcarLancamentoBaixado(id) {
+  const financeiro = DB.get('financeiro');
+  const item = financeiro.find(x=>x.id===id);
+  if (!item) return;
+  item.status = 'recebido';
+  DB.set('financeiro', financeiro);
+  toast('✅ Lançamento baixado');
   renderAll();
 }
 
@@ -3337,12 +3363,12 @@ function renderPrevisaoRecebimento() {
   const mes = finMesAtual;
   const previsaoMesLabelEl = document.getElementById('fin-previsao-mes-label');
   if (previsaoMesLabelEl) previsaoMesLabelEl.textContent = mes === mesAtual() ? `${mesLabel(mes)} (mês atual)` : mesLabel(mes);
-  const financeiro = DB.get('financeiro');
+  const financeiroReal = financeiroRealizado();
   // Recorrentes: só clientes com fechamento mensal marcado (honorário previsível todo mês)
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario > 0).sort(ordenarPorCodigo);
 
   let linhas = clientesRecorrentes.map(c => {
-    const recebido = financeiro
+    const recebido = financeiroReal
       .filter(f => f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes)
       .reduce((s,f)=>s+f.valor,0);
     let status, statusChip;
@@ -3363,11 +3389,15 @@ function renderPrevisaoRecebimento() {
     return { origem:'avulso', id:a.id, clienteId:a.clienteId, nome: cliente ? cliente.nome : '—', desc:a.descricao, previsto:a.valor, recebido: status==='recebido'?a.valor:0, status, statusChip };
   });
 
-  // Lançamentos manuais de receita (criados via "+ Novo lançamento", sem vir de uma baixa) — já são um fato consumado
-  const manuais = financeiro.filter(f => f.tipo==='receita' && f.data && f.data.slice(0,7)===mes && !f.origem);
+  // Lançamentos manuais de receita (criados via "+ Novo lançamento") — podem estar "em aberto" ou já baixados
+  const manuais = DB.get('financeiro').filter(f => f.tipo==='receita' && f.data && f.data.slice(0,7)===mes && !f.origem);
   const linhasManuais = manuais.map(f => {
     const cliente = f.clienteId ? DB.get('clientes').find(c=>c.id===f.clienteId) : null;
-    return { origem:'manual', id:f.id, clienteId:f.clienteId, nome: cliente ? cliente.nome : (f.desc||'Lançamento manual'), desc: cliente?f.desc:'', previsto:f.valor, recebido:f.valor, status:'recebido', statusChip: '<span class="chip chip-green">✅ Recebido</span>' };
+    const status = (f.status || 'recebido') === 'recebido' ? 'recebido' : 'pendente';
+    const statusChip = status === 'recebido'
+      ? '<span class="chip chip-green">✅ Recebido</span>'
+      : '<span class="chip chip-red">⏳ Em aberto</span>';
+    return { origem:'manual', id:f.id, clienteId:f.clienteId, nome: cliente ? cliente.nome : (f.desc||'Lançamento manual'), desc: cliente?f.desc:'', previsto:f.valor, recebido: status==='recebido'?f.valor:0, status, statusChip };
   });
 
   linhas = [...linhas, ...linhasAvulsas, ...linhasManuais];
@@ -3376,9 +3406,9 @@ function renderPrevisaoRecebimento() {
 
   const totalPrevisto = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0) + avulsos.reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
   const totalRecebido = clientesRecorrentes.reduce((s,c)=>{
-    const rec = financeiro.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((ss,f)=>ss+f.valor,0);
+    const rec = financeiroReal.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((ss,f)=>ss+f.valor,0);
     return s + Math.min(rec, c.honorario);
-  }, 0) + avulsos.filter(a=>a.status==='recebido').reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
+  }, 0) + avulsos.filter(a=>a.status==='recebido').reduce((s,a)=>s+a.valor,0) + linhasManuais.filter(l=>l.status==='recebido').reduce((s,l)=>s+l.recebido,0);
   document.getElementById('fin-previsto').textContent = fmtMoney(totalPrevisto);
   document.getElementById('fin-recebido-pct').textContent = totalPrevisto > 0 ? `${Math.round(totalRecebido/totalPrevisto*100)}% do previsto` : '—';
 
@@ -3410,22 +3440,27 @@ function renderPrevisaoRecebimento() {
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
+          ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${l.id}')" title="Marcar como recebido">💰 Marcar recebido</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}</td>
       </tr>`;
     }).join('');
   }
 
   // Despesas do mês — resumo compacto (não entram na Previsão, mas ficam visíveis já que a tabela geral saiu)
-  const despesasMes = financeiro.filter(f => f.tipo==='despesa' && f.data && f.data.slice(0,7)===mes);
+  const despesasMes = DB.get('financeiro').filter(f => f.tipo==='despesa' && f.data && f.data.slice(0,7)===mes);
   const despesasEl = document.getElementById('previsao-despesas-lista');
   if (despesasEl) {
-    despesasEl.innerHTML = despesasMes.length ? despesasMes.map(f => `
+    despesasEl.innerHTML = despesasMes.length ? despesasMes.map(f => {
+      const pago = (f.status || 'recebido') === 'recebido';
+      return `
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
-        <div style="flex:1"><div style="font-size:12.5px">${f.desc}</div><div style="font-size:10.5px;color:var(--text3)">${fmtDate(f.data)}</div></div>
+        <div style="flex:1"><div style="font-size:12.5px">${f.desc} ${pago?'':'<span class=\"chip chip-red\" style=\"font-size:10px;margin-left:4px\">⏳ Em aberto</span>'}</div><div style="font-size:10.5px;color:var(--text3)">${fmtDate(f.data)}</div></div>
         <div style="font-weight:600;color:var(--red);font-family:var(--font-mono)">-${fmtMoney(f.valor)}</div>
+        ${pago ? '' : `<button class="btn btn-primary btn-sm" onclick="marcarLancamentoBaixado('${f.id}')" title="Marcar como pago">✅ Marcar pago</button>`}
         <button class="btn btn-ghost btn-sm" onclick="openFinanceiroModal('${f.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteFinanceiro('${f.id}')">🗑️</button>
-      </div>`).join('') : `<div style="font-size:12px;color:var(--text3);padding:6px 0">Nenhuma despesa lançada este mês</div>`;
+      </div>`;
+    }).join('') : `<div style="font-size:12px;color:var(--text3);padding:6px 0">Nenhuma despesa lançada este mês</div>`;
   }
 }
 
@@ -3464,7 +3499,7 @@ function deletePrevisaoAvulsa(id) {
 }
 
 function renderFinanceiro() {
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado(); // só o que já foi de fato recebido/pago — "em aberto" não entra nos totais
   const mes = finMesAtual;
   const doMes = financeiro.filter(f=>f.data && f.data.slice(0,7)===mes);
   const receita = doMes.filter(f=>f.tipo==='receita').reduce((s,f)=>s+f.valor,0);
@@ -3593,7 +3628,7 @@ function renderRelatorioRentabilidade() {
   const mesesSet = new Set(periodos.map(p=>p.mes));
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo');
   const horas = DB.get('horas').filter(r=>mesesSet.has((r.data||'').slice(0,7)));
-  const financeiro = DB.get('financeiro').filter(f=>f.tipo==='receita' && mesesSet.has((f.data||'').slice(0,7)));
+  const financeiro = financeiroRealizado().filter(f=>f.tipo==='receita' && mesesSet.has((f.data||'').slice(0,7)));
 
   const linhas = clientes.map(c => {
     const segundos = horas.filter(r=>r.clienteId===c.id).reduce((s,r)=>s+r.segundos,0);
@@ -3628,7 +3663,7 @@ function renderRelatorioRentabilidade() {
 // ── 2) Faturamento por período ──────────────────────────
 function renderRelatorioFaturamento() {
   const periodos = mesesDoPeriodoSelecionado();
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado();
   const servicos = ['contabil','gestao_financeira','imposto_renda','geral'];
   const servicoLabel = { contabil:'Contábil', gestao_financeira:'Gestão Financeira', imposto_renda:'Imposto de Renda', geral:'Geral' };
 
@@ -3674,7 +3709,7 @@ function renderRelatorioFaturamento() {
 // ── 3) Previsão x Realizado (histórico) ─────────────────
 function renderRelatorioPrevisaoRealizado() {
   const periodos = mesesDoPeriodoSelecionado();
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado();
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.temFechamento===true && c.honorario>0);
   const avulsos = DB.get('previsoesAvulsas');
 
@@ -3817,7 +3852,7 @@ function renderRelatorioAtividades() {
 // ── 5) Inadimplência ─────────────────────────────────────
 function renderRelatorioInadimplencia() {
   const mes = mesAtual();
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado();
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario>0);
 
   const pendentesRecorrentes = clientesRecorrentes.map(c => {
@@ -3929,7 +3964,7 @@ function renderRelatorioResumo() {
   const mesesSet = new Set(periodos.map(p=>p.mes));
   const compsSet = new Set(periodos.map(p => { const [y,m]=p.mes.split('-'); return `${m}/${y}`; }));
 
-  const financeiro = DB.get('financeiro').filter(f=>mesesSet.has((f.data||'').slice(0,7)));
+  const financeiro = financeiroRealizado().filter(f=>mesesSet.has((f.data||'').slice(0,7)));
   const receita = financeiro.filter(f=>f.tipo==='receita').reduce((s,f)=>s+f.valor,0);
   const despesa = financeiro.filter(f=>f.tipo==='despesa').reduce((s,f)=>s+f.valor,0);
 
@@ -3938,7 +3973,7 @@ function renderRelatorioResumo() {
 
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.temFechamento===true && c.honorario>0);
   const previstoMes = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0) + DB.get('previsoesAvulsas').filter(a=>a.mes===mesAtual()).reduce((s,a)=>s+a.valor,0);
-  const realizadoMes = DB.get('financeiro').filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===mesAtual()).reduce((s,f)=>s+f.valor,0);
+  const realizadoMes = financeiroRealizado().filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===mesAtual()).reduce((s,f)=>s+f.valor,0);
   const pctPrevisto = previstoMes>0 ? Math.round(realizadoMes/previstoMes*100) : 0;
 
   const obrigacoes = DB.get('obrigacoes').filter(o => compsSet.has(o.competencia));
@@ -4351,7 +4386,7 @@ function mesesComEvidenciaCliente(clienteId) {
 // integralmente + valores avulsos pendentes lançados para meses passados.
 function calcularDevidoMesesAnteriores() {
   const hoje = mesAtual();
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado(); // só o que já foi de fato recebido conta para "quitar" o mês
   const porChave = {};
 
   // 1) Recorrentes: honorário - recebido naquele mês
@@ -4377,6 +4412,16 @@ function calcularDevidoMesesAnteriores() {
     if (!porChave[key]) porChave[key] = { clienteId: a.clienteId || null, nome: cliente ? cliente.nome : (a.descricao || 'Valor avulso'), total: 0, itens: [] };
     porChave[key].total += a.valor;
     porChave[key].itens.push({ tipo: 'avulso', mes: a.mes, falta: a.valor, avulsoId: a.id, desc: a.descricao });
+  });
+
+  // 3) Lançamentos manuais (receita) marcados como "em aberto" para meses anteriores
+  const lancamentosPendentes = DB.get('financeiro').filter(f => f.tipo==='receita' && (f.status||'recebido')==='pendente' && f.data && f.data.slice(0,7) < hoje);
+  lancamentosPendentes.forEach(f => {
+    const cliente = f.clienteId ? DB.get('clientes').find(c=>c.id===f.clienteId) : null;
+    const key = f.clienteId || ('lanc-' + f.id);
+    if (!porChave[key]) porChave[key] = { clienteId: f.clienteId || null, nome: cliente ? cliente.nome : (f.desc || 'Lançamento'), total: 0, itens: [] };
+    porChave[key].total += f.valor;
+    porChave[key].itens.push({ tipo: 'lancamento', mes: f.data.slice(0,7), falta: f.valor, lancamentoId: f.id, desc: f.desc });
   });
 
   let totalGeral = 0;
@@ -4425,20 +4470,27 @@ function renderDevidoAnterior() {
         <span class="chip chip-red" style="font-family:var(--font-mono)">${fmtMoney(p.total)}</span>
       </div>
       <div>
-        ${p.itens.map(m => `
+        ${p.itens.map(m => {
+          const chipLabel = m.tipo==='avulso' ? 'Avulso' : (m.tipo==='lancamento' ? 'Lançamento' : 'Recorrente');
+          const chipClass = m.tipo==='avulso' ? 'chip-purple' : (m.tipo==='lancamento' ? 'chip-gray' : 'chip-blue');
+          const baixarBtn = m.tipo==='lancamento'
+            ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${m.lancamentoId}')">💰 Baixar</button>`
+            : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${p.clienteId||''}', ${m.falta.toFixed(2)}, '${mesLabel(m.mes)}', ${m.tipo==='avulso'?`'${m.avulsoId}'`:'null'}, ${m.tipo==='avulso'?`'${(m.desc||'Valor avulso').replace(/'/g,"\\'")}'`:'null'}, '${ultimoDiaDoMes(m.mes)}')">💰 Baixar</button>`;
+          return `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border)">
             <span style="font-size:12px;color:var(--text2)">
               ${mesLabel(m.mes)}
-              <span class="chip ${m.tipo==='avulso'?'chip-purple':'chip-blue'}" style="margin-left:6px;font-size:10px">${m.tipo==='avulso'?'Avulso':'Recorrente'}</span>
-              ${m.tipo==='avulso' && m.desc ? `<div style="font-size:11px;color:var(--text3)">${m.desc}</div>` : ''}
+              <span class="chip ${chipClass}" style="margin-left:6px;font-size:10px">${chipLabel}</span>
+              ${(m.tipo==='avulso'||m.tipo==='lancamento') && m.desc ? `<div style="font-size:11px;color:var(--text3)">${m.desc}</div>` : ''}
             </span>
             <div style="display:flex;align-items:center;gap:10px">
               <span style="font-family:var(--font-mono);font-size:12px;color:var(--red)">${fmtMoney(m.falta)}</span>
-              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${p.clienteId||''}', ${m.falta.toFixed(2)}, '${mesLabel(m.mes)}', ${m.tipo==='avulso'?`'${m.avulsoId}'`:'null'}, ${m.tipo==='avulso'?`'${(m.desc||'Valor avulso').replace(/'/g,"\\'")}'`:'null'}, '${ultimoDiaDoMes(m.mes)}')">💰 Baixar</button>
+              ${baixarBtn}
               ${m.tipo==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${m.avulsoId}')">🗑️</button>` : ''}
+              ${m.tipo==='lancamento' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${m.lancamentoId}')">🗑️</button>` : ''}
             </div>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     </div>
   `).join('');
@@ -4467,6 +4519,7 @@ function confirmarBaixaRecebimento() {
     clienteId: clienteId || '',
     valor,
     data,
+    status: 'recebido',
     origem: avulsoId ? 'avulso' : 'recorrente',
   });
   DB.set('financeiro', financeiro);
@@ -4496,7 +4549,7 @@ function renderFechamento() {
     const done = etapas.filter(e=>e.done).length;
     const pct = etapas.length ? Math.round(done/etapas.length*100) : 0;
     const historico = historicoFechamento(c.id);
-    const recebidoMes = DB.get('financeiro').filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
+    const recebidoMes = financeiroRealizado().filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
     const jaRecebido = c.honorario > 0 && recebidoMes >= c.honorario;
     return `
     <div class="card hud">
@@ -5079,7 +5132,7 @@ function renderGuia() {
   }
 
   const mesAtualStr = mesAtual();
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado();
   const recorrentesPendentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario>0).filter(c => {
     const recebido = financeiro.filter(f=>f.tipo==='receita'&&f.clienteId===c.id&&f.data&&f.data.slice(0,7)===mesAtualStr).reduce((s,f)=>s+f.valor,0);
     return recebido < c.honorario;
@@ -5142,7 +5195,7 @@ function renderDashboard() {
   document.getElementById('m-horas-mes').textContent = fmtDuracaoCurta(totalSegundosMes);
   document.getElementById('m-horas-sub').textContent = `${horasMes.length} registro${horasMes.length!==1?'s':''}`;
 
-  const financeiro = DB.get('financeiro');
+  const financeiro = financeiroRealizado();
   const mes = mesAtual();
   const doMes = financeiro.filter(f=>f.data && f.data.slice(0,7)===mes);
   const receitaMes = doMes.filter(f=>f.tipo==='receita').reduce((s,f)=>s+f.valor,0);
