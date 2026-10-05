@@ -385,10 +385,13 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
         <div class="card hud" style="margin-bottom:18px" id="home-agenda-card">
           <div class="card-header">
-            <span class="card-title">📅 Sua agenda hoje</span>
-            <button class="btn btn-ghost btn-sm" onclick="showPage('agenda')">Ver agenda completa →</button>
+            <span class="card-title">📅 Minha Agenda hoje</span>
           </div>
+          <div id="home-agenda-resumo" style="display:flex;gap:16px;padding:12px 20px;border-bottom:1px solid var(--border);font-size:12.5px"></div>
           <div id="home-agenda-lista" style="padding:6px 0"></div>
+          <div style="padding:12px 20px;border-top:1px solid var(--border)">
+            <button class="btn btn-ghost btn-sm" style="width:100%" onclick="showPage('agenda')">Ver agenda completa →</button>
+          </div>
         </div>
 
         <div class="card hud" style="margin-bottom:18px" id="guia-card">
@@ -603,12 +606,42 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ AGENDA ══════════ -->
       <div class="page" id="page-agenda">
+        <!-- ══════════ MINHA AGENDA — hoje + vencidas (visão principal) ══════════ -->
+        <div class="card hud" style="margin-bottom:14px">
+          <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <span class="card-title" id="agfoco-titulo">AGENDA</span>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openTarefaModal()">+ Nova tarefa</button>
+          </div>
+          <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
+            <select class="form-control" id="agfoco-empresa" style="max-width:220px" onchange="setAgendaFocoEmpresa(this.value)">
+              <option value="">Todas as empresas</option>
+            </select>
+            <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
+              <button class="btn btn-ghost btn-sm" id="agfoco-status-todas" onclick="setAgendaFocoStatus('todas')" style="background:var(--surface)">Todas</button>
+              <button class="btn btn-ghost btn-sm" id="agfoco-status-pendentes" onclick="setAgendaFocoStatus('pendentes')">Pendentes</button>
+              <button class="btn btn-ghost btn-sm" id="agfoco-status-concluidas" onclick="setAgendaFocoStatus('concluidas')">Concluídas</button>
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:var(--text3)" id="agfoco-resumo"></div>
+          </div>
+          <div id="agfoco-lista" style="padding:14px 20px"></div>
+        </div>
+
         <div class="card hud" id="agenda-em-andamento-card" style="display:none;margin-bottom:14px;border-color:rgba(87,184,255,.5);box-shadow:0 0 0 1px rgba(87,184,255,.25)">
           <div class="card-header">
             <span class="card-title" style="color:var(--accent-m)">🔴 Em execução agora</span>
           </div>
           <div id="agenda-em-andamento-lista"></div>
         </div>
+
+        <!-- ══════════ Calendário completo, feriados, obrigações e horas (secundário, recolhido) ══════════ -->
+        <div style="margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);user-select:none;padding:4px 2px" onclick="toggleAgendaCalendario()">
+          <i class="ti ti-chevron-right" id="agenda-cal-chevron" style="transition:transform .15s;display:inline-block"></i>
+          📅 Calendário completo, feriados, obrigações e controle de horas
+        </div>
+        <div id="agenda-calendario-secao" style="display:none">
         <div class="card" style="margin-bottom:14px">
           <div class="card-body" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:14px 20px">
             <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer"><input type="checkbox" id="cal-filtro-feriados" checked onchange="renderAgendaUnificada()" style="width:15px;height:15px;accent-color:#FF6B9D"> Feriados</label>
@@ -717,6 +750,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             </table>
           </div>
         </div>
+        </div>
       </div>
 
       <!-- ══════════ FINANCEIRO THOTHE ══════════ -->
@@ -773,6 +807,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               </div>
               <button class="btn btn-ghost btn-sm" onclick="abrirPrevisaoAvulsaModal()">+ Valor avulso</button>
               <button class="btn btn-primary btn-sm" onclick="openFinanceiroModal()">+ Novo lançamento</button>
+              <button class="btn btn-ghost btn-sm" onclick="abrirReciboModal()">🧾 Emitir recibo</button>
             </div>
           </div>
           <table class="tbl">
@@ -893,6 +928,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <div class="form-group">
         <label class="form-label">Contato</label>
         <input class="form-control" id="cli-contato" placeholder="Telefone ou e-mail">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CPF/CNPJ (opcional, usado para emitir recibos)</label>
+        <input class="form-control" id="cli-docto" placeholder="000.000.000-00 ou 00.000.000/0000-00">
       </div>
       <div class="form-group">
         <label class="form-label">Status</label>
@@ -1039,6 +1078,48 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-baixa-recebimento')">Cancelar</button>
       <button class="btn btn-primary" onclick="confirmarBaixaRecebimento()">✅ Confirmar recebimento</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-recibo">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><span class="modal-title">🧾 Emitir recibo de honorários</span><button class="modal-close" onclick="closeModal('modal-recibo')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Cliente</label>
+        <select class="form-control" id="rec-cliente" onchange="recPreencherPorCliente()"><option value="">— Selecione ou digite abaixo —</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome do pagador (ajuste se precisar)</label>
+        <input class="form-control" id="rec-nome" placeholder="Nome / Razão social do cliente">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CPF/CNPJ do pagador (opcional)</label>
+        <input class="form-control" id="rec-docto" placeholder="000.000.000-00 ou 00.000.000/0000-00">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Valor (R$) *</label>
+          <input class="form-control" type="number" step="0.01" id="rec-valor" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data do recibo</label>
+          <input class="form-control" type="date" id="rec-data">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Referente a *</label>
+        <input class="form-control" id="rec-referente" placeholder="Ex: honorários contábeis de Setembro/2026">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cidade</label>
+        <input class="form-control" id="rec-cidade" placeholder="São Paulo">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-recibo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="emitirRecibo()">🖨️ Gerar e imprimir</button>
     </div>
   </div>
 </div>
@@ -1411,6 +1492,22 @@ function getConfig() {
 }
 function setConfig(cfg) { DB.set('config', [cfg]); }
 
+// Limpeza única (controlada por flag em config, sincronizada): remove tarefas e séries
+// recorrentes relacionadas a "acordar/despertar", pedido explicitamente pelo usuário.
+// Roda uma vez só — depois disso o usuário pode criar tarefas com essas palavras normalmente.
+function limparTarefasAcordar() {
+  const cfg = getConfig();
+  if (cfg.acordarLimpo) return;
+  const regexAcordar = /acordar|despert/i;
+  const tarefas = DB.get('tarefas');
+  const restantes = tarefas.filter(t => !regexAcordar.test(t.titulo || ''));
+  const removidas = tarefas.length - restantes.length;
+  if (removidas > 0) DB.set('tarefas', restantes);
+  cfg.acordarLimpo = true;
+  setConfig(cfg);
+  if (removidas > 0) { try { toast(`🧹 ${removidas} tarefa${removidas!==1?'s':''} de "acordar" removida${removidas!==1?'s':''} da Agenda`); } catch(e){} }
+}
+
 /* ══════════════════════════════════════════════════════
    AUTH — Supabase Auth (mesma conta do sistema principal)
    ══════════════════════════════════════════════════════ */
@@ -1653,6 +1750,7 @@ function ultimosMeses(n) {
 }
 function fmtDate(d) { if (!d) return '—'; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; }
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS_SEMANA_LONGO = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 const DOW_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
 /* ══════════════════════════════════════════════════════
@@ -1984,6 +2082,68 @@ function mesLabel(m) { const [y,mm] = m.split('-'); return `${MONTH_NAMES[parseI
 // Lançamentos financeiros realizados (de fato recebidos/pagos) — entradas sem status (dados antigos) contam como realizadas;
 // entradas com status:'pendente' (lançadas como "em aberto") ficam de fora até serem baixadas.
 function financeiroRealizado() { return DB.get('financeiro').filter(f => (f.status || 'recebido') !== 'pendente'); }
+
+/* ══════════════════════════════════════════════════════
+   RECIBOS — dados da empresa + valor por extenso
+   ══════════════════════════════════════════════════════ */
+const EMPRESA_NOME = 'THOTHE GESTÃO CORPORATIVA LTDA';
+const EMPRESA_CNPJ = '67.900.995/0001-18';
+
+function extensoTresDigitos(num) {
+  const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+  const dez19 = ['dez','onze','doze','treze','catorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+  const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+  if (num === 0) return '';
+  if (num === 100) return 'cem';
+  const c = Math.floor(num/100), resto = num % 100;
+  const partes = [];
+  if (c > 0) partes.push(centenas[c]);
+  if (resto > 0) {
+    if (resto < 10) partes.push(unidades[resto]);
+    else if (resto < 20) partes.push(dez19[resto-10]);
+    else {
+      const d = Math.floor(resto/10), u = resto % 10;
+      partes.push(dezenas[d] + (u>0 ? ' e ' + unidades[u] : ''));
+    }
+  }
+  return partes.join(' e ');
+}
+
+function numeroPorExtenso(n) {
+  n = Math.floor(n);
+  if (n === 0) return 'zero';
+  const escalas = [
+    { valor: 1000000000, singular: 'bilhão', plural: 'bilhões' },
+    { valor: 1000000, singular: 'milhão', plural: 'milhões' },
+    { valor: 1000, singular: 'mil', plural: 'mil' },
+  ];
+  const partesFinais = [];
+  let resto = n;
+  escalas.forEach(escala => {
+    const qtd = Math.floor(resto / escala.valor);
+    if (qtd > 0) {
+      if (escala.valor === 1000 && qtd === 1) partesFinais.push('mil');
+      else partesFinais.push(extensoTresDigitos(qtd) + ' ' + (qtd === 1 ? escala.singular : escala.plural));
+      resto = resto % escala.valor;
+    }
+  });
+  if (resto > 0 || partesFinais.length === 0) partesFinais.push(extensoTresDigitos(resto));
+  if (partesFinais.length === 1) return partesFinais[0];
+  const ultima = partesFinais.pop();
+  return partesFinais.join(', ') + ' e ' + ultima;
+}
+
+function valorPorExtenso(valor) {
+  valor = Math.round((valor || 0) * 100) / 100;
+  const reais = Math.floor(valor);
+  const centavos = Math.round((valor - reais) * 100);
+  const partes = [];
+  if (reais > 0) partes.push(numeroPorExtenso(reais) + (reais === 1 ? ' real' : ' reais'));
+  if (centavos > 0) partes.push(numeroPorExtenso(centavos) + (centavos === 1 ? ' centavo' : ' centavos'));
+  if (!partes.length) return 'zero reais';
+  return partes.join(' e ');
+}
 function fillClienteSelect(sel, selected) {
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
   sel.innerHTML = '<option value="">— Nenhum —</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
@@ -2049,12 +2209,13 @@ function openClienteModal(id) {
       document.getElementById('cli-upsell').value = c.upsell || 'nao_aplica';
       document.getElementById('cli-honorario').value = c.honorario || '';
       document.getElementById('cli-contato').value = c.contato || '';
+      document.getElementById('cli-docto').value = c.docto || '';
       document.getElementById('cli-status').value = c.status || 'ativo';
       document.getElementById('cli-tem-fechamento').checked = c.temFechamento === true;
       document.getElementById('cli-obs').value = c.obs || '';
     }
   } else {
-    ['cli-codigo','cli-nome','cli-honorario','cli-contato','cli-obs'].forEach(i=>document.getElementById(i).value='');
+    ['cli-codigo','cli-nome','cli-honorario','cli-contato','cli-docto','cli-obs'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('cli-tipo').value = 'contabil';
     document.getElementById('cli-upsell').value = 'nao_aplica';
     document.getElementById('cli-status').value = 'ativo';
@@ -2076,6 +2237,7 @@ function saveCliente() {
     upsell: document.getElementById('cli-upsell').value,
     honorario: parseFloat(document.getElementById('cli-honorario').value) || 0,
     contato: document.getElementById('cli-contato').value.trim(),
+    docto: document.getElementById('cli-docto').value.trim(),
     status: document.getElementById('cli-status').value,
     temFechamento: document.getElementById('cli-tem-fechamento').checked,
     obs: document.getElementById('cli-obs').value.trim(),
@@ -2813,10 +2975,118 @@ function setAgendaListaFiltro(v) {
   renderAgendaLista();
 }
 
+/* ══════════════════════════════════════════════════════
+   MINHA AGENDA — visão principal (hoje + vencidas)
+   ══════════════════════════════════════════════════════ */
+let agendaFocoEmpresaId = '';
+let agendaFocoStatus = 'todas'; // 'todas' | 'pendentes' | 'concluidas'
+
+function popularAgendaFocoEmpresa() {
+  const sel = document.getElementById('agfoco-empresa');
+  if (!sel) return;
+  const atual = sel.value || agendaFocoEmpresaId;
+  const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
+  sel.innerHTML = '<option value="">Todas as empresas</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
+  sel.value = atual;
+}
+
+function setAgendaFocoEmpresa(v) {
+  agendaFocoEmpresaId = v;
+  renderAgendaFoco();
+}
+
+function setAgendaFocoStatus(v) {
+  agendaFocoStatus = v;
+  ['todas','pendentes','concluidas'].forEach(s => {
+    const btn = document.getElementById('agfoco-status-' + s);
+    if (btn) btn.style.background = s===v ? 'var(--surface)' : '';
+  });
+  renderAgendaFoco();
+}
+
+function linhaAgendaFocoItem(t, vencida) {
+  const cliente = t.clienteId ? DB.get('clientes').find(c=>c.id===t.clienteId) : null;
+  const concluida = t.status === 'concluida';
+  const horaLabel = ordemAgendaTarefa(t) !== '23:59' ? ordemAgendaTarefa(t) : '';
+  const tipoIcone = t.tipo==='pessoal' ? '🏠' : '💼';
+  const destaqueVencida = vencida && !concluida;
+  return `
+  <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;background:${destaqueVencida?'var(--red-l)':'var(--surface3)'};border:1px solid var(--border);margin-bottom:6px">
+    <div onclick="toggleTarefa('${t.id}')" title="Marcar como feita" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">${concluida?'✓':''}</div>
+    ${horaLabel ? `<div style="font-family:var(--font-mono);font-size:11.5px;color:${destaqueVencida?'var(--red)':'var(--text3)'};min-width:38px;flex-shrink:0">${horaLabel}</div>` : ''}
+    <div onclick="abrirDetalhesTarefa('${t.id}')" style="flex:1;min-width:0;cursor:pointer">
+      <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaqueVencida?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}${tipoIcone} ${(t.titulo||'').replace(/</g,'&lt;')}${t.recorrencia?' 🔁':''}</div>
+      ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirTarefaComOpcoes('${t.id}')" title="Excluir">🗑️</button>
+  </div>`;
+}
+
+// Tarefas de HOJE + VENCIDAS (dias anteriores, ainda pendentes) — a Agenda não mostra tarefas futuras de outros dias.
+function tarefasAgendaFoco() {
+  const hoje = today();
+  const todasTarefas = DB.get('tarefas').filter(t => !agendaFocoEmpresaId || t.clienteId === agendaFocoEmpresaId);
+  const vencidas = todasTarefas
+    .filter(t => t.status !== 'concluida' && t.data && t.data < hoje)
+    .sort((a,b) => a.data.localeCompare(b.data) || ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
+  const hojeTarefas = todasTarefas
+    .filter(t => t.data === hoje)
+    .sort((a,b) => ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
+  return { vencidas, hojeTarefas };
+}
+
+function renderAgendaFoco() {
+  popularAgendaFocoEmpresa();
+  const tituloEl = document.getElementById('agfoco-titulo');
+  const subEl = document.getElementById('agfoco-data-sub');
+  const resumoEl = document.getElementById('agfoco-resumo');
+  const el = document.getElementById('agfoco-lista');
+  if (!el) return;
+
+  const hoje = today();
+  const d = new Date(hoje + 'T12:00:00');
+  if (tituloEl) tituloEl.textContent = 'AGENDA — Hoje';
+  if (subEl) subEl.textContent = `${DIAS_SEMANA_LONGO[d.getDay()]}, ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
+
+  const { vencidas, hojeTarefas } = tarefasAgendaFoco();
+  const hojePendentes = hojeTarefas.filter(t=>t.status!=='concluida');
+  const hojeConcluidas = hojeTarefas.filter(t=>t.status==='concluida');
+
+  if (resumoEl) resumoEl.textContent = `🔴 ${vencidas.length} vencida${vencidas.length!==1?'s':''} · 🟡 ${hojePendentes.length} pendente${hojePendentes.length!==1?'s':''} · ☑ ${hojeConcluidas.length} concluída${hojeConcluidas.length!==1?'s':''}`;
+
+  let html = '';
+  const mostrarPendentes = agendaFocoStatus !== 'concluidas';
+  const mostrarConcluidas = agendaFocoStatus !== 'pendentes';
+
+  if (mostrarPendentes && vencidas.length) {
+    html += `<div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">⚠️ Vencidas</div>`;
+    html += vencidas.map(t => linhaAgendaFocoItem(t, true)).join('');
+    html += `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+  }
+
+  if (mostrarPendentes && hojePendentes.length) {
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">HOJE</div>`;
+    html += hojePendentes.map(t => linhaAgendaFocoItem(t, false)).join('');
+  }
+
+  if (mostrarConcluidas && hojeConcluidas.length) {
+    if (html) html += `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">CONCLUÍDAS</div>`;
+    html += hojeConcluidas.map(t => linhaAgendaFocoItem(t, false)).join('');
+  }
+
+  if (!html) {
+    el.innerHTML = `<div class="empty-state" style="padding:24px"><div class="ico">✨</div><div class="txt">${agendaFocoStatus==='concluidas' ? 'Nada concluído ainda hoje' : 'Nada pendente — bom trabalho!'}</div></div>`;
+  } else {
+    el.innerHTML = html;
+  }
+}
+
 function renderAgendaUnificada() {
   popularFiltroClienteCalendario();
   renderCalendarioGrid();
   renderAgendaLista();
+  renderAgendaFoco();
   const timersAtivos = getTimersAtivos();
   const bannerEl = document.getElementById('agenda-em-andamento-card');
   if (bannerEl) {
@@ -2828,6 +3098,15 @@ function renderAgendaUnificada() {
 }
 
 let horasSectionAberta = false;
+let agendaCalendarioExpandido = false;
+
+function toggleAgendaCalendario() {
+  agendaCalendarioExpandido = !agendaCalendarioExpandido;
+  const secao = document.getElementById('agenda-calendario-secao');
+  const chevron = document.getElementById('agenda-cal-chevron');
+  if (secao) secao.style.display = agendaCalendarioExpandido ? '' : 'none';
+  if (chevron) chevron.style.transform = agendaCalendarioExpandido ? 'rotate(90deg)' : 'rotate(0deg)';
+}
 
 function toggleHorasSection() {
   horasSectionAberta = !horasSectionAberta;
@@ -2931,17 +3210,22 @@ function saveTarefa() {
   if (!titulo) { toast('⚠️ Informe o título'); return; }
   const editId = document.getElementById('tar-edit-id').value;
   const tarefas = DB.get('tarefas');
+  const existente = editId ? tarefas.find(x=>x.id===editId) : null;
+  const horaInformada = document.getElementById('tar-hora').value;
   const item = {
     id: editId || DB.id(),
     tipo: document.getElementById('tar-tipo').value || 'profissional',
     titulo,
     clienteId: document.getElementById('tar-cliente').value,
     data: document.getElementById('tar-data').value,
-    hora: document.getElementById('tar-hora').value,
+    hora: horaInformada,
     prioridade: document.getElementById('tar-prioridade').value,
     recorrencia: document.getElementById('tar-recorrencia').value,
     comentarios: document.getElementById('tar-comentarios').value.trim(),
-    status: editId ? (tarefas.find(x=>x.id===editId)||{}).status || 'pendente' : 'pendente',
+    status: existente ? (existente.status || 'pendente') : 'pendente',
+    // Horário de criação — usado para ordenar na Agenda quando a tarefa não tem horário definido.
+    // Só é gravado na criação (nunca sobrescrito numa edição) e nunca altera um horário já definido.
+    horaCriacao: existente ? existente.horaCriacao : (horaInformada ? null : horaAgora()),
   };
   if (editId) { const i = tarefas.findIndex(x=>x.id===editId); if (i>-1) tarefas[i]=item; }
   else tarefas.push(item);
@@ -2950,6 +3234,17 @@ function saveTarefa() {
   closeModal('modal-tarefa');
   toast('✅ Tarefa salva');
   renderAll();
+}
+
+function horaAgora() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// Horário efetivo usado para ordenar uma tarefa na Agenda: o horário definido manualmente
+// tem prioridade; na ausência dele, usa o horário em que a tarefa foi criada.
+function ordemAgendaTarefa(t) {
+  return t.hora || t.horaCriacao || '23:59';
 }
 
 // Avança uma data (AAAA-MM-DD) conforme o tipo de recorrência
@@ -3441,7 +3736,8 @@ function renderPrevisaoRecebimento() {
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${l.id}')" title="Marcar como recebido">💰 Marcar recebido</button>` : ''}
-          ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}</td>
+          ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}
+          ${l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'honorários contábeis de ${mesLabel(mes)}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -4381,6 +4677,103 @@ function ultimoDiaDoMes(mesStr) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+/* ══════════════════════════════════════════════════════
+   RECIBOS DE HONORÁRIOS
+   ══════════════════════════════════════════════════════ */
+function abrirReciboModal(clienteId, valor, referente, data) {
+  fillClienteSelect(document.getElementById('rec-cliente'));
+  document.getElementById('rec-cliente').value = clienteId || '';
+  const c = clienteId ? DB.get('clientes').find(x=>x.id===clienteId) : null;
+  document.getElementById('rec-nome').value = c ? c.nome : '';
+  document.getElementById('rec-docto').value = c ? (c.docto || '') : '';
+  document.getElementById('rec-valor').value = (valor !== undefined && valor !== null) ? Number(valor).toFixed(2) : '';
+  document.getElementById('rec-data').value = data || today();
+  document.getElementById('rec-referente').value = referente || '';
+  document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
+  openModal('modal-recibo');
+}
+
+function recPreencherPorCliente() {
+  const clienteId = document.getElementById('rec-cliente').value;
+  if (!clienteId) return;
+  const c = DB.get('clientes').find(x=>x.id===clienteId);
+  if (!c) return;
+  document.getElementById('rec-nome').value = c.nome;
+  document.getElementById('rec-docto').value = c.docto || '';
+  if (!document.getElementById('rec-valor').value && c.honorario) document.getElementById('rec-valor').value = c.honorario.toFixed(2);
+}
+
+function emitirRecibo() {
+  const nome = document.getElementById('rec-nome').value.trim();
+  const docto = document.getElementById('rec-docto').value.trim();
+  const valor = parseFloat(document.getElementById('rec-valor').value);
+  const data = document.getElementById('rec-data').value || today();
+  const referente = document.getElementById('rec-referente').value.trim();
+  const cidade = document.getElementById('rec-cidade').value.trim() || 'São Paulo';
+
+  if (!nome) { toast('⚠️ Informe o nome do pagador'); return; }
+  if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
+  if (!referente) { toast('⚠️ Informe a que se refere o recibo'); return; }
+
+  const dataFmt = fmtDate(data);
+  const [y,m,d] = data.split('-');
+  const dataExtensoFmt = `${cidade}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('⚠️ O navegador bloqueou a janela de impressão — permita pop-ups para este site.'); return; }
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo — ${nome}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color:#111; padding:48px; max-width:720px; margin:0 auto; background:#fff; }
+  .recibo { border:1.5px solid #222; border-radius:10px; padding:36px 40px; }
+  .topo { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #222; padding-bottom:16px; margin-bottom:24px; }
+  .topo h1 { font-size:16px; margin:0 0 3px; letter-spacing:.03em; }
+  .topo .cnpj { font-size:11.5px; color:#555; }
+  .topo .numrec { text-align:right; font-size:11px; color:#555; }
+  .titulo { text-align:center; font-size:20px; font-weight:700; letter-spacing:.12em; margin:0 0 26px; }
+  .valor-box { text-align:center; font-size:26px; font-weight:700; border:1.5px solid #222; border-radius:8px; padding:12px; margin-bottom:26px; }
+  .corpo { font-size:14px; line-height:1.9; text-align:justify; margin-bottom:34px; }
+  .corpo strong { font-weight:700; }
+  .assinatura { margin-top:60px; text-align:center; }
+  .linha-assinatura { border-top:1px solid #222; width:320px; margin:0 auto 6px; }
+  .assinatura .nome { font-size:13px; font-weight:600; }
+  .assinatura .cnpj { font-size:11px; color:#555; }
+  .data-local { text-align:right; font-size:13px; margin-bottom:46px; }
+  @media print { body { padding:14mm; } .recibo { border-color:#000; } }
+</style></head>
+<body>
+  <div class="recibo">
+    <div class="topo">
+      <div>
+        <h1>${EMPRESA_NOME}</h1>
+        <div class="cnpj">CNPJ ${EMPRESA_CNPJ}</div>
+      </div>
+      <div class="numrec">Recibo de honorários<br>${dataFmt}</div>
+    </div>
+    <div class="titulo">RECIBO</div>
+    <div class="valor-box">R$ ${fmtMoney(valor).replace('R$','').trim()}</div>
+    <div class="corpo">
+      Recebemos de <strong>${nome}</strong>${docto ? `, inscrito(a) no CPF/CNPJ sob o nº <strong>${docto}</strong>,` : ','}
+      a importância de <strong>${valorPorExtenso(valor)}</strong>, referente a <strong>${referente}</strong>.
+      <br><br>
+      Para clareza e devidos efeitos, firmamos o presente recibo.
+    </div>
+    <div class="data-local">${dataExtensoFmt}</div>
+    <div class="assinatura">
+      <div class="linha-assinatura"></div>
+      <div class="nome">${EMPRESA_NOME}</div>
+      <div class="cnpj">CNPJ ${EMPRESA_CNPJ}</div>
+    </div>
+  </div>
+</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 350);
+  closeModal('modal-recibo');
+}
+
 // Meses em que há evidência real de que o cliente estava ativo (fechamento registrado ou
 // algum lançamento financeiro) — evita inventar dívida de antes do cliente existir no sistema.
 function mesesComEvidenciaCliente(clienteId) {
@@ -5098,32 +5491,39 @@ function renderCotacoes(data, ts, offline) {
 }
 
 /* ── Agenda de hoje — resumo no Início, mesma lógica/linha da Agenda ── */
+// Prévia da Agenda na Tela Inicial — mesma fonte de dados da Agenda (tarefasAgendaFoco),
+// mostrando só um resumo + prévia curta. Clicar em "Ver agenda completa" abre a Agenda de fato.
 function renderAgendaHomeHoje() {
   const el = document.getElementById('home-agenda-lista');
+  const resumoEl = document.getElementById('home-agenda-resumo');
   if (!el) return;
-  const hoje = today();
-  const feriados = feriadosNoDia(hoje);
-  const tarefasHoje = DB.get('tarefas').filter(t => t.data === hoje).sort((a,b)=>(a.hora||'99:99').localeCompare(b.hora||'99:99'));
-  const obrigHoje = DB.get('obrigacoes').filter(o => o.venc === hoje);
-  const registrosHoje = DB.get('horas').filter(r => r.data === hoje);
 
-  let html = feriados.map(f => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:0.5px solid var(--border)">
-      <span style="width:8px;height:8px;border-radius:50%;background:${ESFERA_COR[f.esfera]};flex-shrink:0"></span>
-      <div style="font-size:13px">${f.nome}</div>
-    </div>`).join('');
+  const { vencidas, hojeTarefas } = tarefasAgendaFoco();
+  const pendentes = hojeTarefas.filter(t=>t.status!=='concluida');
+  const concluidas = hojeTarefas.filter(t=>t.status==='concluida');
 
-  if (!tarefasHoje.length && !obrigHoje.length && !registrosHoje.length && !feriados.length) {
-    html += `<div class="empty-state" style="padding:24px"><div class="txt">Nada agendado para hoje</div><div class="sub">Aproveite ou crie uma nova tarefa</div></div>`;
-  } else {
-    html += tarefasHoje.filter(t=>t.status!=='concluida').map(t => linhaAgendaComAcoes(t, true)).join('');
-    html += obrigHoje.filter(o=>o.status!=='concluida').map(o => linhaAgendaComAcoes(o, false)).join('');
-    const concluidas = [
-      ...tarefasHoje.filter(t=>t.status==='concluida').map(t => linhaAgendaComAcoes(t, true)),
-      ...obrigHoje.filter(o=>o.status==='concluida').map(o => linhaAgendaComAcoes(o, false)),
-      ...registrosHoje.map(r => linhaHorasNaAgenda(r)),
-    ];
-    html += concluidas.join('');
+  if (resumoEl) {
+    resumoEl.innerHTML = `
+      <span style="cursor:pointer" onclick="showPage('agenda')">🔴 <strong>${vencidas.length}</strong> vencida${vencidas.length!==1?'s':''}</span>
+      <span style="cursor:pointer" onclick="showPage('agenda')">🟡 <strong>${pendentes.length}</strong> pendente${pendentes.length!==1?'s':''}</span>
+      <span style="cursor:pointer" onclick="showPage('agenda')">☑ <strong>${concluidas.length}</strong> concluída${concluidas.length!==1?'s':''}</span>`;
+  }
+
+  if (!vencidas.length && !pendentes.length && !concluidas.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:24px"><div class="txt">Nada agendado para hoje</div><div class="sub">Aproveite ou crie uma nova tarefa</div></div>`;
+    return;
+  }
+
+  let html = '';
+  if (vencidas.length) {
+    html += `<div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin:10px 20px 4px">Vencidas</div>`;
+    html += vencidas.slice(0,3).map(t => linhaAgendaFocoItem(t, true)).join('').replace(/margin-bottom:6px/g,'margin:0 20px 6px');
+    if (vencidas.length > 3) html += `<div style="font-size:11px;color:var(--text3);margin:0 20px 6px;cursor:pointer" onclick="showPage('agenda')">+ ${vencidas.length-3} vencida${vencidas.length-3!==1?'s':''}…</div>`;
+  }
+  if (pendentes.length) {
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:10px 20px 4px">Próximas</div>`;
+    html += pendentes.slice(0,4).map(t => linhaAgendaFocoItem(t, false)).join('').replace(/margin-bottom:6px/g,'margin:0 20px 6px');
+    if (pendentes.length > 4) html += `<div style="font-size:11px;color:var(--text3);margin:0 20px 6px;cursor:pointer" onclick="showPage('agenda')">+ ${pendentes.length-4} tarefa${pendentes.length-4!==1?'s':''}…</div>`;
   }
   el.innerHTML = html;
 }
@@ -5291,10 +5691,11 @@ function startApp() {
   if (getTimersAtivos().length) iniciarLoopTimer();
   verificarSincronia();
   if (SUPA_URL && SUPA_KEY) {
-    DB.pull().then(() => { gerarCodigosClientes(true); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+    DB.pull().then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
+    limparTarefasAcordar();
     gerarOcorrenciasRecorrentesFuturas();
   }
 }
