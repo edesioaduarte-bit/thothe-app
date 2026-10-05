@@ -3049,8 +3049,10 @@ function tarefasAgendaFoco() {
   const vencidas = todasTarefas
     .filter(t => t.status !== 'concluida' && t.data && t.data < hoje)
     .sort((a,b) => a.data.localeCompare(b.data) || ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
+  // Tarefa de hoje OU uma vencida que acabou de ser concluída hoje — ela sai das "Vencidas"
+  // e aparece aqui, em Concluídas, na data em que foi concluída (hoje), não na data original.
   const hojeTarefas = todasTarefas
-    .filter(t => t.data === hoje)
+    .filter(t => t.data === hoje || (t.status === 'concluida' && t.dataConclusao === hoje))
     .sort((a,b) => ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
   return { vencidas, hojeTarefas };
 }
@@ -3369,8 +3371,12 @@ function toggleTarefa(id) {
     if (ficandoConcluida) {
       const agora = new Date();
       t.horaConclusao = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+      // Data em que foi de fato concluída (hoje) — usada pra uma tarefa vencida aparecer
+      // como concluída no dia de hoje, em vez de sumir presa à data original vencida.
+      t.dataConclusao = today();
     } else {
       t.horaConclusao = '';
+      t.dataConclusao = '';
     }
     DB.set('tarefas', tarefas);
     renderAll();
