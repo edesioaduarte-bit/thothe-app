@@ -2519,6 +2519,8 @@ function iniciarLoopTimer() {
         if (elTarefa) elTarefa.textContent = texto;
         const elLinha = document.getElementById('agendalinha-timer-' + t.tarefaId);
         if (elLinha) elLinha.textContent = texto;
+        const elFoco = document.getElementById('agfocotimer-' + t.tarefaId);
+        if (elFoco) elFoco.textContent = texto;
       }
       const elDash = document.getElementById('dash-timer-' + t.id);
       if (elDash) elDash.textContent = texto;
@@ -3010,6 +3012,23 @@ function linhaAgendaFocoItem(t, vencida) {
   const horaLabel = ordemAgendaTarefa(t) !== '23:59' ? ordemAgendaTarefa(t) : '';
   const tipoIcone = t.tipo==='pessoal' ? '🏠' : '💼';
   const destaqueVencida = vencida && !concluida;
+
+  // Cronômetro: toda tarefa agendada ou vencida (ainda não concluída) tem a opção de iniciar/retomar.
+  let timerHtml = '';
+  if (!concluida) {
+    const timer = getTimerPorTarefa(t.id);
+    if (timer) {
+      const tempo = fmtDuracao(Math.floor(elapsedSegundos(timer)));
+      timerHtml = `
+        <span id="agfocotimer-${t.id}" style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${timer.pausado?'var(--amber)':'var(--accent-m)'};min-width:54px;text-align:right">${tempo}</span>
+        ${timer.pausado
+          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();retomarTimer('${timer.id}')" title="Retomar">▶</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();pausarTimer('${timer.id}')" title="Pausar">⏸</button>`}`;
+    } else {
+      timerHtml = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${t.clienteId||''}','${(t.titulo||'').replace(/'/g,"\\'")}','${t.id}')" title="Iniciar cronômetro">▶ Iniciar</button>`;
+    }
+  }
+
   return `
   <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;background:${destaqueVencida?'var(--red-l)':'var(--surface3)'};border:1px solid var(--border);margin-bottom:6px">
     <div onclick="toggleTarefa('${t.id}')" title="Marcar como feita" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">${concluida?'✓':''}</div>
@@ -3018,6 +3037,7 @@ function linhaAgendaFocoItem(t, vencida) {
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaqueVencida?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}${tipoIcone} ${(t.titulo||'').replace(/</g,'&lt;')}${t.recorrencia?' 🔁':''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
     </div>
+    ${timerHtml}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirTarefaComOpcoes('${t.id}')" title="Excluir">🗑️</button>
   </div>`;
 }
@@ -3232,7 +3252,13 @@ function saveTarefa() {
   DB.set('tarefas', tarefas);
   if (item.recorrencia) gerarOcorrenciasRecorrentesFuturas();
   closeModal('modal-tarefa');
-  toast('✅ Tarefa salva');
+  // Toda tarefa nova (não edição) já nasce com o cronômetro rodando — reflete o fluxo
+  // "abriu a tarefa, começou a trabalhar nela" sem precisar clicar em "Iniciar" depois.
+  if (!editId) {
+    iniciarTarefaComoTimer(item.clienteId, item.titulo, item.id);
+  } else {
+    toast('✅ Tarefa salva');
+  }
   renderAll();
 }
 
