@@ -1185,7 +1185,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-tarefa')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveTarefa()">Salvar tarefa</button>
+      <button class="btn btn-ghost" id="tar-btn-agendar" onclick="saveTarefa(false)">📅 Agendar</button>
+      <button class="btn btn-primary" id="tar-btn-iniciar" onclick="saveTarefa(true)">▶ Iniciar agora</button>
     </div>
   </div>
 </div>
@@ -3202,6 +3203,11 @@ function salvarHorarioRealTarefa() {
 function openTarefaModal(id) {
   document.getElementById('tar-edit-id').value = id || '';
   document.getElementById('modal-tarefa-title').textContent = id ? 'Editar tarefa' : 'Nova tarefa';
+  // Tarefa nova: escolher entre agendar ou iniciar agora (cronômetro). Edição: só salvar.
+  const btnAgendar = document.getElementById('tar-btn-agendar');
+  const btnIniciar = document.getElementById('tar-btn-iniciar');
+  if (btnAgendar) { btnAgendar.textContent = id ? 'Salvar tarefa' : '📅 Agendar'; btnAgendar.className = id ? 'btn btn-primary' : 'btn btn-ghost'; }
+  if (btnIniciar) btnIniciar.style.display = id ? 'none' : '';
   fillClienteSelect(document.getElementById('tar-cliente'));
   if (id) {
     const t = DB.get('tarefas').find(x=>x.id===id);
@@ -3227,7 +3233,7 @@ function openTarefaModal(id) {
   openModal('modal-tarefa');
 }
 
-function saveTarefa() {
+function saveTarefa(iniciar) {
   const titulo = document.getElementById('tar-titulo').value.trim();
   if (!titulo) { toast('⚠️ Informe o título'); return; }
   const editId = document.getElementById('tar-edit-id').value;
@@ -3254,12 +3260,12 @@ function saveTarefa() {
   DB.set('tarefas', tarefas);
   if (item.recorrencia) gerarOcorrenciasRecorrentesFuturas();
   closeModal('modal-tarefa');
-  // Toda tarefa nova (não edição) já nasce com o cronômetro rodando — reflete o fluxo
-  // "abriu a tarefa, começou a trabalhar nela" sem precisar clicar em "Iniciar" depois.
-  if (!editId) {
+  // Tarefa nova: só inicia o cronômetro se o usuário escolheu "Iniciar agora";
+  // "Agendar" apenas salva a tarefa, sem cronômetro.
+  if (!editId && iniciar === true) {
     iniciarTarefaComoTimer(item.clienteId, item.titulo, item.id);
   } else {
-    toast('✅ Tarefa salva');
+    toast(editId ? '✅ Tarefa salva' : '📅 Tarefa agendada');
   }
   renderAll();
 }
