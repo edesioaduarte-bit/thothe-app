@@ -620,6 +620,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(-1)" title="Anterior">‹</button>
               <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(0)" title="Voltar para hoje">Hoje</button>
               <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(1)" title="Próximo">›</button>
+              <input type="date" class="form-control" id="agfoco-data" title="Escolher o dia" style="max-width:150px" onchange="escolherDiaAgendaFoco(this.value)">
             </div>
             <select class="form-control" id="agfoco-empresa" style="max-width:220px" onchange="setAgendaFocoEmpresa(this.value)">
               <option value="">Todas as empresas</option>
@@ -3073,6 +3074,11 @@ function setAgendaFocoPeriodo(p) {
   ['dia','semana','mes'].forEach(x => { const b = document.getElementById('agfoco-per-'+x); if (b) b.style.background = x===p ? 'var(--surface)' : ''; });
   renderAgendaFoco();
 }
+function escolherDiaAgendaFoco(v) {
+  if (!v) return;
+  agendaFocoRef = (v === today()) ? '' : v;
+  renderAgendaFoco();
+}
 function moverAgendaFoco(dir) {
   if (dir === 0) { agendaFocoRef = ''; renderAgendaFoco(); return; }
   const ref = agendaFocoRef || today();
@@ -3201,6 +3207,8 @@ function renderAgendaFoco() {
   if (tituloEl) tituloEl.textContent = 'AGENDA — Hoje';
   if (subEl) subEl.textContent = `${DIAS_SEMANA_LONGO[d.getDay()]}, ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
 
+  const inpData = document.getElementById('agfoco-data');
+  if (inpData) inpData.value = agendaFocoRef || today();
   // Dia (outro que não hoje), Semana ou Mês: lista agrupada por dia
   if (!(agendaFocoPeriodo === 'dia' && !agendaFocoRef)) {
     const { ini, fim } = agendaFocoIntervalo();
