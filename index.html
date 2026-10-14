@@ -3007,7 +3007,23 @@ function setAgendaFocoStatus(v) {
   renderAgendaFoco();
 }
 
+function linhaAgendaObrigFoco(o, vencida) {
+  const cliente = o.clienteId ? DB.get('clientes').find(c=>c.id===o.clienteId) : null;
+  const concluida = o.status === 'concluida';
+  const destaque = vencida && !concluida;
+  return `
+  <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;background:${destaque?'var(--red-l)':'var(--surface3)'};border:1px solid var(--border);margin-bottom:6px">
+    <div onclick="toggleObrigStatus('${o.id}')" title="Marcar como concluída" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">${concluida?'✓':''}</div>
+    <div onclick="openObrigModal('${o.id}')" style="flex:1;min-width:0;cursor:pointer">
+      <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaque?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}📋 ${(o.titulo||'').replace(/</g,'&lt;')} <span class="chip chip-purple" style="font-size:9px">Obrigação</span>${o.venc && o.venc !== today() ? ` <span style="font-size:10.5px;color:var(--text3)">· venc. ${fmtDate(o.venc)}</span>` : ''}</div>
+      ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')" title="Excluir">🗑️</button>
+  </div>`;
+}
+
 function linhaAgendaFocoItem(t, vencida) {
+  if (t._obrig) return linhaAgendaObrigFoco(t, vencida);
   const cliente = t.clienteId ? DB.get('clientes').find(c=>c.id===t.clienteId) : null;
   const concluida = t.status === 'concluida';
   const horaLabel = ordemAgendaTarefa(t) !== '23:59' ? ordemAgendaTarefa(t) : '';
@@ -3046,7 +3062,10 @@ function linhaAgendaFocoItem(t, vencida) {
 // Tarefas de HOJE + VENCIDAS (dias anteriores, ainda pendentes) — a Agenda não mostra tarefas futuras de outros dias.
 function tarefasAgendaFoco() {
   const hoje = today();
-  const todasTarefas = DB.get('tarefas').filter(t => !agendaFocoEmpresaId || t.clienteId === agendaFocoEmpresaId);
+  // Obrigações entram na Agenda pela data de vencimento (venc), como itens de agenda (_obrig).
+  const obrigsAgenda = DB.get('obrigacoes').filter(o => o.venc || (o.status === 'concluida' && o.dataConclusao === hoje))
+    .map(o => ({ ...o, _obrig: true, data: o.venc || o.dataConclusao, hora: '' }));
+  const todasTarefas = DB.get('tarefas').concat(obrigsAgenda).filter(t => !agendaFocoEmpresaId || t.clienteId === agendaFocoEmpresaId);
   const vencidas = todasTarefas
     .filter(t => t.status !== 'concluida' && t.data && t.data < hoje)
     .sort((a,b) => a.data.localeCompare(b.data) || ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
@@ -4408,6 +4427,8 @@ function saveObrig() {
     competencia: document.getElementById('obrig-competencia').value.trim(),
     venc: document.getElementById('obrig-venc').value,
     status: document.getElementById('obrig-status').value,
+    dataConclusao: (document.getElementById('obrig-status').value === 'concluida')
+      ? ((antiga && antiga.status === 'concluida' && antiga.dataConclusao) || today()) : '',
     recorrente: document.getElementById('obrig-recorrente').checked,
     obs: document.getElementById('obrig-obs').value.trim(),
   };
@@ -4429,6 +4450,7 @@ function toggleObrigStatus(id) {
   if (o) {
     const eraConcluida = o.status === 'concluida';
     o.status = eraConcluida ? 'pendente' : 'concluida';
+    o.dataConclusao = eraConcluida ? '' : today();
     DB.set('obrigacoes', obrigacoes);
     sincronizarFechamentoDaObrigacao(id);
     if (o.recorrente && !eraConcluida) gerarProximaOcorrenciaObrig(o);
@@ -4545,7 +4567,7 @@ function sincronizarObrigacoesDoFechamento(fechamentoId) {
       const o = obrigacoes.find(x=>x.id===etapa.obrigId);
       if (o) {
         const novoStatus = etapa.done ? 'concluida' : 'pendente';
-        if (o.status !== novoStatus) { o.status = novoStatus; mudouObrig = true; }
+        if (o.status !== novoStatus) { o.status = novoStatus; o.dataConclusao = etapa.done ? today() : ''; mudouObrig = true; }
         return;
       }
     }
