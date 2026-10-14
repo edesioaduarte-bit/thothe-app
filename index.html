@@ -589,11 +589,6 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <!-- ══════════ OBRIGAÇÕES ══════════ -->
       <div class="page" id="page-obrigacoes">
         <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:9px;padding:3px">
-            <button class="btn btn-ghost btn-sm" id="btn-obrig-todas" onclick="setObrigFiltro('todas')">Todas</button>
-            <button class="btn btn-ghost btn-sm" id="btn-obrig-pendentes" onclick="setObrigFiltro('pendentes')">Pendentes</button>
-            <button class="btn btn-ghost btn-sm" id="btn-obrig-atrasadas" onclick="setObrigFiltro('atrasadas')">Atrasadas</button>
-          </div>
           <button class="btn btn-primary" style="margin-left:auto" onclick="openObrigModal()">+ Nova obrigação</button>
         </div>
         <div class="card hud">
@@ -2147,19 +2142,60 @@ function valorPorExtenso(valor) {
 }
 function fillClienteSelect(sel, selected) {
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-  const primeira = (sel.options && sel.options[0] && sel.options[0].value === '') ? sel.options[0].textContent : '— Nenhum —';
-  sel.innerHTML = `<option value="">${primeira}</option>` + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('') + '<option value="__novo__">➕ Cadastrar novo cliente…</option>';
-  if (selected) sel.value = selected;
-  if (!sel._novoCliHook) {
-    sel._novoCliHook = true;
-    sel.addEventListener('change', () => {
-      if (sel.value === '__novo__') {
-        sel.value = '';
-        selectClientePendente = sel;
-        openClienteModal();
-      }
+  const primeira = sel._textoVazio || ((sel.options && sel.options[0] && sel.options[0].value === '') ? sel.options[0].textContent : '— Nenhum —');
+  sel._textoVazio = primeira;
+  const rotulo = c => `${c.codigo?c.codigo+' — ':''}${c.nome}`;
+  const NOVO = '➕ Cadastrar novo cliente…';
+  sel.innerHTML = `<option value="">${primeira}</option>` + clientes.map(c=>`<option value="${c.id}">${rotulo(c).replace(/</g,'&lt;')}</option>`).join('') + '<option value="__novo__">'+NOVO+'</option>';
+
+  // Campo de digitação (busca por nome ou código) que controla o <select> original
+  if (!sel._busca) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = sel.className;
+    inp.autocomplete = 'off';
+    inp.style.cssText = sel.style.cssText;
+    const dl = document.createElement('datalist');
+    dl.id = 'dl-' + (sel.id || DB.id());
+    inp.setAttribute('list', dl.id);
+    sel.parentNode.insertBefore(inp, sel);
+    sel.parentNode.insertBefore(dl, sel);
+    sel.style.display = 'none';
+    sel._busca = inp; sel._dl = dl;
+
+    const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value') || Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'value');
+    Object.defineProperty(sel, 'value', {
+      configurable: true,
+      get() { return desc.get.call(sel); },
+      set(v) { desc.set.call(sel, v); sel._atualizarBusca(); }
     });
+    sel._atualizarBusca = () => {
+      const opt = sel.options[sel.selectedIndex];
+      inp.value = (sel.selectedIndex > 0 && opt && opt.value !== '__novo__') ? opt.textContent : '';
+    };
+    const resolver = () => {
+      const txt = inp.value.trim().toLowerCase();
+      if (!txt) { desc.set.call(sel, ''); sel.dispatchEvent(new Event('change')); return; }
+      if (inp.value.trim() === NOVO) { inp.value = ''; desc.set.call(sel, ''); selectClientePendente = sel; openClienteModal(); return; }
+      const lista = DB.get('clientes').filter(c=>c.status==='ativo');
+      let achado = lista.find(c => rotulo(c).toLowerCase() === txt)
+        || lista.find(c => (c.codigo||'').toLowerCase() === txt)
+        || lista.find(c => c.nome.toLowerCase() === txt);
+      if (!achado) {
+        const parc = lista.filter(c => rotulo(c).toLowerCase().includes(txt));
+        if (parc.length === 1) achado = parc[0];
+      }
+      if (achado) { desc.set.call(sel, achado.id); sel._atualizarBusca(); }
+      else { desc.set.call(sel, ''); }
+      sel.dispatchEvent(new Event('change'));
+    };
+    inp.addEventListener('change', resolver);
+    inp.addEventListener('blur', () => { resolver(); sel._atualizarBusca(); });
+    inp.addEventListener('focus', () => inp.select());
   }
+  sel._busca.placeholder = primeira + ' — digite nome ou código';
+  sel._dl.innerHTML = clientes.map(c=>`<option value="${rotulo(c).replace(/"/g,'&quot;')}"></option>`).join('') + `<option value="${NOVO}"></option>`;
+  if (selected) sel.value = selected; else sel._atualizarBusca();
 }
 let selectClientePendente = null;
 
@@ -3092,7 +3128,12 @@ function tarefasAgendaFoco() {
   const hojeTarefas = todasTarefas
     .filter(t => t.data === hoje || (t.status === 'concluida' && t.dataConclusao === hoje))
     .sort((a,b) => ordemAgendaTarefa(a).localeCompare(ordemAgendaTarefa(b)));
-  return { vencidas, hojeTarefas };
+  // Obrigações pendentes ainda a vencer (venc futuro) e sem data de vencimento
+  const filtraEmp = o => !agendaFocoEmpresaId || o.clienteId === agendaFocoEmpresaId;
+  const obrigPend = DB.get('obrigacoes').filter(o => o.status !== 'concluida' && filtraEmp(o)).map(o => ({ ...o, _obrig: true }));
+  const proximasObrig = obrigPend.filter(o => o.venc && o.venc > hoje).sort((a,b) => a.venc.localeCompare(b.venc));
+  const semDataObrig = obrigPend.filter(o => !o.venc);
+  return { vencidas, hojeTarefas, proximasObrig, semDataObrig };
 }
 
 function renderAgendaFoco() {
@@ -3108,7 +3149,7 @@ function renderAgendaFoco() {
   if (tituloEl) tituloEl.textContent = 'AGENDA — Hoje';
   if (subEl) subEl.textContent = `${DIAS_SEMANA_LONGO[d.getDay()]}, ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
 
-  const { vencidas, hojeTarefas } = tarefasAgendaFoco();
+  const { vencidas, hojeTarefas, proximasObrig, semDataObrig } = tarefasAgendaFoco();
   const hojePendentes = hojeTarefas.filter(t=>t.status!=='concluida');
   const hojeConcluidas = hojeTarefas.filter(t=>t.status==='concluida');
 
@@ -3127,6 +3168,18 @@ function renderAgendaFoco() {
   if (mostrarPendentes && hojePendentes.length) {
     html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">HOJE</div>`;
     html += hojePendentes.map(t => linhaAgendaFocoItem(t, false)).join('');
+  }
+
+  if (mostrarPendentes && proximasObrig.length) {
+    if (html) html += `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📋 Obrigações a vencer</div>`;
+    html += proximasObrig.map(o => linhaAgendaObrigFoco(o, false)).join('');
+  }
+
+  if (mostrarPendentes && semDataObrig.length) {
+    if (html) html += `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+    html += `<div style="font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📋 Obrigações sem data de vencimento (clique para definir)</div>`;
+    html += semDataObrig.map(o => linhaAgendaObrigFoco(o, false)).join('');
   }
 
   if (mostrarConcluidas && hojeConcluidas.length) {
@@ -4400,7 +4453,6 @@ let obrigFiltro = 'todas';
 
 function setObrigFiltro(f) {
   obrigFiltro = f;
-  ['todas','pendentes','atrasadas'].forEach(x => document.getElementById('btn-obrig-'+x).style.background = x===f ? 'var(--surface)' : '');
   renderObrigacoes();
 }
 
