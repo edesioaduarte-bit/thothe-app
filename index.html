@@ -611,6 +611,16 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
           <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
+            <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
+              <button class="btn btn-ghost btn-sm" id="agfoco-per-dia" onclick="setAgendaFocoPeriodo('dia')" style="background:var(--surface)">Dia</button>
+              <button class="btn btn-ghost btn-sm" id="agfoco-per-semana" onclick="setAgendaFocoPeriodo('semana')">Semana</button>
+              <button class="btn btn-ghost btn-sm" id="agfoco-per-mes" onclick="setAgendaFocoPeriodo('mes')">Mês</button>
+            </div>
+            <div style="display:flex;gap:4px;align-items:center">
+              <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(-1)" title="Anterior">‹</button>
+              <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(0)" title="Voltar para hoje">Hoje</button>
+              <button class="btn btn-ghost btn-sm" onclick="moverAgendaFoco(1)" title="Próximo">›</button>
+            </div>
             <select class="form-control" id="agfoco-empresa" style="max-width:220px" onchange="setAgendaFocoEmpresa(this.value)">
               <option value="">Todas as empresas</option>
             </select>
@@ -1631,7 +1641,7 @@ function toast(msg) {
 }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function today() { return new Date().toISOString().slice(0,10); }
+function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtMoney(v) { return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); }
 function ordenarPorCodigo(a,b) { return (a.codigo||'999').localeCompare(b.codigo||'999'); }
 
@@ -3042,7 +3052,45 @@ function setAgendaListaFiltro(v) {
    MINHA AGENDA — visão principal (hoje + vencidas)
    ══════════════════════════════════════════════════════ */
 let agendaFocoEmpresaId = '';
-let agendaFocoStatus = 'todas'; // 'todas' | 'pendentes' | 'concluidas'
+let agendaFocoStatus = 'todas';
+let agendaFocoPeriodo = 'dia';   // 'dia' | 'semana' | 'mes'
+let agendaFocoRef = '';          // data de referência ('' = hoje)
+
+function addDiasStr(str, n) { const d = new Date(str + 'T12:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function agendaFocoIntervalo() {
+  const ref = agendaFocoRef || today();
+  if (agendaFocoPeriodo === 'dia') return { ini: ref, fim: ref };
+  if (agendaFocoPeriodo === 'semana') {
+    const dow = new Date(ref + 'T12:00:00').getDay();           // 0=dom
+    const ini = addDiasStr(ref, -((dow + 6) % 7));              // segunda
+    return { ini, fim: addDiasStr(ini, 6) };
+  }
+  const [y,m] = ref.split('-');
+  return { ini: `${y}-${m}-01`, fim: ultimoDiaDoMes(`${y}-${m}`) };
+}
+function setAgendaFocoPeriodo(p) {
+  agendaFocoPeriodo = p;
+  ['dia','semana','mes'].forEach(x => { const b = document.getElementById('agfoco-per-'+x); if (b) b.style.background = x===p ? 'var(--surface)' : ''; });
+  renderAgendaFoco();
+}
+function moverAgendaFoco(dir) {
+  if (dir === 0) { agendaFocoRef = ''; renderAgendaFoco(); return; }
+  const ref = agendaFocoRef || today();
+  if (agendaFocoPeriodo === 'dia') agendaFocoRef = addDiasStr(ref, dir);
+  else if (agendaFocoPeriodo === 'semana') agendaFocoRef = addDiasStr(ref, 7*dir);
+  else { const [y,m] = ref.split('-').map(Number); const d = new Date(y, m-1+dir, 1); agendaFocoRef = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
+  if (agendaFocoRef === today()) agendaFocoRef = '';
+  renderAgendaFoco();
+}
+// Itens (tarefas + obrigações) de um intervalo, na data em que "caem": concluídos na data de conclusão, pendentes na data/vencimento.
+function itensAgendaPeriodo(ini, fim) {
+  const itens = DB.get('tarefas').concat(DB.get('obrigacoes').filter(o=>o.venc || o.dataConclusao).map(o => ({ ...o, _obrig:true, data: o.venc })))
+    .filter(t => !agendaFocoEmpresaId || t.clienteId === agendaFocoEmpresaId);
+  const dataItem = t => (t.status === 'concluida' && t.dataConclusao) ? t.dataConclusao : t.data;
+  return itens.filter(t => { const d = dataItem(t); return d && d >= ini && d <= fim; })
+    .map(t => ({ t, d: dataItem(t) }))
+    .sort((a,b) => a.d.localeCompare(b.d) || (a.t._obrig?'99:99':ordemAgendaTarefa(a.t)).localeCompare(b.t._obrig?'99:99':ordemAgendaTarefa(b.t)));
+} // 'todas' | 'pendentes' | 'concluidas'
 
 function popularAgendaFocoEmpresa() {
   const sel = document.getElementById('agfoco-empresa');
@@ -3152,6 +3200,49 @@ function renderAgendaFoco() {
   const d = new Date(hoje + 'T12:00:00');
   if (tituloEl) tituloEl.textContent = 'AGENDA — Hoje';
   if (subEl) subEl.textContent = `${DIAS_SEMANA_LONGO[d.getDay()]}, ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
+
+  // Dia (outro que não hoje), Semana ou Mês: lista agrupada por dia
+  if (!(agendaFocoPeriodo === 'dia' && !agendaFocoRef)) {
+    const { ini, fim } = agendaFocoIntervalo();
+    const fmtL = x => { const dd = new Date(x+'T12:00:00'); return `${String(dd.getDate()).padStart(2,'0')}/${String(dd.getMonth()+1).padStart(2,'0')}`; };
+    if (agendaFocoPeriodo === 'dia') {
+      const dd = new Date(ini+'T12:00:00');
+      if (tituloEl) tituloEl.textContent = 'AGENDA — Dia';
+      if (subEl) subEl.textContent = `${DIAS_SEMANA_LONGO[dd.getDay()]}, ${dd.getDate()} de ${MONTH_NAMES[dd.getMonth()]}`;
+    } else if (agendaFocoPeriodo === 'semana') {
+      if (tituloEl) tituloEl.textContent = 'AGENDA — Semana';
+      if (subEl) subEl.textContent = `${fmtL(ini)} a ${fmtL(fim)}`;
+    } else {
+      const dd = new Date(ini+'T12:00:00');
+      if (tituloEl) tituloEl.textContent = 'AGENDA — Mês';
+      if (subEl) subEl.textContent = `${MONTH_NAMES[dd.getMonth()]} de ${dd.getFullYear()}`;
+    }
+    let todos = itensAgendaPeriodo(ini, fim);
+    const total = todos.length;
+    const nConc = todos.filter(x => x.t.status === 'concluida').length;
+    if (resumoEl) resumoEl.textContent = `${total} ${total!==1?'itens':'item'} · 🟡 ${total-nConc} pendente${total-nConc!==1?'s':''} · ☑ ${nConc} concluída${nConc!==1?'s':''}`;
+    if (agendaFocoStatus === 'pendentes') todos = todos.filter(x => x.t.status !== 'concluida');
+    if (agendaFocoStatus === 'concluidas') todos = todos.filter(x => x.t.status === 'concluida');
+    const hojeStr = today();
+    let htmlP = '', diaAtual = '';
+    // Se o período inclui hoje, as vencidas de antes do período continuam aparecendo no topo
+    if (agendaFocoStatus !== 'concluidas' && ini <= hojeStr && hojeStr <= fim) {
+      const antigas = tarefasAgendaFoco().vencidas.filter(t => t.data < ini);
+      if (antigas.length) {
+        htmlP += `<div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">⚠️ Vencidas</div>` + antigas.map(t => linhaAgendaFocoItem(t, true)).join('') + `<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+      }
+    }
+    todos.forEach(({t, d}) => {
+      if (d !== diaAtual) {
+        diaAtual = d;
+        const dd = new Date(d+'T12:00:00');
+        htmlP += `<div style="font-size:10px;font-weight:600;color:${d===hojeStr?'var(--accent-m)':'var(--text3)'};text-transform:uppercase;letter-spacing:.06em;margin:${htmlP?'14px':'0'} 0 6px">${DIAS_SEMANA_LONGO[dd.getDay()]}, ${fmtL(d)}${d===hojeStr?' · Hoje':''}</div>`;
+      }
+      htmlP += linhaAgendaFocoItem(t, t.status !== 'concluida' && t.data && t.data < hojeStr);
+    });
+    el.innerHTML = htmlP || `<div class="empty-state" style="padding:24px"><div class="ico">✨</div><div class="txt">Nada neste período</div></div>`;
+    return;
+  }
 
   const { vencidas, hojeTarefas, proximasObrig, semDataObrig } = tarefasAgendaFoco();
   const hojePendentes = hojeTarefas.filter(t=>t.status!=='concluida');
