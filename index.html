@@ -888,9 +888,9 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
 <!-- ═══════════ MODALS ═══════════ -->
 
-<div class="modal-overlay" id="modal-cliente">
+<div class="modal-overlay" id="modal-cliente" style="z-index:130">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title" id="modal-cliente-title">Novo cliente</span><button class="modal-close" onclick="closeModal('modal-cliente')">×</button></div>
+    <div class="modal-header"><span class="modal-title" id="modal-cliente-title">Novo cliente</span><button class="modal-close" onclick="selectClientePendente=null;closeModal('modal-cliente')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="cli-edit-id">
       <div class="form-row">
@@ -953,7 +953,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="selectClientePendente=null;closeModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveCliente()">Salvar cliente</button>
     </div>
   </div>
@@ -1341,7 +1341,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" type="date" id="obrig-venc">
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" style="display:none">
         <label class="form-label">Status</label>
         <select class="form-control" id="obrig-status">
           <option value="pendente">Pendente</option>
@@ -2147,9 +2147,21 @@ function valorPorExtenso(valor) {
 }
 function fillClienteSelect(sel, selected) {
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-  sel.innerHTML = '<option value="">— Nenhum —</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
+  const primeira = (sel.options && sel.options[0] && sel.options[0].value === '') ? sel.options[0].textContent : '— Nenhum —';
+  sel.innerHTML = `<option value="">${primeira}</option>` + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('') + '<option value="__novo__">➕ Cadastrar novo cliente…</option>';
   if (selected) sel.value = selected;
+  if (!sel._novoCliHook) {
+    sel._novoCliHook = true;
+    sel.addEventListener('change', () => {
+      if (sel.value === '__novo__') {
+        sel.value = '';
+        selectClientePendente = sel;
+        openClienteModal();
+      }
+    });
+  }
 }
+let selectClientePendente = null;
 
 /* ══════════════════════════════════════════════════════
    NAVIGATION
@@ -2249,6 +2261,12 @@ function saveCliente() {
   closeModal('modal-cliente');
   toast('👥 Cliente salvo');
   renderAll();
+  if (selectClientePendente && !editId) {
+    fillClienteSelect(selectClientePendente, item.id);
+    selectClientePendente.dispatchEvent(new Event('input'));
+    if (selectClientePendente.id === 'rec-cliente') recPreencherPorCliente();
+  }
+  selectClientePendente = null;
 }
 
 function deleteCliente(id) {
@@ -4436,7 +4454,7 @@ function saveObrig() {
   else obrigacoes.push(item);
   DB.set('obrigacoes', obrigacoes);
   if (editId) sincronizarFechamentoDaObrigacao(editId);
-  if (item.recorrente && item.status === 'concluida' && statusAntigo !== 'concluida') {
+  if (item.recorrente && !item.origemFechamento && item.status === 'concluida' && statusAntigo !== 'concluida') {
     gerarProximaOcorrenciaObrig(item);
   }
   closeModal('modal-obrig');
@@ -4453,7 +4471,7 @@ function toggleObrigStatus(id) {
     o.dataConclusao = eraConcluida ? '' : today();
     DB.set('obrigacoes', obrigacoes);
     sincronizarFechamentoDaObrigacao(id);
-    if (o.recorrente && !eraConcluida) gerarProximaOcorrenciaObrig(o);
+    if (o.recorrente && !o.origemFechamento && !eraConcluida) gerarProximaOcorrenciaObrig(o);
     renderAll();
   }
 }
@@ -4531,7 +4549,7 @@ function renderObrigacoes() {
       <td>${cliente?`<span onclick="event.stopPropagation();openClienteModal('${cliente.id}')" style="color:var(--accent);cursor:pointer">${cliente.nome}</span>`:'—'}</td>
       <td><span class="chip chip-gray">${o.cat}</span></td>
       <td style="font-family:monospace;font-size:12px;color:${atrasada?'var(--red)':'var(--text)'}">${fmtDate(o.venc)}</td>
-      <td><span class="chip ${o.status==='concluida'?'chip-green':atrasada?'chip-red':'chip-amber'}" style="cursor:pointer" onclick="event.stopPropagation();toggleObrigStatus('${o.id}')">${o.status==='concluida'?'✅ Concluída':atrasada?'⚠️ Atrasada':'⏳ Pendente'}</span></td>
+      <td><span class="chip ${o.status==='concluida'?'chip-green':atrasada?'chip-red':'chip-amber'}" title="A baixa é feita na Agenda">${o.status==='concluida'?'✅ Concluída':atrasada?'⚠️ Atrasada':'⏳ Pendente'}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObrigModal('${o.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')">🗑️</button></td>
     </tr>`;
   }).join('');
