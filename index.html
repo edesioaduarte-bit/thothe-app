@@ -1856,9 +1856,7 @@ function popularFiltroClienteCalendario() {
   const sel = document.getElementById('cal-filtro-cliente');
   if (!sel) return;
   const valorAtual = sel.value;
-  const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-  sel.innerHTML = '<option value="">Todos os clientes</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
-  sel.value = valorAtual;
+  fillClienteSelect(sel, valorAtual, { semNovo: true, vazio: 'Todos os clientes' });
 }
 
 // Só desenha a grade do mês — NÃO mexe no painel do dia (evita recursão)
@@ -2140,13 +2138,14 @@ function valorPorExtenso(valor) {
   if (!partes.length) return 'zero reais';
   return partes.join(' e ');
 }
-function fillClienteSelect(sel, selected) {
+function fillClienteSelect(sel, selected, opts) {
+  opts = opts || {};
   const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-  const primeira = sel._textoVazio || ((sel.options && sel.options[0] && sel.options[0].value === '') ? sel.options[0].textContent : '— Nenhum —');
+  const primeira = opts.vazio || sel._textoVazio || ((sel.options && sel.options[0] && sel.options[0].value === '') ? sel.options[0].textContent : '— Nenhum —');
   sel._textoVazio = primeira;
   const rotulo = c => `${c.codigo?c.codigo+' — ':''}${c.nome}`;
   const NOVO = '➕ Cadastrar novo cliente…';
-  sel.innerHTML = `<option value="">${primeira}</option>` + clientes.map(c=>`<option value="${c.id}">${rotulo(c).replace(/</g,'&lt;')}</option>`).join('') + '<option value="__novo__">'+NOVO+'</option>';
+  sel.innerHTML = `<option value="">${primeira}</option>` + clientes.map(c=>`<option value="${c.id}">${rotulo(c).replace(/</g,'&lt;')}</option>`).join('') + (opts.semNovo ? '' : '<option value="__novo__">'+NOVO+'</option>');
 
   // Campo de digitação (busca por nome ou código) que controla o <select> original
   if (!sel._busca) {
@@ -2194,7 +2193,7 @@ function fillClienteSelect(sel, selected) {
     inp.addEventListener('focus', () => inp.select());
   }
   sel._busca.placeholder = primeira + ' — digite nome ou código';
-  sel._dl.innerHTML = clientes.map(c=>`<option value="${rotulo(c).replace(/"/g,'&quot;')}"></option>`).join('') + `<option value="${NOVO}"></option>`;
+  sel._dl.innerHTML = clientes.map(c=>`<option value="${rotulo(c).replace(/"/g,'&quot;')}"></option>`).join('') + (opts.semNovo ? '' : `<option value="${NOVO}"></option>`);
   if (selected) sel.value = selected; else sel._atualizarBusca();
 }
 let selectClientePendente = null;
@@ -2246,6 +2245,14 @@ function renderAll() {
 let clienteSearch = '';
 let clienteOrdem = 'codigo';
 
+// Próximo código disponível: maior código numérico existente + 1, mantendo o padrão de zeros à esquerda (001, 002…)
+function proximoCodigoCliente() {
+  const codigos = DB.get('clientes').map(c => (c.codigo||'').trim()).filter(c => /^\d+$/.test(c));
+  const maior = codigos.reduce((m,c) => Math.max(m, parseInt(c,10)), 0);
+  const largura = Math.max(3, ...codigos.map(c => c.length));
+  return String(maior + 1).padStart(largura, '0');
+}
+
 function openClienteModal(id) {
   document.getElementById('cli-edit-id').value = id || '';
   document.getElementById('modal-cliente-title').textContent = id ? 'Editar cliente' : 'Novo cliente';
@@ -2265,6 +2272,7 @@ function openClienteModal(id) {
     }
   } else {
     ['cli-codigo','cli-nome','cli-honorario','cli-contato','cli-docto','cli-obs'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('cli-codigo').value = proximoCodigoCliente();
     document.getElementById('cli-tipo').value = 'contabil';
     document.getElementById('cli-upsell').value = 'nao_aplica';
     document.getElementById('cli-status').value = 'ativo';
@@ -2746,9 +2754,7 @@ function renderHoras() {
   const selFiltro = document.getElementById('horas-filtro-cliente');
   if (selFiltro) {
     const atual = selFiltro.value;
-    const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-    selFiltro.innerHTML = '<option value="">Todos os clientes</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
-    selFiltro.value = atual;
+    fillClienteSelect(selFiltro, atual, { semNovo: true, vazio: 'Todos os clientes' });
   }
 
   const registros = registrosDoPeriodo();
@@ -3042,9 +3048,7 @@ function popularAgendaFocoEmpresa() {
   const sel = document.getElementById('agfoco-empresa');
   if (!sel) return;
   const atual = sel.value || agendaFocoEmpresaId;
-  const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
-  sel.innerHTML = '<option value="">Todas as empresas</option>' + clientes.map(c=>`<option value="${c.id}">${c.codigo?c.codigo+' — ':''}${c.nome}</option>`).join('');
-  sel.value = atual;
+  fillClienteSelect(sel, atual, { semNovo: true, vazio: 'Todas as empresas' });
 }
 
 function setAgendaFocoEmpresa(v) {
