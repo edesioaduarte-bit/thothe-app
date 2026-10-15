@@ -1449,10 +1449,14 @@ const SUPA_USER = 'default';
 
 const DB = {
   get: (k) => JSON.parse(localStorage.getItem('gw_' + k) || '[]'),
+  _escritaLocal: {},   // chave → timestamp da última escrita local (protege contra o pull sobrescrever)
+  _pendentes: 0,       // pushes em andamento
   set: (k, v) => {
     localStorage.setItem('gw_' + k, JSON.stringify(v));
+    DB._escritaLocal[k] = Date.now();
     if (SUPA_URL && SUPA_KEY) {
-      DB._push(k, v).catch(e => {
+      DB._pendentes++;
+      DB._push(k, v).finally(() => { DB._pendentes--; }).catch(e => {
         const badge = document.getElementById('sync-badge');
         if (badge) { badge.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; badge.style.color = 'var(--red)'; }
         console.error('Erro ao sincronizar com o Supabase:', e.message);
@@ -1484,8 +1488,11 @@ const DB = {
       });
       if (!r.ok) return false;
       const rows = await r.json();
+      // Não deixa um pull (iniciado antes) desfazer algo que o usuário acabou de alterar/excluir aqui
+      if (DB._pendentes > 0) return rows.length;
       rows.forEach(row => {
         const localKey = row.chave.replace(/^growth_/, '');
+        if (Date.now() - (DB._escritaLocal[localKey] || 0) < 60000) return;
         localStorage.setItem('gw_' + localKey, JSON.stringify(row.valor));
       });
       return rows.length;
@@ -4770,6 +4777,18 @@ function excluirTodosFechamentos() {
   DB.set('fechamentos', []);
   toast('🗑️ Todos os fechamentos foram excluídos');
   renderAll();
+  confirmarExclusaoNaNuvem(['fechamentos','obrigacoes']);
+}
+
+// Confere se a exclusão chegou na nuvem; se não chegou, avisa (senão ela "volta" ao recarregar)
+async function confirmarExclusaoNaNuvem(chaves) {
+  if (!SUPA_URL || !SUPA_KEY) return;
+  try {
+    for (const k of chaves) await DB._push(k, DB.get(k));
+    toast('☁️ Exclusão sincronizada com a nuvem');
+  } catch (e) {
+    alert('⚠️ A exclusão foi feita neste aparelho, mas NÃO chegou na nuvem (' + e.message + ').\n\nSe recarregar a página, os dados podem voltar. Faça login de novo / verifique a conexão e use o botão de sincronizar.');
+  }
 }
 
 function excluirTodasObrigacoes() {
@@ -4779,6 +4798,7 @@ function excluirTodasObrigacoes() {
   removerObrigacoesEEtapas(DB.get('obrigacoes').map(o => o.id));
   toast('🗑️ Todas as obrigações foram excluídas');
   renderAll();
+  confirmarExclusaoNaNuvem(['obrigacoes','fechamentos']);
 }
 
 function deleteObrig(id) {
