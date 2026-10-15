@@ -597,9 +597,16 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <button class="btn btn-danger" style="margin-left:auto" onclick="excluirTodasObrigacoes()">🗑️ Excluir todas</button>
           <button class="btn btn-primary" onclick="openObrigModal()">+ Nova obrigação</button>
         </div>
+        <div id="obrig-bulk-bar" style="display:none;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--surface3)">
+          <span id="obrig-bulk-qtd" style="font-size:12.5px;font-weight:600"></span>
+          <span style="font-size:12px;color:var(--text2)">Agendar para o dia:</span>
+          <input type="date" class="form-control" id="obrig-bulk-data" style="max-width:160px">
+          <button class="btn btn-primary btn-sm" onclick="agendarObrigacoesSelecionadas()">📅 Agendar selecionadas</button>
+          <button class="btn btn-ghost btn-sm" onclick="limparSelecaoObrig()">Limpar seleção</button>
+        </div>
         <div class="card hud">
           <table class="tbl">
-            <thead><tr><th>Obrigação</th><th>Cliente</th><th>Categoria</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th style="width:32px"><input type="checkbox" id="obrig-sel-todas" title="Selecionar todas" onchange="selecionarTodasObrig(this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"></th><th>Obrigação</th><th>Cliente</th><th>Categoria</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
             <tbody id="obrigacoes-tbody"></tbody>
           </table>
         </div>
@@ -4881,6 +4888,41 @@ function sincronizarTodasObrigacoesDosFechamentos() {
   DB.get('fechamentos').forEach(f => sincronizarObrigacoesDoFechamento(f.id));
 }
 
+// ── Seleção em massa de obrigações → agendar tudo num dia ──
+let obrigSel = new Set();
+function atualizarBarraObrigSel() {
+  const bar = document.getElementById('obrig-bulk-bar');
+  if (!bar) return;
+  const existentes = new Set(DB.get('obrigacoes').map(o => o.id));
+  obrigSel = new Set([...obrigSel].filter(id => existentes.has(id)));
+  bar.style.display = obrigSel.size ? 'flex' : 'none';
+  const q = document.getElementById('obrig-bulk-qtd');
+  if (q) q.textContent = `${obrigSel.size} selecionada${obrigSel.size!==1?'s':''}`;
+  const todas = document.getElementById('obrig-sel-todas');
+  if (todas) todas.checked = existentes.size > 0 && obrigSel.size === existentes.size;
+}
+function toggleSelObrig(id, v) { if (v) obrigSel.add(id); else obrigSel.delete(id); atualizarBarraObrigSel(); }
+function selecionarTodasObrig(v) {
+  obrigSel = v ? new Set(DB.get('obrigacoes').map(o => o.id)) : new Set();
+  document.querySelectorAll('#obrigacoes-tbody .obrig-sel').forEach(c => { c.checked = v; });
+  atualizarBarraObrigSel();
+}
+function limparSelecaoObrig() { selecionarTodasObrig(false); }
+function agendarObrigacoesSelecionadas() {
+  const data = document.getElementById('obrig-bulk-data').value;
+  if (!obrigSel.size) { toast('⚠️ Selecione ao menos uma obrigação'); return; }
+  if (!data) { toast('⚠️ Escolha o dia'); return; }
+  const ids = [...obrigSel];
+  const obrigs = DB.get('obrigacoes');
+  let n = 0;
+  obrigs.forEach(o => { if (obrigSel.has(o.id)) { o.venc = data; n++; } });
+  DB.set('obrigacoes', obrigs);
+  ids.forEach(id => vincularObrigacaoAoFechamento(id));
+  obrigSel = new Set();
+  toast(`📅 ${n} obrigaç${n!==1?'ões agendadas':'ão agendada'} para ${fmtDate(data)} — já na Agenda`);
+  renderAll();
+}
+
 function renderObrigacoes() {
   sincronizarTodasObrigacoesDosFechamentos();
   let obrigacoes = DB.get('obrigacoes');
@@ -4890,7 +4932,8 @@ function renderObrigacoes() {
 
   const tbody = document.getElementById('obrigacoes-tbody');
   if (!obrigacoes.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="ico">📅</div><div class="txt">Nenhuma obrigação encontrada</div></div></td></tr>`;
+    atualizarBarraObrigSel();
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="ico">📅</div><div class="txt">Nenhuma obrigação encontrada</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = obrigacoes.map(o => {
@@ -4898,6 +4941,7 @@ function renderObrigacoes() {
     const atrasada = o.status!=='concluida' && o.venc && o.venc<today();
     return `
     <tr style="${atrasada?'background:var(--red-l)':''};cursor:pointer" onclick="openObrigModal('${o.id}')">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="obrig-sel" value="${o.id}" ${obrigSel.has(o.id)?'checked':''} onchange="toggleSelObrig('${o.id}',this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"></td>
       <td><strong>${o.titulo}</strong>${o.origemFechamento?' <span class="chip chip-blue" style="font-size:9px" title="Gerada pelo Fechamento Mensal">🔗 Fechamento</span>':''}${o.recorrente?' <span class="chip chip-purple" style="font-size:9px" title="Recorrente mensal">🔁 Recorrente</span>':''}${o.competencia?`<div style="font-size:11px;color:var(--text3)">${o.competencia}</div>`:''}</td>
       <td>${cliente?`<span onclick="event.stopPropagation();openClienteModal('${cliente.id}')" style="color:var(--accent);cursor:pointer">${cliente.nome}</span>`:'—'}</td>
       <td><span class="chip chip-gray">${o.cat}</span></td>
@@ -4906,6 +4950,7 @@ function renderObrigacoes() {
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObrigModal('${o.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')">🗑️</button></td>
     </tr>`;
   }).join('');
+  atualizarBarraObrigSel();
 }
 
 /* ══════════════════════════════════════════════════════
