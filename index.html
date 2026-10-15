@@ -182,6 +182,32 @@ html, body {
 .card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
 .card-title { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; color: var(--text); letter-spacing: -.1px; }
 .card-body { padding: 18px; }
+/* ── Tela inicial ── */
+.home-kpi { gap: 16px; margin-bottom: 18px; }
+.home-kpi .metric-card { padding: 22px 24px; }
+.home-kpi .metric-label { font-size: 12px; margin-bottom: 12px; }
+.home-kpi .metric-value { font-size: 38px; letter-spacing: -1px; line-height: 1.05; }
+.home-kpi .metric-delta { font-size: 12.5px; margin-top: 8px; }
+.home-main { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; align-items: start; }
+.home-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.noticia-destaque { display: block; position: relative; margin: 0 22px 14px; border-radius: 14px; overflow: hidden; min-height: 250px; background: var(--surface3) center/cover no-repeat; text-decoration: none; color: #fff; border: 1px solid var(--border); }
+.noticia-destaque .ov { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 25%, rgba(0,0,0,.82) 100%); }
+.noticia-destaque .tx { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 20px; }
+.noticia-destaque .tit { font-size: 21px; font-weight: 700; line-height: 1.25; margin-top: 8px; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+.noticias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; padding: 0 22px 6px; align-items: start; }
+.noticia-card { text-decoration: none; color: inherit; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--surface3); transition: border-color .15s, transform .15s; }
+.noticia-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.noticia-card .img { width: 100%; height: 120px; background: var(--surface2, var(--surface)) center/cover no-repeat; }
+.noticia-card .corpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.noticia-card .tit { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.noticia-fonte { align-self: flex-start; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; letter-spacing: .03em; }
+.noticia-fonte.g1 { background: rgba(220,38,38,.16); color: #F87171; }
+.noticia-fonte.cnn { background: rgba(239,68,68,.16); color: #FCA5A5; }
+.noticia-fonte.outra { background: rgba(96,165,250,.16); color: #60A5FA; }
+.cotacao-linha { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.cotacao-linha:last-child { border-bottom: 0; }
+@media (max-width: 1100px) { .home-main { grid-template-columns: 1fr; } .home-kpi { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .home-kpi .metric-value { font-size: 30px; } }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 99px; font-size: 12.5px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
@@ -340,82 +366,32 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ DASHBOARD ══════════ -->
       <div class="page" id="page-dashboard">
-        <div class="card hud" style="margin-bottom:18px;overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 24px;flex-wrap:wrap">
-            <div>
-              <div id="home-saudacao" style="font-family:var(--font-display);font-size:21px;font-weight:700;letter-spacing:-.2px">Olá</div>
-              <div id="home-data" style="font-size:12.5px;color:var(--text2);margin-top:4px;text-transform:capitalize"></div>
+        <!-- Topo: saudação, relógio grande e clima -->
+        <div class="card hud home-hero" style="margin-bottom:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:28px 32px;flex-wrap:wrap">
+            <div style="min-width:240px">
+              <div id="home-saudacao" style="font-family:var(--font-display);font-size:32px;font-weight:700;letter-spacing:-.6px;line-height:1.15">Olá</div>
+              <div id="home-data" style="font-size:15px;color:var(--text2);margin-top:8px;text-transform:capitalize"></div>
             </div>
-            <div id="home-clima" onclick="carregarClima(1)" title="Clique para atualizar o clima" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:var(--radius);background:var(--surface3);border:1px solid var(--border)">
-              <span id="home-clima-icone" style="font-size:26px">⏳</span>
+            <div id="home-clima" onclick="carregarClima(1)" title="Clique para atualizar o clima" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 22px;border-radius:14px;background:var(--surface3);border:1px solid var(--border)">
+              <span id="home-clima-icone" style="font-size:40px">⏳</span>
               <div>
-                <div style="display:flex;align-items:baseline;gap:6px">
-                  <span id="home-clima-temp" style="font-family:var(--font-mono);font-size:18px;font-weight:700;line-height:1">--°C</span>
-                  <span id="home-clima-chuva" style="font-size:11px;color:#3B82F6;font-weight:600"></span>
+                <div style="display:flex;align-items:baseline;gap:8px">
+                  <span id="home-clima-temp" style="font-family:var(--font-mono);font-size:30px;font-weight:700;line-height:1">--°C</span>
+                  <span id="home-clima-chuva" style="font-size:13px;color:#3B82F6;font-weight:600"></span>
                 </div>
-                <div id="home-clima-local" style="font-size:10px;color:var(--text3);margin-top:2px">São Paulo, SP</div>
+                <div id="home-clima-local" style="font-size:12px;color:var(--text3);margin-top:4px">São Paulo, SP</div>
               </div>
             </div>
             <div style="text-align:right">
-              <div id="home-relogio" style="font-family:var(--font-mono);font-size:32px;font-weight:700;letter-spacing:.5px;line-height:1">--:--</div>
-              <div style="font-size:10.5px;color:var(--text3);margin-top:2px">horário local</div>
+              <div id="home-relogio" style="font-family:var(--font-mono);font-size:52px;font-weight:700;letter-spacing:1px;line-height:1">--:--</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:6px">horário local</div>
             </div>
           </div>
         </div>
 
-        <div class="card hud" style="margin-bottom:18px" id="home-clima-card">
-          <div class="card-header">
-            <span class="card-title">🌦️ Clima — <span id="home-clima-card-local">Vila Prudente, São Paulo - SP</span></span>
-            <button class="btn btn-ghost btn-sm" onclick="carregarClima(1)" title="Atualizar clima"><i class="ti ti-refresh"></i></button>
-          </div>
-          <div id="home-clima-card-corpo" style="padding:16px 20px">
-            <div style="font-size:12.5px;color:var(--text2)">Carregando clima...</div>
-          </div>
-        </div>
-
-        <div class="card hud" style="margin-bottom:18px" id="home-cotacoes-card">
-          <div class="card-header">
-            <span class="card-title">💹 Cotações</span>
-            <span id="cotacoes-atualizado" style="font-size:10.5px;color:var(--text3)"></span>
-          </div>
-          <div id="home-cotacoes-lista" style="padding:16px 20px;display:flex;gap:32px;flex-wrap:wrap">
-            <div style="font-size:12.5px;color:var(--text2)">Carregando cotações...</div>
-          </div>
-        </div>
-
-        <div class="card hud" style="margin-bottom:18px" id="home-agenda-card">
-          <div class="card-header">
-            <span class="card-title">📅 Minha Agenda hoje</span>
-          </div>
-          <div id="home-agenda-resumo" style="display:flex;gap:16px;padding:12px 20px;border-bottom:1px solid var(--border);font-size:12.5px"></div>
-          <div id="home-agenda-lista" style="padding:6px 0"></div>
-          <div style="padding:12px 20px;border-top:1px solid var(--border)">
-            <button class="btn btn-ghost btn-sm" style="width:100%" onclick="showPage('agenda')">Ver agenda completa →</button>
-          </div>
-        </div>
-
-        <div class="card hud" style="margin-bottom:18px" id="guia-card">
-          <div class="card-header"><span class="card-title">🧭 Seu guia hoje</span></div>
-          <div id="guia-lista" style="padding:6px 0"></div>
-        </div>
-
-        <div class="card hud" style="margin-bottom:18px" id="noticias-card">
-          <div class="card-header">
-            <span class="card-title">📰 Manchetes</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span id="noticias-atualizado" style="font-size:10.5px;color:var(--text3)"></span>
-              <button class="btn btn-ghost btn-sm" onclick="carregarNoticias(noticiasAba, true)" title="Atualizar notícias"><i class="ti ti-refresh"></i></button>
-            </div>
-          </div>
-          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px;margin:0 20px 10px;width:fit-content">
-            <button class="btn btn-ghost btn-sm" id="btn-noticias-saopaulo" onclick="setNoticiasAba('saopaulo')">🌆 São Paulo</button>
-            <button class="btn btn-ghost btn-sm" id="btn-noticias-mundo" onclick="setNoticiasAba('mundo')">🌍 Mundo</button>
-            <button class="btn btn-ghost btn-sm" id="btn-noticias-brasil" onclick="setNoticiasAba('brasil')">🇧🇷 Brasil</button>
-          </div>
-          <div id="noticias-lista" style="padding:6px 0"></div>
-        </div>
-
-        <div class="metrics">
+        <!-- Indicadores principais -->
+        <div class="metrics home-kpi">
           <div class="metric-card hud" style="cursor:pointer" onclick="showPage('clientes')" title="Ver clientes">
             <div class="metric-label">Clientes ativos</div>
             <div class="metric-value" id="m-clientes-ativos">0</div>
@@ -438,13 +414,70 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           </div>
         </div>
 
-        <svg width="100%" height="28" viewBox="0 0 100 20" preserveAspectRatio="none" style="display:block;overflow:visible;margin-bottom:-6px">
-          <path d="M12.5,6 C25,6 37.5,16 50,16" fill="none" stroke="var(--border2)" stroke-width="0.6"/>
-          <path d="M50,16 C62.5,16 75,6 87.5,6" fill="none" stroke="var(--border2)" stroke-width="0.6"/>
-          <circle cx="12.5" cy="6" r="1.5" fill="#FBBF24"/>
-          <circle cx="50" cy="16" r="1.5" fill="#34D399"/>
-          <circle cx="87.5" cy="6" r="1.5" fill="#60A5FA"/>
-        </svg>
+        <!-- Corpo principal: agenda + notícias à esquerda; clima, cotações e guia à direita -->
+        <div class="home-main">
+          <div class="home-col">
+            <div class="card hud" id="home-agenda-card">
+              <div class="card-header">
+                <span class="card-title" style="font-size:15px">📅 Minha Agenda hoje</span>
+                <button class="btn btn-ghost btn-sm" onclick="showPage('agenda')">Ver agenda completa →</button>
+              </div>
+              <div id="home-agenda-resumo" style="display:flex;gap:22px;padding:14px 22px;border-bottom:1px solid var(--border);font-size:14px;flex-wrap:wrap"></div>
+              <div id="home-agenda-lista" style="padding:8px 0"></div>
+            </div>
+
+            <div class="card hud" id="noticias-card">
+              <div class="card-header" style="flex-wrap:wrap;gap:10px">
+                <span class="card-title" style="font-size:15px">📰 Notícias</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span id="noticias-atualizado" style="font-size:11px;color:var(--text3)"></span>
+                  <button class="btn btn-ghost btn-sm" onclick="carregarNoticias(noticiasAba, true)" title="Atualizar notícias"><i class="ti ti-refresh"></i></button>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 22px 12px">
+                <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
+                  <button class="btn btn-ghost btn-sm" id="btn-noticias-todas" onclick="setNoticiasAba('todas')">Todas</button>
+                  <button class="btn btn-ghost btn-sm" id="btn-noticias-g1" onclick="setNoticiasAba('g1')">G1</button>
+                  <button class="btn btn-ghost btn-sm" id="btn-noticias-cnn" onclick="setNoticiasAba('cnn')">CNN Brasil</button>
+                  <button class="btn btn-ghost btn-sm" id="btn-noticias-saopaulo" onclick="setNoticiasAba('saopaulo')">🌆 São Paulo</button>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:6px">
+                  <a href="https://g1.globo.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Abrir G1 ↗</a>
+                  <a href="https://www.cnnbrasil.com.br" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Abrir CNN Brasil ↗</a>
+                </div>
+              </div>
+              <div id="noticias-lista" style="padding:0 0 8px"></div>
+            </div>
+          </div>
+
+          <div class="home-col">
+            <div class="card hud" id="home-clima-card">
+              <div class="card-header">
+                <span class="card-title" style="font-size:15px">🌦️ Clima — <span id="home-clima-card-local">Vila Prudente, São Paulo - SP</span></span>
+                <button class="btn btn-ghost btn-sm" onclick="carregarClima(1)" title="Atualizar clima"><i class="ti ti-refresh"></i></button>
+              </div>
+              <div id="home-clima-card-corpo" style="padding:18px 22px">
+                <div style="font-size:13px;color:var(--text2)">Carregando clima...</div>
+              </div>
+            </div>
+
+            <div class="card hud" id="home-cotacoes-card">
+              <div class="card-header">
+                <span class="card-title" style="font-size:15px">💹 Cotações</span>
+                <span id="cotacoes-atualizado" style="font-size:11px;color:var(--text3)"></span>
+              </div>
+              <div id="home-cotacoes-lista" style="padding:8px 22px 18px;display:flex;flex-direction:column;gap:0">
+                <div style="font-size:13px;color:var(--text2)">Carregando cotações...</div>
+              </div>
+            </div>
+
+            <div class="card hud" id="guia-card">
+              <div class="card-header"><span class="card-title" style="font-size:15px">🧭 Seu guia hoje</span></div>
+              <div id="guia-lista" style="padding:6px 0"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid3-charts" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;margin-bottom:18px">
           <div class="card hud" style="cursor:pointer" onclick="irParaHorasNaAgenda()">
             <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FBBF24;margin-right:7px"></span>Cronômetro rápido</span></div>
@@ -5674,12 +5707,17 @@ function atualizarRelogioHome() {
 }
 setInterval(atualizarRelogioHome, 1000);
 
+const FEED_G1 = { nome:'G1', cls:'g1', urls:['https://g1.globo.com/rss/g1/'] };
+const FEED_CNN = { nome:'CNN Brasil', cls:'cnn', urls:['https://www.cnnbrasil.com.br/feed/', 'https://www.cnnbrasil.com.br/ultimas-noticias/feed/'] };
+const FEED_G1_SP = { nome:'G1 SP', cls:'g1', urls:['https://g1.globo.com/rss/g1/sp/sao-paulo/'] };
 const NOTICIAS_FEEDS = {
-  saopaulo: [ { nome:'G1 SP', url:'https://g1.globo.com/rss/g1/sp/sao-paulo/' } ],
-  mundo:    [ { nome:'G1 Mundo', url:'https://g1.globo.com/rss/g1/mundo/' }, { nome:'BBC Brasil', url:'https://www.bbc.com/portuguese/index.xml' } ],
-  brasil:   [ { nome:'G1', url:'https://g1.globo.com/rss/g1/' }, { nome:'Poder360', url:'https://www.poder360.com.br/feed/' } ],
+  todas:    [ FEED_G1, FEED_CNN ],
+  g1:       [ FEED_G1 ],
+  cnn:      [ FEED_CNN ],
+  saopaulo: [ FEED_G1_SP ],
 };
-let noticiasAba = 'saopaulo';
+const NOTICIAS_ABAS = ['todas','g1','cnn','saopaulo'];
+let noticiasAba = 'todas';
 
 function ehVideoOuFiller(it) {
   const titulo = (it.title || '').toUpperCase();
@@ -5694,7 +5732,7 @@ function ehVideoOuFiller(it) {
 
 function setNoticiasAba(aba) {
   noticiasAba = aba;
-  ['saopaulo','mundo','brasil'].forEach(a => {
+  NOTICIAS_ABAS.forEach(a => {
     const btn = document.getElementById('btn-noticias-' + a);
     if (btn) btn.style.background = a === aba ? 'var(--surface)' : '';
   });
@@ -5706,7 +5744,7 @@ async function carregarNoticias(aba, forcar) {
   noticiasAba = aba;
   const el = document.getElementById('noticias-lista');
   if (!el) return;
-  ['saopaulo','mundo','brasil'].forEach(a => {
+  NOTICIAS_ABAS.forEach(a => {
     const btn = document.getElementById('btn-noticias-' + a);
     if (btn) btn.style.background = a === aba ? 'var(--surface)' : '';
   });
@@ -5725,13 +5763,15 @@ async function carregarNoticias(aba, forcar) {
   el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text2);font-size:12.5px">Carregando notícias...</div>`;
 
   try {
-    const feeds = NOTICIAS_FEEDS[aba] || NOTICIAS_FEEDS.saopaulo;
+    const feeds = NOTICIAS_FEEDS[aba] || NOTICIAS_FEEDS.todas;
     const resultados = await Promise.all(feeds.map(async feed => {
-      const brutos = await buscarFeedComFallback(feed.url);
-      return brutos.filter(it => !ehVideoOuFiller(it)).slice(0, 8).map(it => ({
+      let brutos = [];
+      for (const u of feed.urls) { brutos = await buscarFeedComFallback(u); if (brutos.length) break; }
+      return brutos.filter(it => !ehVideoOuFiller(it)).slice(0, feeds.length > 1 ? 7 : 13).map(it => ({
         titulo: it.title,
         link: it.link,
         fonte: feed.nome,
+        cls: feed.cls,
         data: it.pubDate,
         imagem: it.thumbnail || ''
       }));
@@ -5739,7 +5779,7 @@ async function carregarNoticias(aba, forcar) {
     let itens = resultados.flat();
     if (!itens.length) throw new Error('nenhuma notícia retornada pelas fontes');
     itens.sort((a,b) => new Date(b.data||0) - new Date(a.data||0));
-    itens = itens.slice(0, 10);
+    itens = itens.slice(0, 14);
     localStorage.setItem(cacheKey, JSON.stringify({ ts: agoraMs, itens }));
     renderNoticias(itens, agoraMs, false);
   } catch (e) {
@@ -5758,6 +5798,11 @@ async function carregarNoticias(aba, forcar) {
   }
 }
 
+function extrairImagemHtml(html) {
+  const m = (html || '').match(/<img[^>]+src=["']([^"']+)["']/i);
+  return m ? m[1] : '';
+}
+
 // Busca um feed RSS com dois caminhos independentes: primeiro via rss2json (rápido, já traz thumbnail),
 // e se falhar (fora do ar, limite de uso, etc.) cai para buscar o XML cru via proxy CORS e faz o parse aqui mesmo.
 async function buscarFeedComFallback(url) {
@@ -5768,7 +5813,7 @@ async function buscarFeedComFallback(url) {
       if (data.status === 'ok' && Array.isArray(data.items) && data.items.length) {
         return data.items.map(it => ({
           title: it.title, link: it.link, pubDate: it.pubDate, categories: it.categories || [],
-          thumbnail: it.thumbnail || (it.enclosure && it.enclosure.link) || ''
+          thumbnail: it.thumbnail || (it.enclosure && it.enclosure.link) || extrairImagemHtml(it.content || it.description || '')
         }));
       }
     }
@@ -5786,6 +5831,7 @@ async function buscarFeedComFallback(url) {
       if (media) thumb = media.getAttribute('url') || '';
       const enclosure = it.querySelector('enclosure');
       if (!thumb && enclosure) thumb = enclosure.getAttribute('url') || '';
+      if (!thumb) thumb = extrairImagemHtml((it.getElementsByTagName('content:encoded')[0] || {}).textContent || pegar('description'));
       const categorias = Array.from(it.querySelectorAll('category')).map(c => c.textContent);
       return { title: pegar('title'), link: pegar('link'), pubDate: pegar('pubDate'), categories: categorias, thumbnail: thumb };
     });
@@ -5805,17 +5851,23 @@ function renderNoticias(itens, ts, offline) {
     el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="txt">Nenhuma notícia disponível agora</div></div>`;
     return;
   }
-  el.innerHTML = `<div style="display:flex;gap:12px;overflow-x:auto;padding:4px 20px 10px">
-    ${itens.map(n => `
-      <a href="${n.link}" target="_blank" rel="noopener" style="flex:0 0 220px;text-decoration:none;color:inherit;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;background:var(--surface3);transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
-        ${n.imagem ? `<div style="width:100%;height:110px;background-image:url('${n.imagem.replace(/'/g,"%27")}');background-size:cover;background-position:center"></div>` : ''}
-        <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:6px">
-          <span class="chip chip-blue" style="align-self:flex-start;font-size:9.5px">${n.fonte}</span>
-          <div style="font-size:12px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${n.titulo}</div>
-        </div>
-      </a>
-    `).join('')}
-  </div>`;
+  const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bg = u => `background-image:url('${String(u).replace(/'/g,"%27")}')`;
+  const tag = n => `<span class="noticia-fonte ${n.cls || 'outra'}">${esc(n.fonte)}</span>`;
+  const [destaque, ...resto] = itens;
+  const comImg = destaque.imagem ? '' : 'background:linear-gradient(135deg,var(--surface3),var(--surface2));';
+  el.innerHTML = `
+    <a class="noticia-destaque" href="${destaque.link}" target="_blank" rel="noopener" style="${destaque.imagem ? bg(destaque.imagem) : comImg}">
+      <div class="ov"></div>
+      <div class="tx">${tag(destaque)}<div class="tit">${esc(destaque.titulo)}</div></div>
+    </a>
+    <div class="noticias-grid">
+      ${resto.map(n => `
+        <a class="noticia-card" href="${n.link}" target="_blank" rel="noopener">
+          ${n.imagem ? `<div class="img" style="${bg(n.imagem)}"></div>` : ''}
+          <div class="corpo">${tag(n)}<div class="tit">${esc(n.titulo)}</div></div>
+        </a>`).join('')}
+    </div>`;
 }
 
 /* ── Clima — São Paulo (CEP 03136-010, Vila Prudente) via Open-Meteo, sem chave ── */
@@ -5974,10 +6026,12 @@ function renderCotacoes(data, ts, offline) {
     const variacao = parseFloat(d.pctChange);
     const cor = variacao >= 0 ? 'var(--green)' : 'var(--red)';
     const seta = variacao >= 0 ? '▲' : '▼';
-    return `<div>
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${it.nome}</div>
-      <div style="font-family:var(--font-mono);font-size:19px;font-weight:700;margin-top:2px">${it.simbolo} ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      <div style="font-size:11.5px;font-weight:600;color:${cor};margin-top:2px">${seta} ${Math.abs(variacao).toFixed(2)}%</div>
+    return `<div class="cotacao-linha">
+      <div>
+        <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${it.nome}</div>
+        <div style="font-size:13px;font-weight:600;color:${cor};margin-top:4px">${seta} ${Math.abs(variacao).toFixed(2)}%</div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:28px;font-weight:700;letter-spacing:-.5px">${it.simbolo} ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
     </div>`;
   }).join('');
 }
