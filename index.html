@@ -589,7 +589,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <!-- ══════════ OBRIGAÇÕES ══════════ -->
       <div class="page" id="page-obrigacoes">
         <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" style="margin-left:auto" onclick="openObrigModal()">+ Nova obrigação</button>
+          <button class="btn btn-danger" style="margin-left:auto" onclick="excluirTodasObrigacoes()">🗑️ Excluir todas</button>
+          <button class="btn btn-primary" onclick="openObrigModal()">+ Nova obrigação</button>
         </div>
         <div class="card hud">
           <table class="tbl">
@@ -4669,6 +4670,20 @@ function gerarProximaOcorrenciaObrig(o) {
   toast(`🔁 Próxima ocorrência criada (${proximaCompetencia || 'próximo mês'})`);
 }
 
+function excluirTodasObrigacoes() {
+  const n = DB.get('obrigacoes').length;
+  if (!n) { toast('Não há obrigações para excluir'); return; }
+  if (!confirm(`Excluir TODAS as ${n} obrigações? Esta ação não pode ser desfeita.\n\nO Fechamento Mensal deixará de gerar obrigações automaticamente.`)) return;
+  DB.set('obrigacoes', []);
+  // desvincula as etapas do fechamento e desliga a geração automática de obrigações
+  const fechs = DB.get('fechamentos');
+  fechs.forEach(f => (f.etapas||[]).forEach(e => { delete e.obrigId; }));
+  DB.set('fechamentos', fechs);
+  setConfig({ ...getConfig(), obrigFechamentoDesligado: true });
+  toast('🗑️ Todas as obrigações foram excluídas');
+  renderAll();
+}
+
 function deleteObrig(id) {
   if (!confirm('Excluir esta obrigação?')) return;
   DB.set('obrigacoes', DB.get('obrigacoes').filter(x=>x.id!==id));
@@ -4744,7 +4759,8 @@ function sincronizarObrigacoesDoFechamento(fechamentoId) {
         return;
       }
     }
-    // não tem obrigação vinculada ainda — cria uma nova
+    // não tem obrigação vinculada ainda — cria uma nova (a menos que a geração automática tenha sido desligada)
+    if (getConfig().obrigFechamentoDesligado) return;
     const nova = {
       id: DB.id(), titulo: etapa.label, clienteId: f.clienteId, cat: 'Fiscal',
       competencia: competenciaStr, venc: '', status: etapa.done ? 'concluida' : 'pendente',
