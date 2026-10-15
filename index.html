@@ -1360,7 +1360,14 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input type="checkbox" id="obrig-recorrente" style="width:16px;height:16px;accent-color:var(--accent)">
           🔁 Recorrente mensal
         </label>
-        <div style="font-size:11px;color:var(--text3);margin-top:5px">Ao concluir esta obrigação, o sistema já cria a próxima automaticamente (mesmo título, mês seguinte).</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Ao concluir esta obrigação, o sistema já cria a próxima automaticamente (mesmo título, mês seguinte). Desmarcada, a obrigação vale só uma vez.</div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <input type="checkbox" id="obrig-fechamento" style="width:16px;height:16px;accent-color:var(--accent)">
+          🔗 Aparece no Fechamento Mensal do cliente
+        </label>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Requer cliente e competência (ou vencimento). Fica sincronizada: concluir ou excluir aqui reflete no Fechamento e na Agenda.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Observações</label>
@@ -1503,6 +1510,18 @@ function setConfig(cfg) { DB.set('config', [cfg]); }
 // Limpeza única (controlada por flag em config, sincronizada): remove tarefas e séries
 // recorrentes relacionadas a "acordar/despertar", pedido explicitamente pelo usuário.
 // Roda uma vez só — depois disso o usuário pode criar tarefas com essas palavras normalmente.
+// Migração única: obrigações geradas pelo Fechamento passam a replicar no mês seguinte ao serem concluídas
+// (o usuário pode desmarcar "Recorrente" em cada uma).
+function migrarObrigFechamentoRecorrente() {
+  const cfg = getConfig();
+  if (cfg.obrigFechRecorrenteMigrado) return;
+  const obrigs = DB.get('obrigacoes');
+  let mudou = false;
+  obrigs.forEach(o => { if (o.origemFechamento && o.recorrente === undefined) { o.recorrente = true; mudou = true; } });
+  if (mudou) DB.set('obrigacoes', obrigs);
+  setConfig({ ...getConfig(), obrigFechRecorrenteMigrado: true });
+}
+
 function limparTarefasAcordar() {
   const cfg = getConfig();
   if (cfg.acordarLimpo) return;
@@ -4574,6 +4593,7 @@ function openObrigModal(id) {
       document.getElementById('obrig-venc').value = o.venc || '';
       document.getElementById('obrig-status').value = o.status || 'pendente';
       document.getElementById('obrig-recorrente').checked = !!o.recorrente;
+      document.getElementById('obrig-fechamento').checked = obrigEstaNoFechamento(o);
       document.getElementById('obrig-obs').value = o.obs || '';
     }
   } else {
@@ -4581,6 +4601,7 @@ function openObrigModal(id) {
     document.getElementById('obrig-cat').value = 'Fiscal';
     document.getElementById('obrig-status').value = 'pendente';
     document.getElementById('obrig-recorrente').checked = false;
+    document.getElementById('obrig-fechamento').checked = false;
   }
   openModal('modal-obrig');
 }
@@ -4604,13 +4625,14 @@ function saveObrig() {
     dataConclusao: (document.getElementById('obrig-status').value === 'concluida')
       ? ((antiga && antiga.status === 'concluida' && antiga.dataConclusao) || today()) : '',
     recorrente: document.getElementById('obrig-recorrente').checked,
+    noFechamento: document.getElementById('obrig-fechamento').checked,
     obs: document.getElementById('obrig-obs').value.trim(),
   };
   if (editId) { const i = obrigacoes.findIndex(x=>x.id===editId); if (i>-1) obrigacoes[i]=item; }
   else obrigacoes.push(item);
   DB.set('obrigacoes', obrigacoes);
-  if (editId) sincronizarFechamentoDaObrigacao(editId);
-  if (item.recorrente && !item.origemFechamento && item.status === 'concluida' && statusAntigo !== 'concluida') {
+  vincularObrigacaoAoFechamento(item.id);
+  if (item.recorrente && item.status === 'concluida' && statusAntigo !== 'concluida') {
     gerarProximaOcorrenciaObrig(item);
   }
   closeModal('modal-obrig');
@@ -4627,7 +4649,7 @@ function toggleObrigStatus(id) {
     o.dataConclusao = eraConcluida ? '' : today();
     DB.set('obrigacoes', obrigacoes);
     sincronizarFechamentoDaObrigacao(id);
-    if (o.recorrente && !o.origemFechamento && !eraConcluida) gerarProximaOcorrenciaObrig(o);
+    if (o.recorrente && !eraConcluida) gerarProximaOcorrenciaObrig(o);
     renderAll();
   }
 }
@@ -4651,11 +4673,21 @@ function avancarData(dataStr) {
 function gerarProximaOcorrenciaObrig(o) {
   const proximaCompetencia = avancarCompetencia(o.competencia);
   const proximoVenc = avancarData(o.venc);
+  const noFech = obrigEstaNoFechamento(o);
+  // garante o fechamento do mês seguinte (cria as etapas padrão e suas obrigações) antes de checar duplicidade
+  const mm = (proximaCompetencia||'').match(/^(\d{2})\/(\d{4})$/);
+  if (noFech && o.clienteId && mm) ensureFechamento(o.clienteId, `${mm[2]}-${mm[1]}`);
   const obrigacoes = DB.get('obrigacoes');
-  // evita duplicar se a próxima já existir (mesmo título+cliente+competência)
-  const jaExiste = obrigacoes.some(x => x.titulo===o.titulo && x.clienteId===o.clienteId && x.competencia===proximaCompetencia && x.id!==o.id);
-  if (jaExiste) return;
-  obrigacoes.push({
+  // evita duplicar se a próxima já existir (mesmo título+cliente+competência) — herda recorrência e vencimento
+  const existente = obrigacoes.find(x => x.titulo===o.titulo && x.clienteId===o.clienteId && x.competencia===proximaCompetencia && x.id!==o.id);
+  if (existente) {
+    let mudou = false;
+    if (!existente.recorrente) { existente.recorrente = true; mudou = true; }
+    if (!existente.venc && proximoVenc) { existente.venc = proximoVenc; mudou = true; }
+    if (mudou) DB.set('obrigacoes', obrigacoes);
+    return;
+  }
+  const nova = {
     id: DB.id(),
     titulo: o.titulo,
     clienteId: o.clienteId,
@@ -4664,30 +4696,83 @@ function gerarProximaOcorrenciaObrig(o) {
     venc: proximoVenc,
     status: 'pendente',
     recorrente: true,
+    noFechamento: obrigEstaNoFechamento(o),
     obs: o.obs,
-  });
+  };
+  obrigacoes.push(nova);
   DB.set('obrigacoes', obrigacoes);
+  if (nova.noFechamento) vincularObrigacaoAoFechamento(nova.id);
   toast(`🔁 Próxima ocorrência criada (${proximaCompetencia || 'próximo mês'})`);
+}
+
+// ── Sincronização Fechamento Mensal ⇄ Obrigações ⇄ Agenda ─────────────────────────────
+// A obrigação é o registro único: a Agenda a lê pelo vencimento e o Fechamento a referencia
+// por etapa (etapa.obrigId). Concluir, editar ou excluir em qualquer lugar vale para todos.
+function mesDaObrigacao(o) {
+  const m = (o.competencia||'').match(/^(\d{2})\/(\d{4})$/);
+  if (m) return `${m[2]}-${m[1]}`;
+  return o.venc ? o.venc.slice(0,7) : '';
+}
+function obrigEstaNoFechamento(o) {
+  if (o.noFechamento || o.origemFechamento) return true;
+  return DB.get('fechamentos').some(f => (f.etapas||[]).some(e => e.obrigId === o.id));
+}
+// Garante que a obrigação tenha (ou não tenha) a etapa correspondente no fechamento certo
+function vincularObrigacaoAoFechamento(obrigId) {
+  const o = DB.get('obrigacoes').find(x=>x.id===obrigId);
+  if (!o) return;
+  const quer = obrigEstaNoFechamento(o) && o.clienteId && mesDaObrigacao(o);
+  const mes = mesDaObrigacao(o);
+  let fechs = DB.get('fechamentos');
+  let atual = null, fAtual = null;
+  fechs.forEach(f => (f.etapas||[]).forEach(e => { if (e.obrigId === obrigId) { atual = e; fAtual = f; } }));
+  let alvo = quer ? fechs.find(f => f.clienteId === o.clienteId && f.mes === mes) : null;
+  if (atual && alvo && fAtual === alvo) {
+    atual.label = o.titulo; atual.done = o.status === 'concluida';
+    DB.set('fechamentos', fechs); return;
+  }
+  if (atual) fAtual.etapas = fAtual.etapas.filter(e => e !== atual);
+  if (!quer) { DB.set('fechamentos', fechs); return; }
+  DB.set('fechamentos', fechs);
+  if (!alvo) {
+    ensureFechamento(o.clienteId, mes);       // cria o mês com as etapas padrão
+    fechs = DB.get('fechamentos');
+    alvo = fechs.find(f => f.clienteId === o.clienteId && f.mes === mes);
+    if (!alvo) return;
+  }
+  const proxId = Math.max(-1, ...alvo.etapas.map(e => Number(e.id) || 0)) + 1;
+  alvo.etapas.push({ id: proxId, label: o.titulo, done: o.status === 'concluida', obrigId: o.id });
+  DB.set('fechamentos', fechs);
+}
+// Remove obrigações e as etapas de fechamento ligadas a elas
+function removerObrigacoesEEtapas(ids) {
+  const set = new Set(ids);
+  DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !set.has(o.id)));
+  const fechs = DB.get('fechamentos');
+  let mudou = false;
+  fechs.forEach(f => {
+    const antes = (f.etapas||[]).length;
+    f.etapas = (f.etapas||[]).filter(e => !set.has(e.obrigId));
+    if (f.etapas.length !== antes) mudou = true;
+  });
+  if (mudou) DB.set('fechamentos', fechs);
 }
 
 function excluirTodasObrigacoes() {
   const n = DB.get('obrigacoes').length;
   if (!n) { toast('Não há obrigações para excluir'); return; }
-  if (!confirm(`Excluir TODAS as ${n} obrigações? Esta ação não pode ser desfeita.\n\nO Fechamento Mensal deixará de gerar obrigações automaticamente.`)) return;
-  DB.set('obrigacoes', []);
-  // desvincula as etapas do fechamento e desliga a geração automática de obrigações
-  const fechs = DB.get('fechamentos');
-  fechs.forEach(f => (f.etapas||[]).forEach(e => { delete e.obrigId; }));
-  DB.set('fechamentos', fechs);
-  setConfig({ ...getConfig(), obrigFechamentoDesligado: true });
+  if (!confirm(`Excluir TODAS as ${n} obrigações? Esta ação não pode ser desfeita.\n\nElas também saem do Fechamento Mensal e da Agenda.`)) return;
+  removerObrigacoesEEtapas(DB.get('obrigacoes').map(o => o.id));
   toast('🗑️ Todas as obrigações foram excluídas');
   renderAll();
 }
 
 function deleteObrig(id) {
-  if (!confirm('Excluir esta obrigação?')) return;
-  DB.set('obrigacoes', DB.get('obrigacoes').filter(x=>x.id!==id));
-  toast('🗑️ Excluída');
+  const o = DB.get('obrigacoes').find(x=>x.id===id);
+  const noFech = o && obrigEstaNoFechamento(o);
+  if (!confirm('Excluir esta obrigação?' + (noFech ? '\n\nEla também será removida do Fechamento Mensal e da Agenda.' : '\n\nEla também some da Agenda.'))) return;
+  removerObrigacoesEEtapas([id]);
+  toast('🗑️ Excluída de todos os lugares');
   renderAll();
 }
 
@@ -4728,7 +4813,9 @@ function renderObrigacoes() {
 /* ══════════════════════════════════════════════════════
    FECHAMENTO MENSAL
    ══════════════════════════════════════════════════════ */
-let fechMesAtual = mesAtual();
+// O Fechamento trabalha sempre o mês ANTERIOR (em outubro, fecha-se setembro): é o mês-base.
+function mesBaseFechamento() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+let fechMesAtual = mesBaseFechamento();
 
 function fechMoveMes(dir) {
   const [y,m] = fechMesAtual.split('-').map(Number);
@@ -4749,30 +4836,35 @@ function sincronizarObrigacoesDoFechamento(fechamentoId) {
   const [ano, mes] = f.mes.split('-');
   const competenciaStr = `${mes}/${ano}`;
   let mudouObrig = false, mudouFech = false;
+  const proximas = [];
 
-  f.etapas.forEach(etapa => {
+  f.etapas = f.etapas.filter(etapa => {
     if (etapa.obrigId) {
       const o = obrigacoes.find(x=>x.id===etapa.obrigId);
-      if (o) {
-        const novoStatus = etapa.done ? 'concluida' : 'pendente';
-        if (o.status !== novoStatus) { o.status = novoStatus; o.dataConclusao = etapa.done ? today() : ''; mudouObrig = true; }
-        return;
+      if (!o) { mudouFech = true; return false; }   // obrigação excluída → some do fechamento
+      const novoStatus = etapa.done ? 'concluida' : 'pendente';
+      if (o.status !== novoStatus) {
+        o.status = novoStatus; o.dataConclusao = etapa.done ? today() : ''; mudouObrig = true;
+        if (etapa.done && o.recorrente) proximas.push(o.id);
       }
+      if (o.titulo && etapa.label !== o.titulo) { etapa.label = o.titulo; mudouFech = true; }
+      return true;
     }
-    // não tem obrigação vinculada ainda — cria uma nova (a menos que a geração automática tenha sido desligada)
-    if (getConfig().obrigFechamentoDesligado) return;
+    // não tem obrigação vinculada ainda — cria uma nova
     const nova = {
       id: DB.id(), titulo: etapa.label, clienteId: f.clienteId, cat: 'Fiscal',
       competencia: competenciaStr, venc: '', status: etapa.done ? 'concluida' : 'pendente',
-      obs: 'Gerada automaticamente pelo Fechamento Mensal', origemFechamento: true,
+      obs: 'Gerada automaticamente pelo Fechamento Mensal', origemFechamento: true, noFechamento: true, recorrente: true,
     };
     obrigacoes.push(nova);
     etapa.obrigId = nova.id;
     mudouObrig = true; mudouFech = true;
+    return true;
   });
 
   if (mudouObrig) DB.set('obrigacoes', obrigacoes);
   if (mudouFech) DB.set('fechamentos', fechamentos);
+  proximas.forEach(id => { const o = DB.get('obrigacoes').find(x=>x.id===id); if (o) gerarProximaOcorrenciaObrig(o); });
 }
 
 // Direção inversa: concluir/reabrir a obrigação reflete na etapa do fechamento vinculada
@@ -4884,6 +4976,9 @@ function saveFechamentoEtapas() {
     return { id: i, label, done: old ? old.done : false, obrigId: old ? old.obrigId : null };
   });
   const obs = document.getElementById('fech-obs').value.trim();
+  // etapas removidas do texto → as obrigações ligadas a elas também são excluídas
+  const removidas = existing.filter(e => !linhas.includes(e.label) && e.obrigId).map(e => e.obrigId);
+  if (removidas.length) DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !removidas.includes(o.id)));
   let fechamentoId;
   if (idx>-1) { fechamentos[idx].etapas = novasEtapas; fechamentos[idx].obs = obs; fechamentoId = fechamentos[idx].id; }
   else { fechamentoId = DB.id(); fechamentos.push({ id: fechamentoId, clienteId, mes, etapas: novasEtapas, obs }); }
@@ -5940,11 +6035,12 @@ function startApp() {
   if (getTimersAtivos().length) iniciarLoopTimer();
   verificarSincronia();
   if (SUPA_URL && SUPA_KEY) {
-    DB.pull().then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+    DB.pull().then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
     limparTarefasAcordar();
+    migrarObrigFechamentoRecorrente();
     gerarOcorrenciasRecorrentesFuturas();
   }
 }
