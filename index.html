@@ -1330,8 +1330,18 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <label class="form-label">Título *</label>
         <input class="form-control" id="obrig-titulo" placeholder="Ex: PGDAS Simples Nacional">
       </div>
+      <div class="form-group" id="obrig-multi-wrap" style="display:none">
+        <label class="form-label">Clientes (marque os que terão esta obrigação)</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+          <input class="form-control" id="obrig-multi-busca" placeholder="Buscar por nome ou código" oninput="filtrarObrigMulti()" autocomplete="off">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="marcarObrigMulti(true)">Todos</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="marcarObrigMulti(false)">Nenhum</button>
+        </div>
+        <div id="obrig-multi-lista" style="max-height:170px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--surface3)"></div>
+        <div id="obrig-multi-contador" style="font-size:11px;color:var(--text3);margin-top:5px"></div>
+      </div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" id="obrig-cliente-wrap">
           <label class="form-label">Cliente</label>
           <select class="form-control" id="obrig-cliente"><option value="">— Nenhum —</option></select>
         </div>
@@ -4591,10 +4601,44 @@ function setObrigFiltro(f) {
   renderObrigacoes();
 }
 
+function montarObrigMulti() {
+  const clientes = DB.get('clientes').filter(c=>c.status==='ativo').sort(ordenarPorCodigo);
+  const el = document.getElementById('obrig-multi-lista');
+  document.getElementById('obrig-multi-busca').value = '';
+  el.innerHTML = clientes.length ? clientes.map(c => `
+    <label class="obrig-multi-item" data-busca="${((c.codigo||'')+' '+c.nome).toLowerCase().replace(/"/g,'')}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer">
+      <input type="checkbox" value="${c.id}" onchange="atualizarObrigMultiContador()" style="width:15px;height:15px;accent-color:var(--accent)">
+      <span>${c.codigo?c.codigo+' — ':''}${c.nome.replace(/</g,'&lt;')}</span>
+    </label>`).join('') : '<div style="font-size:12px;color:var(--text3)">Nenhum cliente ativo cadastrado</div>';
+  atualizarObrigMultiContador();
+}
+function filtrarObrigMulti() {
+  const q = document.getElementById('obrig-multi-busca').value.trim().toLowerCase();
+  document.querySelectorAll('#obrig-multi-lista .obrig-multi-item').forEach(l => { l.style.display = (!q || l.dataset.busca.includes(q)) ? 'flex' : 'none'; });
+}
+function marcarObrigMulti(v) {
+  document.querySelectorAll('#obrig-multi-lista .obrig-multi-item').forEach(l => {
+    if (l.style.display !== 'none') l.querySelector('input').checked = v;   // respeita o filtro de busca
+  });
+  atualizarObrigMultiContador();
+}
+function obrigMultiSelecionados() {
+  return Array.from(document.querySelectorAll('#obrig-multi-lista input:checked')).map(i => i.value);
+}
+function atualizarObrigMultiContador() {
+  const n = obrigMultiSelecionados().length;
+  const el = document.getElementById('obrig-multi-contador');
+  if (el) el.textContent = n ? `${n} cliente${n!==1?'s':''} selecionado${n!==1?'s':''} — será criada uma obrigação para cada um` : 'Nenhum cliente selecionado (a obrigação será criada sem cliente)';
+}
+
 function openObrigModal(id) {
   document.getElementById('obrig-edit-id').value = id || '';
   document.getElementById('modal-obrig-title').textContent = id ? 'Editar obrigação' : 'Nova obrigação';
   fillClienteSelect(document.getElementById('obrig-cliente'));
+  // Nova obrigação: escolha de vários clientes; edição: um cliente só
+  document.getElementById('obrig-multi-wrap').style.display = id ? 'none' : '';
+  document.getElementById('obrig-cliente-wrap').style.display = id ? '' : 'none';
+  if (!id) montarObrigMulti();
   if (id) {
     const o = DB.get('obrigacoes').find(x=>x.id===id);
     if (o) {
@@ -4625,11 +4669,15 @@ function saveObrig() {
   const obrigacoes = DB.get('obrigacoes');
   const antiga = editId ? obrigacoes.find(x=>x.id===editId) : null;
   const statusAntigo = antiga ? antiga.status : null;
+  // Nova obrigação: uma para cada cliente marcado (nenhum marcado = uma sem cliente)
+  const clientesAlvo = editId ? [document.getElementById('obrig-cliente').value] : (obrigMultiSelecionados().length ? obrigMultiSelecionados() : ['']);
+  const criados = [];
+  clientesAlvo.forEach((clienteIdAlvo, idxAlvo) => {
   const item = {
     ...(antiga || {}),
-    id: editId || DB.id(),
+    id: editId || (DB.id() + idxAlvo),
     titulo,
-    clienteId: document.getElementById('obrig-cliente').value,
+    clienteId: clienteIdAlvo,
     cat: document.getElementById('obrig-cat').value,
     competencia: document.getElementById('obrig-competencia').value.trim(),
     venc: document.getElementById('obrig-venc').value,
@@ -4642,13 +4690,15 @@ function saveObrig() {
   };
   if (editId) { const i = obrigacoes.findIndex(x=>x.id===editId); if (i>-1) obrigacoes[i]=item; }
   else obrigacoes.push(item);
+  criados.push(item);
+  });
   DB.set('obrigacoes', obrigacoes);
-  vincularObrigacaoAoFechamento(item.id);
-  if (item.recorrente && item.status === 'concluida' && statusAntigo !== 'concluida') {
-    gerarProximaOcorrenciaObrig(item);
-  }
+  criados.forEach(item => {
+    vincularObrigacaoAoFechamento(item.id);
+    if (item.recorrente && item.status === 'concluida' && statusAntigo !== 'concluida') gerarProximaOcorrenciaObrig(item);
+  });
   closeModal('modal-obrig');
-  toast('📅 Obrigação salva');
+  toast(criados.length > 1 ? `📅 ${criados.length} obrigações criadas` : '📅 Obrigação salva');
   renderAll();
 }
 
