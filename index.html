@@ -582,6 +582,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <span style="padding:5px 14px;font-size:13px;font-weight:600" id="fech-mes-label"></span>
             <button class="btn btn-ghost btn-sm" onclick="fechMoveMes(1)">→</button>
           </div>
+          <button class="btn btn-danger btn-sm" onclick="excluirTodosFechamentos()">🗑️ Excluir todos os fechamentos</button>
         </div>
         <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
       </div>
@@ -4756,6 +4757,19 @@ function removerObrigacoesEEtapas(ids) {
     if (f.etapas.length !== antes) mudou = true;
   });
   if (mudou) DB.set('fechamentos', fechs);
+}
+
+function excluirTodosFechamentos() {
+  const fechs = DB.get('fechamentos');
+  const obrigIds = new Set();
+  fechs.forEach(f => (f.etapas||[]).forEach(e => { if (e.obrigId) obrigIds.add(e.obrigId); }));
+  DB.get('obrigacoes').forEach(o => { if (o.origemFechamento) obrigIds.add(o.id); });
+  if (!fechs.length && !obrigIds.size) { toast('Não há fechamentos para excluir'); return; }
+  if (!confirm(`Excluir TODOS os fechamentos mensais (${fechs.length} registro${fechs.length!==1?'s':''}, de todos os meses e clientes)?\n\nAs ${obrigIds.size} obrigações ligadas a eles também serão excluídas, inclusive da Agenda. Esta ação não pode ser desfeita.`)) return;
+  DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !obrigIds.has(o.id)));
+  DB.set('fechamentos', []);
+  toast('🗑️ Todos os fechamentos foram excluídos');
+  renderAll();
 }
 
 function excluirTodasObrigacoes() {
