@@ -582,7 +582,11 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <span style="padding:5px 14px;font-size:13px;font-weight:600" id="fech-mes-label"></span>
             <button class="btn btn-ghost btn-sm" onclick="fechMoveMes(1)">→</button>
           </div>
-          <button class="btn btn-danger btn-sm" onclick="excluirTodosFechamentos()">🗑️ Excluir todos os fechamentos</button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="form-control" id="fech-add-cliente" style="max-width:240px"><option value="">— Adicionar cliente ao fechamento —</option></select>
+            <button class="btn btn-primary btn-sm" onclick="adicionarClienteAoFechamento()">+ Adicionar</button>
+            <button class="btn btn-danger btn-sm" onclick="excluirTodosFechamentos()">🗑️ Excluir todos os fechamentos</button>
+          </div>
         </div>
         <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
       </div>
@@ -4771,13 +4775,23 @@ function excluirTodosFechamentos() {
   const obrigIds = new Set();
   fechs.forEach(f => (f.etapas||[]).forEach(e => { if (e.obrigId) obrigIds.add(e.obrigId); }));
   DB.get('obrigacoes').forEach(o => { if (o.origemFechamento) obrigIds.add(o.id); });
-  if (!fechs.length && !obrigIds.size) { toast('Não há fechamentos para excluir'); return; }
-  if (!confirm(`Excluir TODOS os fechamentos mensais (${fechs.length} registro${fechs.length!==1?'s':''}, de todos os meses e clientes)?\n\nAs ${obrigIds.size} obrigações ligadas a eles também serão excluídas, inclusive da Agenda. Esta ação não pode ser desfeita.`)) return;
+  if (!confirm(`Zerar o Fechamento Mensal?\n\n• ${fechs.length} fechamento${fechs.length!==1?'s':''} registrado${fechs.length!==1?'s':''} (todos os meses e clientes) serão excluídos;\n• ${obrigIds.size} obrigaç${obrigIds.size!==1?'ões':'ão'} ligada${obrigIds.size!==1?'s':''} a eles também, inclusive da Agenda;\n• os cards dos clientes somem — você adiciona de novo, um a um, em "+ Adicionar".\n\nEsta ação não pode ser desfeita.`)) return;
+  setConfig({ ...getConfig(), fechamentoManual: true });
   DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !obrigIds.has(o.id)));
   DB.set('fechamentos', []);
   toast('🗑️ Todos os fechamentos foram excluídos');
   renderAll();
-  confirmarExclusaoNaNuvem(['fechamentos','obrigacoes']);
+  confirmarExclusaoNaNuvem(['fechamentos','obrigacoes','config']);
+}
+
+function adicionarClienteAoFechamento() {
+  const sel = document.getElementById('fech-add-cliente');
+  const id = sel && sel.value;
+  if (!id) { toast('⚠️ Escolha o cliente'); return; }
+  ensureFechamento(id, fechMesAtual);
+  sel.value = '';
+  toast('✅ Cliente adicionado ao fechamento de ' + mesLabel(fechMesAtual));
+  renderAll();
 }
 
 // Confere se a exclusão chegou na nuvem; se não chegou, avisa (senão ela "volta" ao recarregar)
@@ -5316,10 +5330,15 @@ function confirmarBaixaRecebimento() {
 
 function renderFechamento() {
   document.getElementById('fech-mes-label').textContent = mesLabel(fechMesAtual);
-  const clientes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true).sort(ordenarPorCodigo);
+  const manual = !!getConfig().fechamentoManual;   // depois de "Excluir todos", só aparece quem for adicionado
+  const clientes = DB.get('clientes').filter(c=>c.status==='ativo' && (manual ? !!getFechamento(c.id, fechMesAtual) : c.temFechamento===true)).sort(ordenarPorCodigo);
+  const selAdd = document.getElementById('fech-add-cliente');
+  if (selAdd) fillClienteSelect(selAdd, selAdd.value || '', { semNovo: true, vazio: '— Adicionar cliente ao fechamento —' });
   const grid = document.getElementById('fechamento-grid');
   if (!clientes.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="ico">📋</div><div class="txt">Nenhum cliente com fechamento recorrente marcado</div><div class="sub">Marque "Tem fechamento mensal recorrente" no cadastro do cliente</div></div>`;
+    grid.innerHTML = manual
+      ? `<div class="empty-state"><div class="ico">📋</div><div class="txt">Nenhum fechamento em ${mesLabel(fechMesAtual)}</div><div class="sub">Escolha um cliente acima e clique em "+ Adicionar"</div></div>`
+      : `<div class="empty-state"><div class="ico">📋</div><div class="txt">Nenhum cliente com fechamento recorrente marcado</div><div class="sub">Marque "Tem fechamento mensal recorrente" no cadastro do cliente</div></div>`;
     return;
   }
   grid.innerHTML = clientes.map(c => {
