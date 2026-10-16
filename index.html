@@ -6523,14 +6523,19 @@ async function imprimirProposta(id) {
 <style>
   *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:'Cormorant Garamond',Georgia,serif;color:#1a150c;margin:0;background:#fff;font-size:15px}
-  .pag{max-width:800px;margin:0 auto;padding:0 0 30px}
-  .topo{background:#0b0906;color:#e8c97e;padding:26px 36px;display:flex;align-items:center;gap:22px}
-  .logo{width:92px;height:92px;border-radius:50%;background:${logo} center/cover no-repeat;flex-shrink:0;box-shadow:0 0 0 1px #c9a24b}
+  .pag{width:100%;margin:0;padding:0 0 30px}
+  .topo{background:#0b0906;color:#e8c97e;padding:20px 0}
+  .topo-in{max-width:880px;margin:0 auto;padding:0 40px;display:flex;align-items:center;gap:22px}
+  .topo-dir{margin-left:auto;text-align:right;font-family:'Cinzel',serif;border-left:1px solid #c9a24b;padding-left:20px}
+  .topo-dir .p{font-size:10px;letter-spacing:.3em;color:#a99f8a}
+  .topo-dir .n{font-size:17px;letter-spacing:.12em;margin-top:4px;color:#e8c97e}
+  .topo-dir .dt{font-size:10.5px;letter-spacing:.12em;margin-top:6px;color:#c9a24b}
+  .logo{width:80px;height:80px;border-radius:50%;background:${logo} center/cover no-repeat;flex-shrink:0;box-shadow:0 0 0 1px #c9a24b}
   .topo h1{font-family:'Cinzel',serif;font-size:21px;letter-spacing:.22em;margin:0;font-weight:600}
   .topo .sub{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.3em;margin-top:6px;color:#c9a24b}
   .topo .cnpj{font-size:12px;margin-top:8px;color:#a99f8a;letter-spacing:.05em}
   .faixa{height:4px;background:linear-gradient(90deg,#c9a24b,#f0d793,#c9a24b)}
-  .corpo{padding:10px 40px 0}
+  .corpo{max-width:880px;margin:0 auto;padding:10px 40px 0}
   .titulo{font-family:'Cinzel',serif;font-size:20px;letter-spacing:.16em;text-align:center;margin:6px 0 4px;color:#8a6a24}
   .meta{text-align:center;font-size:13px;color:#6b614d;margin-bottom:26px;letter-spacing:.03em}
   .cli{border:1px solid #d9c9a0;background:#fbf8ef;border-radius:6px;padding:14px 18px;margin-bottom:20px}
@@ -6590,7 +6595,7 @@ async function imprimirProposta(id) {
   .anexo pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:11.5px;line-height:1.45}
   .anexo-aviso{font-size:13px;color:#8a7f69}
   @page{size:A4;margin:0}
-  table.paginado{width:100%;border-collapse:collapse;margin:0}
+  table.paginado{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
   table.paginado>thead>tr>td,table.paginado>tfoot>tr>td,table.paginado>tbody>tr>td{padding:0;border:0;background:none}
   .esp{height:14mm}
   .aviso{border-left:4px solid #c9a24b;background:#fbf3dc;padding:10px 14px;font-size:13px;line-height:1.5;margin:8px 0 12px;color:#4a3d18;page-break-inside:avoid}
@@ -6599,9 +6604,9 @@ async function imprimirProposta(id) {
   .sec h2,.sec h4{page-break-after:avoid;break-after:avoid;break-inside:avoid}
   .sec.curta{break-inside:avoid;page-break-inside:avoid}
   .assin,.rodape{page-break-inside:avoid}
-  @media print{ .pag{max-width:none} }
+  @media print{ .corpo{max-width:none} .topo-in{max-width:none} }
 </style></head><body><div class="pag">
-  <div class="topo"><div class="logo"></div><div><h1>THOTHE</h1><div class="sub">GESTÃO CORPORATIVA</div><div class="cnpj">${propEsc(EMPRESA_NOME)} · CNPJ ${propEsc(EMPRESA_CNPJ)}</div></div></div>
+  <div class="topo"><div class="topo-in"><div class="logo"></div><div><h1>THOTHE</h1><div class="sub">GESTÃO CORPORATIVA</div><div class="cnpj">${propEsc(EMPRESA_NOME)} · CNPJ ${propEsc(EMPRESA_CNPJ)}</div></div><div class="topo-dir"><div class="p">PROPOSTA</div><div class="n">${propEsc(x.numero)}</div><div class="dt">${d}/${m}/${y}</div></div></div></div>
   <div class="faixa"></div>
   <table class="paginado"><thead><tr><td><div class="esp"></div></td></tr></thead><tfoot><tr><td><div class="esp"></div></td></tr></tfoot><tbody><tr><td>
   <div class="corpo">
