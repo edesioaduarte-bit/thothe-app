@@ -2457,6 +2457,7 @@ const PAGE_CONFIG = {
 };
 
 function showPage(id) {
+  try { propSincronizarAcompanhamento(); } catch (e) {}
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
@@ -5699,6 +5700,22 @@ const PROP_INTRO = {
   cancelamento: 'Agradecemos a oportunidade de apresentar esta proposta. A THOTHE Gestão Corporativa conduzirá todo o processo de encerramento (baixa) da sua empresa junto aos órgãos competentes, cuidando de cada etapa para que a baixa seja concluída de forma correta e sem pendências futuras.',
   regularizacao: 'Agradecemos a oportunidade de apresentar esta proposta. Realizamos a pesquisa fiscal da empresa e organizamos neste documento: (1) o diagnóstico da situação junto a cada órgão, (2) o plano de regularização, etapa por etapa, e (3) os honorários correspondentes. O objetivo é deixar a empresa em dia e apta a emitir suas certidões de regularidade fiscal.',
 };
+const PROP_OBJETO = { abertura: 'Abertura de empresa (CNPJ)', cancelamento: 'Cancelamento de CNPJ', regularizacao: 'Regularização fiscal da empresa' };
+const PROP_ETAPAS_CANCEL = [
+  ['Diagnóstico da Situação', 'Levantamento e análise das pendências cadastrais, fiscais e/ou administrativas relacionadas ao CNPJ.'],
+  ['Fase de Regularização Prévia', 'Adoção das medidas necessárias para saneamento das pendências identificadas, viabilizando o processo de baixa.'],
+  ['Cancelamento (Baixa) do CNPJ', 'Realização dos procedimentos de encerramento da empresa junto aos órgãos competentes, com apresentação dos respectivos honorários para execução do serviço.'],
+];
+function propObjetoHtml(x) {
+  const objeto = `<div class="objeto"><span>OBJETO DA PROPOSTA</span><b>${propEsc(PROP_OBJETO[x.tipo] || '')}</b></div>`;
+  if (x.tipo === 'cancelamento' && x.comRegularizacao) {
+    return objeto + `
+      <div class="obs-box"><b>Observação:</b> Para que a baixa da empresa seja efetivada e aceita pelos órgãos competentes, será necessário, previamente, regularizar todas as pendências identificadas.</div>
+      <p class="intro" style="margin-bottom:10px">A pesquisa e os serviços propostos serão conduzidos nas seguintes etapas:</p>
+      <table class="etapas-ex"><tbody>${PROP_ETAPAS_CANCEL.map((e, n) => `<tr><td class="num">${n+1}</td><td><b>${propEsc(e[0])}</b><div>${propEsc(e[1])}</div></td></tr>`).join('')}</tbody></table>`;
+  }
+  return objeto + `<div class="intro">${PROP_INTRO[x.tipo]}</div>`;
+}
 const PROP_INTRO_CANCEL_REGUL = 'Agradecemos a oportunidade de apresentar esta proposta. Para que a baixa da empresa seja aceita pelos órgãos, é necessário primeiro regularizar as pendências existentes. Realizamos a pesquisa fiscal e organizamos neste documento: (1) o diagnóstico da situação, (2) a fase de regularização prévia e (3) a fase de cancelamento (baixa), com os honorários de cada etapa.';
 const PROP_PREMISSAS = {
   abertura: ['Os honorários referem-se exclusivamente aos serviços descritos nesta proposta.', 'Taxas, emolumentos e tributos cobrados pelos órgãos (Junta Comercial, Prefeitura, Corpo de Bombeiros etc.) são de responsabilidade do cliente.', 'Os prazos dependem da tramitação nos órgãos públicos e do envio da documentação pelo cliente em tempo hábil.'],
@@ -5750,7 +5767,60 @@ function renderPropostas() {
 
 function propMudarStatus(id, v) {
   const props = DB.get('propostas'); const x = props.find(p=>p.id===id);
-  if (x) { x.status = v; DB.set('propostas', props); renderPropostas(); }
+  if (!x) return;
+  const antes = x.status;
+  x.status = v;
+  if (v === 'enviada' && antes !== 'enviada') x.enviadaEm = today();
+  DB.set('propostas', props);
+  if (v === 'aprovada' && antes !== 'aprovada') propCriarTarefaExecucao(x);
+  propSincronizarAcompanhamento();
+  if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
+  else if (v === 'aprovada' && antes !== 'aprovada') toast('✅ Proposta aprovada — tarefa criada na Agenda');
+  renderPropostas();
+}
+const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
+function propTarefaBase(x, extra) {
+  return { id: DB.id() + Math.random().toString(36).slice(2, 5), tipo: 'profissional', clienteId: x.clienteId || '', hora: '', prioridade: 'normal', recorrencia: '', status: 'pendente', horaCriacao: horaAgora(), propostaId: x.id, ...extra };
+}
+// Tarefa de execução criada ao aprovar a proposta (uma só por proposta)
+function propCriarTarefaExecucao(x) {
+  const tarefas = DB.get('tarefas');
+  if (tarefas.some(t => t.propostaId === x.id && t.propKind === 'execucao')) return;
+  const etapas = (x.itens || []).map((i, n) => `${n+1}. ${i.descricao}${i.valor ? ' — ' + fmtMoney(i.valor) : ''}`).join('\n');
+  tarefas.push(propTarefaBase(x, {
+    propKind: 'execucao',
+    titulo: `🚀 Executar proposta ${x.numero} — ${PROP_TIPOS[x.tipo] || ''} — ${x.nome}`,
+    data: today(),
+    comentarios: `Proposta aprovada em ${fmtDate(today())}. Total: ${fmtMoney(x.total || 0)}.\n${x.condicoes ? 'Pagamento: ' + x.condicoes + '\n' : ''}\nEtapas:\n${etapas}`,
+  }));
+  DB.set('tarefas', tarefas);
+}
+// Enquanto a proposta está "Enviada" há sempre um acompanhamento pendente na Agenda; ao concluir um, abre o próximo.
+// Quando a proposta é aprovada, recusada ou volta a rascunho, os acompanhamentos pendentes são encerrados.
+function propSincronizarAcompanhamento() {
+  let props, tarefas;
+  try { props = DB.get('propostas'); tarefas = DB.get('tarefas'); } catch (e) { return; }
+  if (!Array.isArray(props) || !Array.isArray(tarefas)) return;
+  let mudou = false;
+  const ativos = new Set(props.filter(x => x.status === 'enviada').map(x => x.id));
+  // encerra acompanhamentos de propostas que não estão mais "enviada"
+  const restantes = tarefas.filter(t => !(t.propKind === 'followup' && t.status !== 'concluida' && !ativos.has(t.propostaId)));
+  if (restantes.length !== tarefas.length) { tarefas = restantes; mudou = true; }
+  props.filter(x => x.status === 'enviada').forEach(x => {
+    const seus = tarefas.filter(t => t.propKind === 'followup' && t.propostaId === x.id);
+    if (seus.some(t => t.status !== 'concluida')) return;
+    const ultima = seus.map(t => t.dataConclusao || t.data).filter(Boolean).sort().pop() || x.enviadaEm || today();
+    const base = ultima > today() ? ultima : today();
+    const data = seus.length ? addDiasStr(base, PROP_INTERVALO_FOLLOWUP) : addDiasStr(x.enviadaEm || today(), PROP_INTERVALO_FOLLOWUP);
+    tarefas.push(propTarefaBase(x, {
+      propKind: 'followup',
+      titulo: `📞 Acompanhar proposta ${x.numero} — ${x.nome} (aguardando aprovação)`,
+      data,
+      comentarios: `Proposta ${x.numero} (${PROP_TIPOS[x.tipo] || ''}, ${fmtMoney(x.total || 0)}) enviada em ${fmtDate(x.enviadaEm || x.data)}. Entre em contato com o cliente. Ao concluir esta tarefa, o próximo acompanhamento é aberto automaticamente até a proposta ser marcada como Aprovada ou Recusada.`,
+    }));
+    mudou = true;
+  });
+  if (mudou) DB.set('tarefas', tarefas);
 }
 function excluirProposta(id) {
   if (!confirm('Excluir esta proposta?')) return;
@@ -5911,6 +5981,8 @@ async function propMsgCopiar() {
   try { await navigator.clipboard.writeText(t.value); }
   catch (e) { t.select(); document.execCommand('copy'); }
   toast('✅ Mensagem copiada');
+  const pr = propMsgDados && propMsgDados.id ? DB.get('propostas').find(x => x.id === propMsgDados.id) : null;
+  if (pr && pr.status === 'rascunho' && confirm('Marcar a proposta como ENVIADA? Isso abre o acompanhamento na Agenda até a aprovação ou recusa.')) { propMudarStatus(pr.id, 'enviada'); closeModal('modal-prop-msg'); }
 }
 function propMsgWhats() {
   const txt = document.getElementById('prop-msg-texto').value;
@@ -6595,6 +6667,15 @@ async function imprimirProposta(id) {
   .anexo pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:11.5px;line-height:1.45}
   .anexo-aviso{font-size:13px;color:#8a7f69}
   @page{size:A4;margin:0}
+  .objeto{display:flex;align-items:baseline;gap:12px;border-left:4px solid #c9a24b;background:#fbf8ef;padding:10px 16px;margin:4px 0 14px}
+  .objeto span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.2em;color:#8a6a24}
+  .objeto b{font-size:19px}
+  .obs-box{border:1px solid #d9c9a0;background:#fff;border-radius:6px;padding:12px 16px;font-size:15px;line-height:1.6;margin-bottom:12px;text-align:justify}
+  table.etapas-ex{width:100%;border-collapse:collapse;margin-bottom:6px}
+  table.etapas-ex td{padding:9px 10px;border-bottom:1px solid #e6dcc0;vertical-align:top;font-size:14.5px;line-height:1.5}
+  table.etapas-ex td.num{width:34px;text-align:center;font-family:'Cinzel',serif;font-weight:700;color:#e8c97e;background:#0b0906;border-bottom:1px solid #2a2418}
+  table.etapas-ex td div{color:#4a4233}
+  table.etapas-ex tr{page-break-inside:avoid}
   table.paginado{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
   table.paginado>thead>tr>td,table.paginado>tfoot>tr>td,table.paginado>tbody>tr>td{padding:0;border:0;background:none}
   .esp{height:14mm}
@@ -6613,7 +6694,7 @@ async function imprimirProposta(id) {
     <div class="titulo">PROPOSTA DE ${PROP_TIPOS[x.tipo].toUpperCase()}</div>
     <div class="meta">Nº ${propEsc(x.numero)} · ${dataExt} · válida até ${vencFmt}</div>
     <div class="cli"><div class="l">CLIENTE</div><div class="n">${propEsc(x.nome)}</div>${x.docto ? `<div class="d">CPF/CNPJ: ${propEsc(x.docto)}${x.dadosEmpresa && x.dadosEmpresa.ccm ? ` · CCM: ${propEsc(x.dadosEmpresa.ccm)}` : ''}</div>` : ''}${x.dadosEmpresa && x.dadosEmpresa.endereco ? `<div class="d">${propEsc(x.dadosEmpresa.endereco)}</div>` : ''}</div>
-    <div class="intro">${x.tipo === 'cancelamento' && x.comRegularizacao ? PROP_INTRO_CANCEL_REGUL : PROP_INTRO[x.tipo]}</div>
+    ${propObjetoHtml(x)}
     ${corpoHtml}
     <div class="assin"><div>${propEsc(EMPRESA_NOME)}</div><div>${propEsc(x.nome)}<br>De acordo</div></div>
     <div class="rodape">EXCELÊNCIA · ESTRATÉGIA · RESULTADOS</div>
