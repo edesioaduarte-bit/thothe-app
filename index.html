@@ -810,6 +810,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <select class="form-control" id="agfoco-empresa" style="max-width:220px" onchange="setAgendaFocoEmpresa(this.value)">
               <option value="">Todas as empresas</option>
             </select>
+            <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px" title="Como agrupar a lista">
+              <button class="btn btn-ghost btn-sm" id="agfoco-agr-data" onclick="setAgendaFocoAgrupar('data')">📅 Por data</button>
+              <button class="btn btn-ghost btn-sm" id="agfoco-agr-empresa" onclick="setAgendaFocoAgrupar('empresa')">🏢 Por empresa</button>
+            </div>
             <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
               <button class="btn btn-ghost btn-sm" id="agfoco-status-todas" onclick="setAgendaFocoStatus('todas')" style="background:var(--surface)">Todas</button>
               <button class="btn btn-ghost btn-sm" id="agfoco-status-pendentes" onclick="setAgendaFocoStatus('pendentes')">Pendentes</button>
@@ -3417,6 +3421,53 @@ function setAgendaListaFiltro(v) {
    ══════════════════════════════════════════════════════ */
 let agendaFocoEmpresaId = '';
 let agendaFocoStatus = 'todas';
+let agendaFocoAgrupar = (() => { try { return localStorage.getItem('thothe_agenda_agrupar') || 'data'; } catch (e) { return 'data'; } })();   // 'data' | 'empresa'
+function setAgendaFocoAgrupar(v) {
+  agendaFocoAgrupar = v;
+  try { localStorage.setItem('thothe_agenda_agrupar', v); } catch (e) {}
+  renderAgendaFoco();
+}
+// Lista agrupada por empresa: cada empresa vira um bloco recolhível com suas tarefas e obrigações
+function htmlAgendaPorEmpresa(itens) {
+  const hojeStr = today();
+  const clientes = DB.get('clientes');
+  const grupos = new Map();
+  itens.forEach(({ t }) => {
+    const k = t.clienteId || '';
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(t);
+  });
+  const dataDe = t => t.data || t.venc || '';
+  const ordem = Array.from(grupos.keys()).sort((a, b) => {
+    if (!a) return 1; if (!b) return -1;
+    const ca = clientes.find(c => c.id === a) || {}, cb = clientes.find(c => c.id === b) || {};
+    return (ca.nome || '').localeCompare(cb.nome || '', 'pt-BR');
+  });
+  if (!ordem.length) return '';
+  return ordem.map(k => {
+    const c = k ? clientes.find(x => x.id === k) : null;
+    const lista = grupos.get(k).sort((a, b) => dataDe(a).localeCompare(dataDe(b)) || (a._obrig ? '99:99' : ordemAgendaTarefa(a)).localeCompare(b._obrig ? '99:99' : ordemAgendaTarefa(b)));
+    const pend = lista.filter(t => t.status !== 'concluida').length;
+    const venc = lista.filter(t => t.status !== 'concluida' && dataDe(t) && dataDe(t) < hojeStr).length;
+    let dia = '';
+    const linhas = lista.map(t => {
+      const d = dataDe(t); let cab = '';
+      if (d !== dia) { dia = d; const dd = d ? new Date(d + 'T12:00:00') : null; cab = `<div style="font-size:10px;font-weight:600;color:${d === hojeStr ? 'var(--accent-m)' : (d && d < hojeStr ? 'var(--red)' : 'var(--text3)')};text-transform:uppercase;letter-spacing:.06em;margin:10px 0 5px">${dd ? `${DIAS_SEMANA_LONGO[dd.getDay()]}, ${dd.getDate()}/${String(dd.getMonth()+1).padStart(2,'0')}${d === hojeStr ? ' · hoje' : ''}` : 'Sem data'}</div>`; }
+      return cab + linhaAgendaFocoItem(t, t.status !== 'concluida' && d && d < hojeStr);
+    }).join('');
+    const nome = c ? c.nome : 'Sem empresa';
+    return `<details open style="margin-bottom:12px;border:1px solid var(--border);border-radius:12px;background:rgba(var(--ink),.025);overflow:hidden">
+      <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(var(--ink),.04)">
+        <span style="width:30px;height:30px;border-radius:9px;background:var(--accent-l);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🏢</span>
+        <span style="flex:1;min-width:0"><span style="font-weight:700;font-size:13.5px">${(nome || '').replace(/</g, '&lt;')}</span>${c && c.codigo ? `<span style="font-size:11px;color:var(--text3);margin-left:8px">cód. ${c.codigo}</span>` : ''}</span>
+        ${venc ? `<span class="chip chip-red" style="font-size:10px">${venc} vencida${venc !== 1 ? 's' : ''}</span>` : ''}
+        <span class="chip chip-gray" style="font-size:10px">${pend} pendente${pend !== 1 ? 's' : ''} · ${lista.length} no total</span>
+        <span style="color:var(--text3);font-size:11px">▾</span>
+      </summary>
+      <div style="padding:2px 14px 12px">${linhas}</div>
+    </details>`;
+  }).join('');
+}
 let agendaFocoPeriodo = 'dia';   // 'dia' | 'semana' | 'mes'
 let agendaFocoRef = '';          // data de referência ('' = hoje)
 
@@ -3572,6 +3623,7 @@ function renderAgendaFoco() {
 
   const inpData = document.getElementById('agfoco-data');
   if (inpData) inpData.value = agendaFocoRef || today();
+  ['data','empresa'].forEach(g => { const b = document.getElementById('agfoco-agr-' + g); if (b) b.style.background = g === agendaFocoAgrupar ? 'var(--surface)' : ''; });
   // Dia (outro que não hoje), Semana ou Mês: lista agrupada por dia
   if (!(agendaFocoPeriodo === 'dia' && !agendaFocoRef)) {
     const { ini, fim } = agendaFocoIntervalo();
@@ -3595,6 +3647,12 @@ function renderAgendaFoco() {
     if (agendaFocoStatus === 'pendentes') todos = todos.filter(x => x.t.status !== 'concluida');
     if (agendaFocoStatus === 'concluidas') todos = todos.filter(x => x.t.status === 'concluida');
     const hojeStr = today();
+    if (agendaFocoAgrupar === 'empresa') {
+      let itensE = todos.slice();
+      if (agendaFocoStatus !== 'concluidas' && ini <= hojeStr && hojeStr <= fim) tarefasAgendaFoco().vencidas.filter(t => (t.data || t.venc) < ini).forEach(t => itensE.unshift({ t, d: t.data || t.venc }));
+      el.innerHTML = htmlAgendaPorEmpresa(itensE) || `<div class="empty-state" style="padding:24px"><div class="ico">✨</div><div class="txt">Nada neste período</div></div>`;
+      return;
+    }
     let htmlP = '', diaAtual = '';
     // Se o período inclui hoje, as vencidas de antes do período continuam aparecendo no topo
     if (agendaFocoStatus !== 'concluidas' && ini <= hojeStr && hojeStr <= fim) {
@@ -3616,6 +3674,16 @@ function renderAgendaFoco() {
   }
 
   const { vencidas, hojeTarefas, proximasObrig, semDataObrig } = tarefasAgendaFoco();
+  if (agendaFocoAgrupar === 'empresa') {
+    const verP = agendaFocoStatus !== 'concluidas', verC = agendaFocoStatus !== 'pendentes';
+    const itensE = []
+      .concat(verP ? vencidas.map(t => ({ t })) : [])
+      .concat(hojeTarefas.filter(t => t.status === 'concluida' ? verC : verP).map(t => ({ t })));
+    const emps = new Set(itensE.map(x => x.t.clienteId || '')).size;
+    if (resumoEl) resumoEl.textContent = `${itensE.length} ${itensE.length !== 1 ? 'itens' : 'item'} em ${emps} empresa${emps !== 1 ? 's' : ''} · 🔴 ${vencidas.length} vencida${vencidas.length !== 1 ? 's' : ''}`;
+    el.innerHTML = htmlAgendaPorEmpresa(itensE) || `<div class="empty-state" style="padding:24px"><div class="ico">✨</div><div class="txt">Nada para hoje</div></div>`;
+    return;
+  }
   const hojePendentes = hojeTarefas.filter(t=>t.status!=='concluida');
   const hojeConcluidas = hojeTarefas.filter(t=>t.status==='concluida');
 
