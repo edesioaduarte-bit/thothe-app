@@ -1204,6 +1204,16 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
       </div>
 
+      <div class="form-group" id="prop-pendencias-box" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label class="form-label" style="margin:0">Pendências identificadas na pesquisa</label>
+          <span id="prop-pend-total" style="font-size:12px;color:var(--gold);font-weight:600"></span>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:220px">
+          <table class="tbl" style="min-width:560px"><tbody id="prop-pendencias"></tbody></table>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Saem na proposta como "Pendências identificadas", ligadas às etapas abaixo.</div>
+      </div>
       <div class="form-group">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;flex-wrap:wrap">
           <label class="form-label" style="margin:0">Etapas / serviços e valores</label>
@@ -5662,6 +5672,7 @@ const PROP_INTRO = {
   regularizacao: 'Com base na pesquisa fiscal realizada, apresentamos as etapas necessárias para a regularização da empresa e os respectivos honorários.',
 };
 let propItens = [];
+let propPendencias = [];   // pendências identificadas: {id, orgao, descricao, periodo, valor, etapaId}
 let propAnexos = [];       // anexos da proposta em edição: {id, nome, tipo, tamanho}
 let propAnexosNovos = [];  // ids adicionados nesta edição (apagados se cancelar)
 
@@ -5730,10 +5741,12 @@ function abrirPropostaModal(id, tipoNovo) {
   document.getElementById('prop-obs').value = x ? (x.obs || '') : '';
   document.getElementById('prop-analise-msg').textContent = '';
   propItens = x ? JSON.parse(JSON.stringify(x.itens || [])) : [];
+  propPendencias = x ? JSON.parse(JSON.stringify(x.pendencias || [])) : [];
   propAnexos = x ? JSON.parse(JSON.stringify(x.anexos || [])) : [];
   propAnexosNovos = []; propAnexosRemovidos = [];
   document.getElementById('prop-incluir-anexos').checked = x ? x.incluirAnexos !== false : true;
   renderPropAnexos();
+  renderPropPendencias();
   propTipoMudou(!x);
   openModal('modal-proposta');
 }
@@ -5752,7 +5765,7 @@ function propTrocouTipo() {
   if (preenchido && !confirm('Trocar o tipo substitui os itens atuais (os valores digitados serão perdidos). Continuar?')) {
     return;   // mantém os itens; o usuário pode voltar o tipo manualmente
   }
-  propItens = [];
+  propItens = []; propPendencias = [];
   propTipoMudou(true);
 }
 function propCarregarPadrao(confirmar) {
@@ -5768,7 +5781,7 @@ function propClienteMudou() {
   if (c) { document.getElementById('prop-nome').value = c.nome; document.getElementById('prop-docto').value = c.docto || ''; }
 }
 function propAddItem() { propItens.push({ id: DB.id(), descricao: '', detalhe: '', valor: '' }); renderPropItens(); }
-function propRemoverItem(id) { propItens = propItens.filter(i => i.id !== id); renderPropItens(); }
+function propRemoverItem(id) { propItens = propItens.filter(i => i.id !== id); propPendencias.forEach(pd => { if (pd.etapaId === id) pd.etapaId = ''; }); renderPropItens(); renderPropPendencias(); }
 function propAtualizarItem(id, campo, v) {
   const it = propItens.find(i => i.id === id); if (!it) return;
   it[campo] = v; atualizarPropTotal();
@@ -5785,7 +5798,7 @@ function renderPropItens() {
         <span style="width:22px;padding-top:11px;font-size:12px;color:var(--text3);text-align:right">${n+1}.</span>
         <div style="flex:1;min-width:0">
           <input class="form-control" value="${propEsc(i.descricao)}" placeholder="Descrição da etapa" oninput="propAtualizarItem('${i.id}','descricao',this.value)">
-          ${i.detalhe ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:2px">${propEsc(i.detalhe)}</div>` : ''}
+          ${(() => { const l = propPendenciasDaEtapa(i.id); if (!l.length) return i.detalhe ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:2px">${propEsc(i.detalhe)}</div>` : ''; const v = l.reduce((t,x)=>t+(x.pd.valor||0),0); return `<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:2px">Pendências nº ${l.map(x=>x.n).join(', ')}${v ? ' · débitos: ' + fmtMoney(v) : ''}</div>`; })()}
         </div>
         <input class="form-control" style="width:130px" inputmode="decimal" placeholder="Valor R$" value="${propEsc(i.valor)}" oninput="propAtualizarItem('${i.id}','valor',this.value)">
         <button class="btn btn-danger btn-sm" type="button" style="margin-top:4px" onclick="propRemoverItem('${i.id}')" title="Remover">🗑️</button>
@@ -5821,65 +5834,121 @@ const PROP_CATALOGO = [
   { re: /multa/i, nome: 'Regularização de multas por atraso na entrega de declarações' },
 ];
 const PROP_SINAL_PROBLEMA = /pend[eê]nc|omiss|omisso|d[eé]bito|atras|n[aã]o entregue|em aberto|irregular|devedor|inscrit|exig[ií]vel|inapt|suspens|baix|diverg[eê]nc|multa|notifica|intima|malha|vencid|n[aã]o localizad|ausente/i;
-const PROP_SINAL_OK = /nada consta|sem pend|n[aã]o h[aá] pend|n[aã]o constam|regular\b|inexistente|n[aã]o possui|sem d[eé]bito|nenhuma pend/i;
+const PROP_SINAL_OK = /nada consta|sem pend|n[aã]o h[aá] pend|n[aã]o constam|\bregular\b|inexistente|n[aã]o possui|sem d[eé]bito|nenhuma pend/i;
 
+const PROP_ORGAOS = [
+  [/PGFN|d[ií]vida ativa|SIDA|inscri[çc][aã]o em d[ií]vida/i, 'PGFN — Dívida Ativa'],
+  [/Simples Nacional|\bDAS\b|PGDAS|DEFIS|DASN|SIMEI/i, 'Simples Nacional'],
+  [/FGTS|\bCRF\b|Caixa/i, 'FGTS / Caixa'],
+  [/\bINSS\b|previdenci|GFIP|SEFIP|e-?social/i, 'Previdência / eSocial'],
+  [/ICMS|SEFAZ|estadual|fazenda estadual/i, 'Fazenda Estadual'],
+  [/\bISS\b|municipal|prefeitura|alvar[aá]|IPTU/i, 'Prefeitura'],
+  [/inapt|baixad|suspens|cancelad|situa[çc][aã]o cadastral/i, 'Cadastro do CNPJ'],
+];
+const PROP_ETAPA_POR_ORGAO = {
+  'PGFN — Dívida Ativa': 'Regularização de débitos inscritos em Dívida Ativa (PGFN)',
+  'Simples Nacional': 'Regularização de débitos e pendências do Simples Nacional',
+  'FGTS / Caixa': 'Regularização de FGTS / CRF',
+  'Previdência / eSocial': 'Regularização de pendências previdenciárias / eSocial',
+  'Fazenda Estadual': 'Regularização perante a Fazenda Estadual (ICMS / inscrição estadual)',
+  'Prefeitura': 'Regularização perante a Prefeitura (ISS / inscrição municipal / alvará)',
+  'Cadastro do CNPJ': 'Regularização da situação cadastral do CNPJ',
+  'Receita Federal': 'Regularização de pendências na Receita Federal',
+};
+
+// Lê o texto da pesquisa fiscal e devolve { pendencias, itens }: cada pendência encontrada (órgão, descrição, período, valor)
+// e as etapas de regularização que as agrupam. Regras por palavra-chave — sem IA externa.
 function analisarPesquisaFiscal(texto) {
   const linhas = String(texto||'').split(/\r?\n/).map(l => l.replace(/\s+/g,' ').trim()).filter(l => l.length > 3);
-  const achados = new Map();   // nome → {periodos:Set, valor:number, linhas:[]}
-  const usadas = new Set();
   const periodoRe = /\b(?:0[1-9]|1[0-2])\/(?:19|20)\d{2}\b|\b(?:19|20)\d{2}\b/g;
   const valorRe = /R\$\s*([\d.]+,\d{2})/g;
-  linhas.forEach((l, idx) => {
+  const pendencias = [];
+  let secao = '', ativa = false;
+  linhas.forEach(l => {
+    if (/^---.*---$/.test(l)) { secao = ''; ativa = false; return; }   // separador de anexo
+    const semNumeros = !/R\$|\d{2}\/\d{4}|\b(19|20)\d{2}\b/.test(l);
+    const ehCabecalho = l.length < 70 && semNumeros && /^(pend[eê]ncias?|d[eé]bitos?|d[ií]vida|omiss|diagn[oó]stico|situa[çc][aã]o|inscri[çc]|parcelamento|relat[oó]rio|receita federal|simples|pgfn|munic|estad|fgts|e-?social|previd)/i.test(l);
+    if (ehCabecalho) {
+      if (PROP_SINAL_OK.test(l)) { ativa = false; }
+      else { secao = l; ativa = /pend|d[eé]bito|d[ií]vida|omiss|inscri[çc]|parcelamento/i.test(l); }
+      return;
+    }
     if (PROP_SINAL_OK.test(l) && !PROP_SINAL_PROBLEMA.test(l.replace(PROP_SINAL_OK, ''))) return;
-    PROP_CATALOGO.forEach(r => {
-      if (!r.re.test(l)) return;
-      // uma linha de cabeçalho citando só o nome do órgão (sem sinal de problema) é avaliada junto com a linha seguinte
-      const contexto = l + ' ' + (linhas[idx+1] || '');
-      if (!PROP_SINAL_PROBLEMA.test(contexto) || PROP_SINAL_OK.test(l)) return;
-      const a = achados.get(r.nome) || { periodos: new Set(), valor: 0, linhas: [] };
-      (contexto.match(periodoRe) || []).slice(0, 6).forEach(pz => a.periodos.add(pz));
-      let m; valorRe.lastIndex = 0;
-      while ((m = valorRe.exec(l))) a.valor += parseFloat(m[1].replace(/\./g,'').replace(',','.')) || 0;
-      a.linhas.push(l);
-      achados.set(r.nome, a);
-      usadas.add(idx);
+    const periodos = l.match(periodoRe) || [];
+    const valores = []; let m; valorRe.lastIndex = 0;
+    while ((m = valorRe.exec(l))) valores.push(parseFloat(m[1].replace(/\./g,'').replace(',','.')) || 0);
+    const problema = PROP_SINAL_PROBLEMA.test(l);
+    if (!(problema || (ativa && (periodos.length || valores.length)))) return;
+    // ignora linhas que só repetem "situação: ATIVA/REGULAR" sem problema
+    const orgaoRegra = PROP_ORGAOS.find(r => r[0].test(l)) || PROP_ORGAOS.find(r => r[0].test(secao));
+    pendencias.push({
+      id: DB.id() + pendencias.length,
+      orgao: orgaoRegra ? orgaoRegra[1] : 'Receita Federal',
+      descricao: l.length > 170 ? l.slice(0, 167) + '…' : l,
+      periodo: periodos[0] || '',
+      valor: valores.length ? Math.max(...valores) : 0,
+      secao,
     });
+  });
+
+  // agrupa as pendências em etapas
+  const grupos = new Map();   // nome da etapa → pendências
+  pendencias.forEach(pd => {
+    const regra = PROP_CATALOGO.find(r => r.re.test(pd.secao + ' ' + pd.descricao));
+    const nome = regra ? regra.nome : (PROP_ETAPA_POR_ORGAO[pd.orgao] || PROP_ETAPA_POR_ORGAO['Receita Federal']);
+    if (!grupos.has(nome)) grupos.set(nome, []);
+    grupos.get(nome).push(pd);
   });
   const itens = [];
-  achados.forEach((a, nome) => {
-    const per = Array.from(a.periodos).slice(0, 6);
-    itens.push({
-      id: DB.id(),
-      descricao: nome + (per.length ? ` — ${per.join(', ')}` : ''),
-      detalhe: a.valor > 0 ? `Valor identificado na pesquisa: ${fmtMoney(a.valor)}` : '',
-      valor: '',
-    });
+  grupos.forEach((lista, nome) => {
+    const itemId = DB.id() + itens.length;
+    lista.forEach(pd => { pd.etapaId = itemId; });
+    const per = Array.from(new Set(lista.map(pd => pd.periodo).filter(Boolean))).slice(0, 6);
+    itens.push({ id: itemId, descricao: nome + (per.length ? ` — ${per.join(', ')}` : ''), detalhe: '', valor: '' });
   });
-  // linhas com sinal de problema que não caíram em nenhuma regra viram etapas genéricas
-  const vistos = new Set();
-  linhas.forEach((l, idx) => {
-    if (usadas.has(idx) || !PROP_SINAL_PROBLEMA.test(l) || PROP_SINAL_OK.test(l)) return;
-    if (/^(pend[eê]ncias?|d[eé]bitos?|omiss[õo]es?)\b[^:]{0,34}$/i.test(l)) return;   // só um título de seção
-    const d = l.length > 140 ? l.slice(0, 137) + '…' : l;
-    if (vistos.has(d.toLowerCase())) return;
-    vistos.add(d.toLowerCase());
-    itens.push({ id: DB.id(), descricao: 'Regularização: ' + d, detalhe: '', valor: '' });
-  });
-  if (itens.length) {
-    itens.push({ id: DB.id(), descricao: 'Emissão das certidões de regularidade fiscal (Federal, Estadual e Municipal) ao final', detalhe: '', valor: '' });
-  }
-  return itens;
+  if (itens.length) itens.push({ id: DB.id() + 'fim', descricao: 'Emissão das certidões de regularidade fiscal (Federal, Estadual e Municipal) ao final', detalhe: '', valor: '' });
+  return { pendencias, itens };
 }
 function propAnalisarPesquisa() {
   const texto = document.getElementById('prop-pesquisa').value;
-  if (!texto.trim()) { toast('⚠️ Cole o texto da pesquisa fiscal'); return; }
-  const itens = analisarPesquisaFiscal(texto);
+  if (!texto.trim()) { toast('⚠️ Cole o texto da pesquisa fiscal ou anexe o arquivo'); return; }
+  const { pendencias, itens } = analisarPesquisaFiscal(texto);
   const msg = document.getElementById('prop-analise-msg');
-  if (!itens.length) { msg.textContent = 'Não identifiquei pendências no texto. Adicione as etapas manualmente em "+ Item".'; return; }
-  if (propItens.length && !confirm(`Substituir os ${propItens.length} itens atuais pelas ${itens.length} etapas encontradas?`)) return;
-  propItens = itens;
-  renderPropItens();
-  msg.textContent = `${itens.length} etapas geradas — confira a lista e preencha o valor de cada uma.`;
+  if (!pendencias.length) { msg.textContent = 'Não identifiquei pendências no texto. Adicione as etapas manualmente em "+ Item".'; return; }
+  if ((propItens.length || propPendencias.length) && !confirm(`Substituir os itens e pendências atuais pelas ${pendencias.length} pendências / ${itens.length} etapas encontradas?`)) return;
+  propItens = itens; propPendencias = pendencias;
+  renderPropItens(); renderPropPendencias();
+  const tot = pendencias.reduce((t, pd) => t + (pd.valor || 0), 0);
+  msg.textContent = `${pendencias.length} pendência${pendencias.length!==1?'s':''} identificada${pendencias.length!==1?'s':''}${tot ? ` (${fmtMoney(tot)} em débitos)` : ''} em ${itens.length-1} etapa${itens.length-1!==1?'s':''} — confira e preencha o valor de cada etapa.`;
+}
+
+function renderPropPendencias() {
+  const box = document.getElementById('prop-pendencias-box');
+  const el = document.getElementById('prop-pendencias');
+  if (!box || !el) return;
+  box.style.display = propPendencias.length ? '' : 'none';
+  const tot = propPendencias.reduce((t, pd) => t + (parseFloat(pd.valor) || 0), 0);
+  document.getElementById('prop-pend-total').textContent = `${propPendencias.length} pendência${propPendencias.length!==1?'s':''}${tot ? ' · ' + fmtMoney(tot) : ''}`;
+  el.innerHTML = propPendencias.map((pd, n) => `
+    <tr>
+      <td style="width:28px;color:var(--text3)">${n+1}</td>
+      <td style="white-space:nowrap"><span class="chip chip-gray">${propEsc(pd.orgao)}</span></td>
+      <td style="font-size:12px">${propEsc(pd.descricao)}</td>
+      <td style="white-space:nowrap;font-size:12px">${propEsc(pd.periodo || '—')}</td>
+      <td style="text-align:right;white-space:nowrap;font-size:12px">${pd.valor ? fmtMoney(pd.valor) : '—'}</td>
+      <td><select class="form-control" style="padding:3px 6px;font-size:11px;width:auto;max-width:110px" onchange="propPendVincular('${pd.id}',this.value)">
+        <option value="">sem etapa</option>
+        ${propItens.map((it, i) => `<option value="${it.id}" ${pd.etapaId===it.id?'selected':''}>Etapa ${i+1}</option>`).join('')}
+      </select></td>
+      <td><button class="btn btn-danger btn-sm" type="button" onclick="propPendRemover('${pd.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+function propPendVincular(id, etapaId) { const pd = propPendencias.find(x => x.id === id); if (pd) { pd.etapaId = etapaId; renderPropItens(); } }
+function propPendRemover(id) { propPendencias = propPendencias.filter(x => x.id !== id); renderPropPendencias(); renderPropItens(); }
+function propPendenciasDaEtapa(itemId) {
+  const out = [];
+  propPendencias.forEach((pd, n) => { if (pd.etapaId === itemId) out.push({ n: n+1, pd }); });
+  return out;
 }
 
 function salvarProposta(imprimir) {
@@ -5904,6 +5973,7 @@ function salvarProposta(imprimir) {
     itens: itens.map(i => ({ ...i, valor: parseFloat(String(i.valor).replace(',','.')) || 0 })),
     condicoes: document.getElementById('prop-condicoes').value.trim(),
     obs: document.getElementById('prop-obs').value.trim(),
+    pendencias: propPendencias.map(pd => ({ ...pd })),
     anexos: propAnexos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho })),
     incluirAnexos: document.getElementById('prop-incluir-anexos').checked,
     status: antiga ? antiga.status : 'rascunho',
@@ -6020,8 +6090,22 @@ async function propAdicionarAnexos(files) {
     if (texto && texto.trim().length > 20) {
       const ta = document.getElementById('prop-pesquisa');
       ta.value = (ta.value ? ta.value.trim() + '\n\n' : '') + `--- ${f.name} ---\n` + texto.trim();
-      anexo.msg = 'texto adicionado à pesquisa fiscal';
-      if (msgEl) msgEl.textContent = 'Texto do anexo adicionado à pesquisa fiscal — clique em "Analisar" para gerar as etapas.';
+      anexo.msg = 'lido — pendências relacionadas';
+      // lê só este anexo e relaciona as pendências na proposta (acrescenta às já existentes)
+      const r = analisarPesquisaFiscal(texto);
+      if (r.pendencias.length) {
+        const jaTem = new Set(propPendencias.map(pd => pd.descricao));
+        const novas = r.pendencias.filter(pd => !jaTem.has(pd.descricao));
+        const fim = propItens.find(i => /certid/i.test(i.descricao) && /final/i.test(i.descricao));
+        r.itens.forEach(it => {
+          if (/certid/i.test(it.descricao) && /final/i.test(it.descricao)) { if (!fim) propItens.push(it); else novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = fim.id; }); return; }
+          const ex = propItens.find(i => i.descricao.split(' — ')[0] === it.descricao.split(' — ')[0]);
+          if (ex) novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = ex.id; }); else propItens.splice(fim ? propItens.indexOf(fim) : propItens.length, 0, it);
+        });
+        propPendencias.push(...novas);
+        renderPropItens(); renderPropPendencias();
+        if (msgEl) msgEl.textContent = `${novas.length} pendência${novas.length!==1?'s':''} lida${novas.length!==1?'s':''} de "${f.name}" e relacionada${novas.length!==1?'s':''} abaixo — preencha o valor de cada etapa.`;
+      } else if (msgEl) msgEl.textContent = `Li "${f.name}", mas não encontrei pendências. O texto foi para a pesquisa; revise ou adicione etapas.`;
     } else if (tipo === 'application/pdf' && !anexo.msg.startsWith('texto não')) {
       anexo.msg = 'PDF sem texto selecionável (imagem) — será incluído como imagem';
     } else if (!anexo.msg || anexo.msg === 'lendo o PDF…') { anexo.msg = ''; }
@@ -6085,8 +6169,20 @@ async function imprimirProposta(id) {
   const dataExt = `São Paulo, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
   const venc = new Date(x.data + 'T12:00:00'); venc.setDate(venc.getDate() + (x.validade || 15));
   const vencFmt = `${String(venc.getDate()).padStart(2,'0')}/${String(venc.getMonth()+1).padStart(2,'0')}/${venc.getFullYear()}`;
-  const linhas = x.itens.map((i, n) => `
-    <tr><td class="n">${n+1}</td><td>${propEsc(i.descricao)}${i.detalhe ? `<div class="det">${propEsc(i.detalhe)}</div>` : ''}</td><td class="v">${fmtMoney(i.valor)}</td></tr>`).join('');
+  const pends = x.pendencias || [];
+  const linhas = x.itens.map((i, n) => {
+    const rel = pends.map((pd, k) => ({ k: k+1, pd })).filter(o => o.pd.etapaId === i.id);
+    const relTxt = rel.length ? `Resolve as pendências nº ${rel.map(o => o.k).join(', ')}` : (i.detalhe || '');
+    return `<tr><td class="n">${n+1}</td><td>${propEsc(i.descricao)}${relTxt ? `<div class="det">${propEsc(relTxt)}</div>` : ''}</td><td class="v">${fmtMoney(i.valor)}</td></tr>`;
+  }).join('');
+  const totPend = pends.reduce((t, pd) => t + (pd.valor || 0), 0);
+  const pendHtml = pends.length ? `
+    <div class="bloco" style="margin-top:6px"><h3>PENDÊNCIAS IDENTIFICADAS NA PESQUISA FISCAL</h3>
+    <table class="pend"><thead><tr><th>#</th><th>ÓRGÃO</th><th>PENDÊNCIA</th><th>PERÍODO</th><th class="v">VALOR</th></tr></thead><tbody>
+    ${pends.map((pd, k) => `<tr><td class="n">${k+1}</td><td>${propEsc(pd.orgao)}</td><td>${propEsc(pd.descricao)}</td><td>${propEsc(pd.periodo || '—')}</td><td class="v">${pd.valor ? fmtMoney(pd.valor) : '—'}</td></tr>`).join('')}
+    </tbody></table>
+    ${totPend ? `<div class="totpend">Total de débitos identificados: <strong>${fmtMoney(totPend)}</strong> <span>(valores informados pelos órgãos; sem juros e multas atualizados)</span></div>` : ''}
+    </div>` : '';
   win.document.open();
   win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Proposta ${propEsc(x.numero)} — ${propEsc(x.nome)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap">
@@ -6115,6 +6211,10 @@ async function imprimirProposta(id) {
   td.n{width:34px;color:#8a6a24;font-weight:700}
   td.v{font-weight:700;font-variant-numeric:lining-nums}
   .det{font-size:12px;color:#8a7f69;margin-top:2px}
+  table.pend th{font-size:9.5px}
+  table.pend td{font-size:12.5px;padding:7px 10px}
+  .totpend{font-size:13px;margin-top:6px;text-align:right}
+  .totpend span{color:#8a7f69;font-size:11.5px}
   .total{display:flex;justify-content:flex-end;align-items:center;gap:18px;background:#0b0906;color:#e8c97e;padding:14px 18px;margin-top:2px}
   .total .t{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.2em}
   .total .vl{font-size:26px;font-weight:700;font-variant-numeric:lining-nums}
@@ -6139,6 +6239,8 @@ async function imprimirProposta(id) {
     <div class="meta">Nº ${propEsc(x.numero)} · ${dataExt} · válida até ${vencFmt}</div>
     <div class="cli"><div class="l">CLIENTE</div><div class="n">${propEsc(x.nome)}</div>${x.docto ? `<div class="d">CPF/CNPJ: ${propEsc(x.docto)}</div>` : ''}</div>
     <div class="intro">${PROP_INTRO[x.tipo]}</div>
+    ${pendHtml}
+    <div class="bloco" style="margin-top:20px"><h3>${x.tipo === 'regularizacao' ? 'ETAPAS DE REGULARIZAÇÃO E HONORÁRIOS' : 'SERVIÇOS E HONORÁRIOS'}</h3></div>
     <table><thead><tr><th>#</th><th>ETAPA / SERVIÇO</th><th class="v">VALOR</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="total"><span class="t">TOTAL DOS HONORÁRIOS</span><span class="vl">${fmtMoney(x.total)}</span></div>
     ${x.condicoes ? `<div class="bloco"><h3>CONDIÇÕES DE PAGAMENTO</h3><p>${propEsc(x.condicoes)}</p></div>` : ''}
