@@ -1169,7 +1169,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
 <div class="modal-overlay" id="modal-proposta">
   <div class="modal" style="max-width:860px">
-    <div class="modal-header"><span class="modal-title" id="modal-proposta-title">Nova proposta</span><button class="modal-close" onclick="closeModal('modal-proposta')">×</button></div>
+    <div class="modal-header"><span class="modal-title" id="modal-proposta-title">Nova proposta</span><button class="modal-close" onclick="propCancelar()">×</button></div>
     <div class="modal-body" style="max-height:72vh;overflow-y:auto">
       <input type="hidden" id="prop-edit-id">
       <div class="form-row" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
@@ -1219,11 +1219,26 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">📎 Anexos — pendências da empresa</label>
+        <div style="border:1px dashed var(--border2);border-radius:10px;padding:12px 14px;background:var(--surface3)">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0">+ Anexar arquivos<input type="file" id="prop-anexo-input" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,image/*,text/plain" style="display:none" onchange="propAdicionarAnexos(this.files);this.value=''"></label>
+            <span style="font-size:11.5px;color:var(--text3)">PDF, imagem (print) ou texto — até 15 MB cada</span>
+          </div>
+          <div id="prop-anexos-lista" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="prop-incluir-anexos" checked style="width:15px;height:15px;accent-color:var(--accent)">
+            Incluir os anexos no final da proposta (PDF único ao imprimir)
+          </label>
+          <div style="font-size:11px;color:var(--text3);margin-top:5px">Os arquivos ficam guardados neste aparelho/navegador. Texto de PDF e .txt anexado entra automaticamente na pesquisa fiscal para análise.</div>
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Condições de pagamento</label><textarea class="form-control" id="prop-condicoes" rows="2"></textarea></div>
       <div class="form-group"><label class="form-label">Observações</label><textarea class="form-control" id="prop-obs" rows="2"></textarea></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-proposta')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="propCancelar()">Cancelar</button>
       <button class="btn btn-ghost" onclick="salvarProposta(false)">Salvar rascunho</button>
       <button class="btn btn-primary" onclick="salvarProposta(true)">🖨️ Salvar e gerar proposta</button>
     </div>
@@ -5647,6 +5662,8 @@ const PROP_INTRO = {
   regularizacao: 'Com base na pesquisa fiscal realizada, apresentamos as etapas necessárias para a regularização da empresa e os respectivos honorários.',
 };
 let propItens = [];
+let propAnexos = [];       // anexos da proposta em edição: {id, nome, tipo, tamanho}
+let propAnexosNovos = [];  // ids adicionados nesta edição (apagados se cancelar)
 
 function propEsc(t) { return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -5691,6 +5708,8 @@ function propMudarStatus(id, v) {
 }
 function excluirProposta(id) {
   if (!confirm('Excluir esta proposta?')) return;
+  const alvo = DB.get('propostas').find(p=>p.id===id);
+  if (alvo) (alvo.anexos||[]).forEach(a => idbAnexoDel(a.id));
   DB.set('propostas', DB.get('propostas').filter(p=>p.id!==id));
   toast('🗑️ Proposta excluída'); renderPropostas();
 }
@@ -5711,6 +5730,10 @@ function abrirPropostaModal(id, tipoNovo) {
   document.getElementById('prop-obs').value = x ? (x.obs || '') : '';
   document.getElementById('prop-analise-msg').textContent = '';
   propItens = x ? JSON.parse(JSON.stringify(x.itens || [])) : [];
+  propAnexos = x ? JSON.parse(JSON.stringify(x.anexos || [])) : [];
+  propAnexosNovos = []; propAnexosRemovidos = [];
+  document.getElementById('prop-incluir-anexos').checked = x ? x.incluirAnexos !== false : true;
+  renderPropAnexos();
   propTipoMudou(!x);
   openModal('modal-proposta');
 }
@@ -5881,20 +5904,182 @@ function salvarProposta(imprimir) {
     itens: itens.map(i => ({ ...i, valor: parseFloat(String(i.valor).replace(',','.')) || 0 })),
     condicoes: document.getElementById('prop-condicoes').value.trim(),
     obs: document.getElementById('prop-obs').value.trim(),
+    anexos: propAnexos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho })),
+    incluirAnexos: document.getElementById('prop-incluir-anexos').checked,
     status: antiga ? antiga.status : 'rascunho',
   };
   item.total = item.itens.reduce((s,i) => s + i.valor, 0);
   if (editId) { const i = props.findIndex(x => x.id === editId); if (i > -1) props[i] = item; } else props.push(item);
   DB.set('propostas', props);
+  // anexos removidos durante a edição já foram apagados; os novos ficam
+  propAnexosNovos = [];
+  propAnexosRemovidos.forEach(id => idbAnexoDel(id)); propAnexosRemovidos = [];
   closeModal('modal-proposta');
   toast(`📄 Proposta ${item.numero} salva`);
   renderPropostas();
   if (imprimir) imprimirProposta(item.id);
 }
 
-function imprimirProposta(id) {
+
+/* ── Anexos das propostas: arquivos guardados no IndexedDB deste navegador ── */
+function idbAnexos() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('thothe_anexos', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('files');
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbAnexoPut(id, blob) { const db = await idbAnexos(); return new Promise((res, rej) => { const t = db.transaction('files','readwrite'); t.objectStore('files').put(blob, id); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+async function idbAnexoGet(id) { try { const db = await idbAnexos(); return await new Promise((res, rej) => { const r = db.transaction('files').objectStore('files').get(id); r.onsuccess = () => res(r.result || null); r.onerror = () => rej(r.error); }); } catch (e) { return null; } }
+async function idbAnexoDel(id) { try { const db = await idbAnexos(); db.transaction('files','readwrite').objectStore('files').delete(id); } catch (e) {} }
+
+// pdf.js carregado sob demanda (só quando há PDF)
+let _pdfJsPromise = null;
+function carregarPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (_pdfJsPromise) return _pdfJsPromise;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  _pdfJsPromise = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = base + 'pdf.min.js';
+    sc.onload = async () => {
+      try {
+        const w = await (await fetch(base + 'pdf.worker.min.js')).text();   // worker via blob (evita bloqueio de origem cruzada)
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w], { type: 'text/javascript' }));
+      } catch (e) { /* segue sem worker dedicado */ }
+      res(window.pdfjsLib);
+    };
+    sc.onerror = () => { _pdfJsPromise = null; rej(new Error('não consegui carregar o leitor de PDF')); };
+    document.head.appendChild(sc);
+  });
+  return _pdfJsPromise;
+}
+async function pdfParaTexto(blob) {
+  const lib = await carregarPdfJs();
+  const pdf = await lib.getDocument({ data: await blob.arrayBuffer() }).promise;
+  let out = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pg = await pdf.getPage(i);
+    const tc = await pg.getTextContent();
+    // reagrupa por linha (mesma coordenada Y)
+    let ultimoY = null, linha = '';
+    tc.items.forEach(it => {
+      const y = Math.round(it.transform[5]);
+      if (ultimoY !== null && Math.abs(y - ultimoY) > 3) { out += linha.trim() + '\n'; linha = ''; }
+      linha += it.str + ' '; ultimoY = y;
+    });
+    out += linha.trim() + '\n';
+  }
+  return out;
+}
+async function pdfParaImagens(blob, maxPaginas) {
+  const lib = await carregarPdfJs();
+  const pdf = await lib.getDocument({ data: await blob.arrayBuffer() }).promise;
+  const imgs = [];
+  const n = Math.min(pdf.numPages, maxPaginas || 15);
+  for (let i = 1; i <= n; i++) {
+    const pg = await pdf.getPage(i);
+    const vp = pg.getViewport({ scale: 1.6 });
+    const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+    await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    imgs.push(cv.toDataURL('image/jpeg', 0.85));
+  }
+  return { imgs, total: pdf.numPages };
+}
+function blobParaDataUrl(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); }); }
+function fmtTamanho(b) { return b > 1048576 ? (b/1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b/1024)) + ' KB'; }
+
+function renderPropAnexos() {
+  const el = document.getElementById('prop-anexos-lista');
+  if (!el) return;
+  el.innerHTML = propAnexos.length ? propAnexos.map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+      <span style="font-size:16px">${a.tipo === 'application/pdf' ? '📄' : (a.tipo||'').startsWith('image/') ? '🖼️' : '📝'}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${propEsc(a.nome)}</div><div style="font-size:11px;color:var(--text3)">${fmtTamanho(a.tamanho)}${a.msg ? ' · ' + propEsc(a.msg) : ''}</div></div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="propAbrirAnexo('${a.id}')">Abrir</button>
+      <button class="btn btn-danger btn-sm" type="button" onclick="propRemoverAnexo('${a.id}')">🗑️</button>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--text3)">Nenhum anexo.</div>';
+}
+async function propAdicionarAnexos(files) {
+  const msgEl = document.getElementById('prop-analise-msg');
+  for (const f of Array.from(files || [])) {
+    if (f.size > 15 * 1048576) { toast(`⚠️ "${f.name}" passa de 15 MB`); continue; }
+    const id = DB.id() + Math.random().toString(36).slice(2, 5);
+    try { await idbAnexoPut(id, f); } catch (e) { toast('❌ Não consegui guardar o arquivo neste navegador'); continue; }
+    const tipo = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.(txt|csv)$/i.test(f.name) ? 'text/plain' : '');
+    const anexo = { id, nome: f.name, tipo, tamanho: f.size };
+    propAnexos.push(anexo); propAnexosNovos.push(id);
+    renderPropAnexos();
+    // extrai o texto para alimentar a análise da pesquisa fiscal
+    let texto = '';
+    try {
+      if (tipo === 'application/pdf') { anexo.msg = 'lendo o PDF…'; renderPropAnexos(); texto = await pdfParaTexto(f); }
+      else if (tipo.startsWith('text/')) texto = await f.text();
+    } catch (e) { anexo.msg = 'texto não extraído (o arquivo será anexado mesmo assim)'; }
+    if (texto && texto.trim().length > 20) {
+      const ta = document.getElementById('prop-pesquisa');
+      ta.value = (ta.value ? ta.value.trim() + '\n\n' : '') + `--- ${f.name} ---\n` + texto.trim();
+      anexo.msg = 'texto adicionado à pesquisa fiscal';
+      if (msgEl) msgEl.textContent = 'Texto do anexo adicionado à pesquisa fiscal — clique em "Analisar" para gerar as etapas.';
+    } else if (tipo === 'application/pdf' && !anexo.msg.startsWith('texto não')) {
+      anexo.msg = 'PDF sem texto selecionável (imagem) — será incluído como imagem';
+    } else if (!anexo.msg || anexo.msg === 'lendo o PDF…') { anexo.msg = ''; }
+    renderPropAnexos();
+  }
+}
+async function propAbrirAnexo(id) {
+  const blob = await idbAnexoGet(id);
+  if (!blob) { toast('⚠️ Este arquivo não está neste aparelho (foi anexado em outro navegador)'); return; }
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+function propRemoverAnexo(id) {
+  propAnexos = propAnexos.filter(a => a.id !== id);
+  // só apaga o arquivo agora se ele foi adicionado nesta edição; os já salvos saem ao salvar
+  if (propAnexosNovos.includes(id)) { idbAnexoDel(id); propAnexosNovos = propAnexosNovos.filter(i => i !== id); }
+  else propAnexosRemovidos.push(id);
+  renderPropAnexos();
+}
+let propAnexosRemovidos = [];
+function propCancelar() {
+  propAnexosNovos.forEach(id => idbAnexoDel(id));
+  propAnexosNovos = []; propAnexosRemovidos = [];
+  closeModal('modal-proposta');
+}
+
+async function htmlAnexosProposta(x) {
+  if (x.incluirAnexos === false || !(x.anexos || []).length) return '';
+  let out = '';
+  let n = 0;
+  for (const a of x.anexos) {
+    n++;
+    const cab = `<div class="anexo-cab"><span>ANEXO ${n}</span> ${propEsc(a.nome)}</div>`;
+    const blob = await idbAnexoGet(a.id);
+    if (!blob) { out += `<div class="anexo">${cab}<p class="anexo-aviso">Este arquivo não está disponível neste aparelho. Abra a proposta no mesmo navegador em que o anexo foi adicionado.</p></div>`; continue; }
+    try {
+      if ((a.tipo || '').startsWith('image/')) {
+        out += `<div class="anexo">${cab}<img src="${await blobParaDataUrl(blob)}"></div>`;
+      } else if (a.tipo === 'application/pdf') {
+        const { imgs, total } = await pdfParaImagens(blob, 15);
+        out += imgs.map((src, i) => `<div class="anexo">${cab.replace('</div>', ` <em>(pág. ${i+1}/${total})</em></div>`)}<img src="${src}"></div>`).join('');
+        if (total > imgs.length) out += `<div class="anexo"><p class="anexo-aviso">Foram incluídas as primeiras ${imgs.length} de ${total} páginas de "${propEsc(a.nome)}".</p></div>`;
+      } else {
+        out += `<div class="anexo">${cab}<pre>${propEsc((await blob.text()).slice(0, 20000))}</pre></div>`;
+      }
+    } catch (e) {
+      out += `<div class="anexo">${cab}<p class="anexo-aviso">Não foi possível incluir este anexo na impressão (${propEsc(e.message || 'erro')}). Anexe o arquivo separadamente.</p></div>`;
+    }
+  }
+  return out;
+}
+
+async function imprimirProposta(id) {
   const x = DB.get('propostas').find(p => p.id === id);
   if (!x) return;
+  const win = window.open('', '_blank');
+  if (!win) { toast('⚠️ O navegador bloqueou a janela — permita pop-ups para este site.'); return; }
+  win.document.write('<body style="font-family:sans-serif;padding:40px;color:#555">Gerando a proposta com os anexos…</body>');
+  const anexosHtml = await htmlAnexosProposta(x);
   const logo = getComputedStyle(document.documentElement).getPropertyValue('--logo').trim();
   const [y,m,d] = x.data.split('-');
   const dataExt = `São Paulo, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
@@ -5902,8 +6087,7 @@ function imprimirProposta(id) {
   const vencFmt = `${String(venc.getDate()).padStart(2,'0')}/${String(venc.getMonth()+1).padStart(2,'0')}/${venc.getFullYear()}`;
   const linhas = x.itens.map((i, n) => `
     <tr><td class="n">${n+1}</td><td>${propEsc(i.descricao)}${i.detalhe ? `<div class="det">${propEsc(i.detalhe)}</div>` : ''}</td><td class="v">${fmtMoney(i.valor)}</td></tr>`).join('');
-  const win = window.open('', '_blank');
-  if (!win) { toast('⚠️ O navegador bloqueou a janela — permita pop-ups para este site.'); return; }
+  win.document.open();
   win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Proposta ${propEsc(x.numero)} — ${propEsc(x.nome)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap">
 <style>
@@ -5940,6 +6124,12 @@ function imprimirProposta(id) {
   .assin{display:flex;gap:40px;margin-top:60px}
   .assin div{flex:1;text-align:center;font-size:12.5px;border-top:1px solid #1a150c;padding-top:6px}
   .rodape{margin-top:34px;text-align:center;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.3em;color:#a0957d}
+  .anexo{page-break-before:always;padding:24px 30px}
+  .anexo-cab{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.16em;color:#8a6a24;border-bottom:2px solid #c9a24b;padding-bottom:6px;margin-bottom:14px}
+  .anexo-cab span{background:#0b0906;color:#e8c97e;padding:3px 9px;margin-right:8px}
+  .anexo img{display:block;max-width:100%;margin:0 auto;border:1px solid #e6dcc0}
+  .anexo pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:11.5px;line-height:1.45}
+  .anexo-aviso{font-size:13px;color:#8a7f69}
   @media print{ .pag{max-width:none} }
 </style></head><body><div class="pag">
   <div class="topo"><div class="logo"></div><div><h1>THOTHE</h1><div class="sub">GESTÃO CORPORATIVA</div><div class="cnpj">${propEsc(EMPRESA_NOME)} · CNPJ ${propEsc(EMPRESA_CNPJ)}</div></div></div>
@@ -5955,9 +6145,10 @@ function imprimirProposta(id) {
     ${x.obs ? `<div class="bloco"><h3>OBSERVAÇÕES</h3><p>${propEsc(x.obs)}</p></div>` : ''}
     <div class="assin"><div>${propEsc(EMPRESA_NOME)}</div><div>${propEsc(x.nome)}<br>De acordo</div></div>
     <div class="rodape">EXCELÊNCIA · ESTRATÉGIA · RESULTADOS</div>
-  </div></div></body></html>`);
+  </div></div>${anexosHtml}</body></html>`);
   win.document.close(); win.focus();
-  setTimeout(() => win.print(), 900);
+  const imprimir = () => setTimeout(() => win.print(), 900);
+  if (win.document.readyState === 'complete') imprimir(); else win.addEventListener('load', imprimir);
 }
 
 /* ══════════════════════════════════════════════════════
