@@ -5788,19 +5788,40 @@ function propAtualizarItem(id, campo, v) {
 }
 function propTotal() { return propItens.reduce((s,i) => s + (parseFloat(String(i.valor).replace(',','.')) || 0), 0); }
 function atualizarPropTotal() { const el = document.getElementById('prop-total'); if (el) el.textContent = fmtMoney(propTotal()); }
+function propMoverItem(id, dir) {
+  const i = propItens.findIndex(x => x.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= propItens.length) return;
+  const [it] = propItens.splice(i, 1); propItens.splice(j, 0, it);
+  renderPropItens(); renderPropPendencias();
+}
+let propDragId = null;
+function propDragIni(ev, id) { propDragId = id; try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', id); } catch (e) {} }
+function propDrop(ev, alvoId) {
+  ev.preventDefault();
+  const i = propItens.findIndex(x => x.id === propDragId), j = propItens.findIndex(x => x.id === alvoId);
+  propDragId = null;
+  if (i < 0 || j < 0 || i === j) return;
+  const [it] = propItens.splice(i, 1); propItens.splice(j, 0, it);
+  renderPropItens(); renderPropPendencias();
+}
 function renderPropItens() {
   const el = document.getElementById('prop-itens');
   if (!propItens.length) {
     el.innerHTML = `<div style="font-size:12.5px;color:var(--text3);padding:10px 0">Nenhum item. ${document.getElementById('prop-tipo').value==='regularizacao' ? 'Cole a pesquisa fiscal acima e clique em "Analisar".' : 'Clique em "+ Item".'}</div>`;
   } else {
     el.innerHTML = propItens.map((i, n) => `
-      <div style="display:flex;gap:8px;align-items:flex-start">
+      <div style="display:flex;gap:6px;align-items:flex-start" draggable="true" ondragstart="propDragIni(event,'${i.id}')" ondragover="event.preventDefault()" ondrop="propDrop(event,'${i.id}')">
+        <span style="cursor:grab;padding-top:10px;color:var(--text3)" title="Arraste para reordenar">⠿</span>
         <span style="width:22px;padding-top:11px;font-size:12px;color:var(--text3);text-align:right">${n+1}.</span>
         <div style="flex:1;min-width:0">
           <input class="form-control" value="${propEsc(i.descricao)}" placeholder="Descrição da etapa" oninput="propAtualizarItem('${i.id}','descricao',this.value)">
           ${(() => { const l = propPendenciasDaEtapa(i.id); if (!l.length) return i.detalhe ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:2px">${propEsc(i.detalhe)}</div>` : ''; const v = l.reduce((t,x)=>t+(x.pd.valor||0),0); return `<div style="font-size:11px;color:var(--text3);margin-top:3px;padding-left:2px">Pendências nº ${l.map(x=>x.n).join(', ')}${v ? ' · débitos: ' + fmtMoney(v) : ''}</div>`; })()}
         </div>
         <input class="form-control" style="width:130px" inputmode="decimal" placeholder="Valor R$" value="${propEsc(i.valor)}" oninput="propAtualizarItem('${i.id}','valor',this.value)">
+        <div style="display:flex;flex-direction:column;gap:2px;margin-top:1px">
+          <button class="btn btn-ghost btn-sm" type="button" style="padding:0 7px;line-height:18px" ${n===0?'disabled':''} onclick="propMoverItem('${i.id}',-1)" title="Subir">▲</button>
+          <button class="btn btn-ghost btn-sm" type="button" style="padding:0 7px;line-height:18px" ${n===propItens.length-1?'disabled':''} onclick="propMoverItem('${i.id}',1)" title="Descer">▼</button>
+        </div>
         <button class="btn btn-danger btn-sm" type="button" style="margin-top:4px" onclick="propRemoverItem('${i.id}')" title="Remover">🗑️</button>
       </div>`).join('');
   }
