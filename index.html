@@ -1193,6 +1193,13 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div class="form-group"><label class="form-label">CPF / CNPJ</label><input class="form-control" id="prop-docto"></div>
       </div>
 
+      <div class="form-group" id="prop-bloco-regul" style="display:none">
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gold);border-radius:10px;background:var(--gold-dim, rgba(201,162,75,.08));cursor:pointer;font-size:13.5px">
+          <input type="checkbox" id="prop-com-regul" onchange="propRegulMudou()" style="width:18px;height:18px">
+          <span><b>Haverá regularização da empresa antes do cancelamento?</b><br><span style="font-size:12px;color:var(--text3)">Marque quando a empresa precisa ficar em dia antes da baixa. A proposta passa a ter a pesquisa fiscal, as pendências e uma fase de regularização, seguida da baixa.</span></span>
+        </label>
+      </div>
+
       <div id="prop-bloco-pesquisa" style="display:none">
         <div class="form-group">
           <label class="form-label">Pesquisa fiscal (cole aqui o texto do relatório de situação fiscal)</label>
@@ -5692,9 +5699,10 @@ const PROP_INTRO = {
   cancelamento: 'Agradecemos a oportunidade de apresentar esta proposta. A THOTHE Gestão Corporativa conduzirá todo o processo de encerramento (baixa) da sua empresa junto aos órgãos competentes, cuidando de cada etapa para que a baixa seja concluída de forma correta e sem pendências futuras.',
   regularizacao: 'Agradecemos a oportunidade de apresentar esta proposta. Realizamos a pesquisa fiscal da empresa e organizamos neste documento: (1) o diagnóstico da situação junto a cada órgão, (2) o plano de regularização, etapa por etapa, e (3) os honorários correspondentes. O objetivo é deixar a empresa em dia e apta a emitir suas certidões de regularidade fiscal.',
 };
+const PROP_INTRO_CANCEL_REGUL = 'Agradecemos a oportunidade de apresentar esta proposta. Para que a baixa da empresa seja aceita pelos órgãos, é necessário primeiro regularizar as pendências existentes. Realizamos a pesquisa fiscal e organizamos neste documento: (1) o diagnóstico da situação, (2) a fase de regularização prévia e (3) a fase de cancelamento (baixa), com os honorários de cada etapa.';
 const PROP_PREMISSAS = {
   abertura: ['Os honorários referem-se exclusivamente aos serviços descritos nesta proposta.', 'Taxas, emolumentos e tributos cobrados pelos órgãos (Junta Comercial, Prefeitura, Corpo de Bombeiros etc.) são de responsabilidade do cliente.', 'Os prazos dependem da tramitação nos órgãos públicos e do envio da documentação pelo cliente em tempo hábil.'],
-  cancelamento: ['Os honorários referem-se exclusivamente aos serviços descritos nesta proposta.', 'Eventuais débitos, multas e taxas apurados para viabilizar a baixa são de responsabilidade do cliente e não estão incluídos nos honorários.', 'Os prazos dependem da tramitação nos órgãos públicos e do envio da documentação pelo cliente em tempo hábil.'],
+  cancelamento: ['Os honorários referem-se exclusivamente aos serviços descritos nesta proposta.', 'Quando houver regularização prévia, a baixa só é protocolada após a conclusão das etapas de regularização; débitos, multas e taxas dos órgãos não estão incluídos nos honorários e seus valores podem ser alterados até o pagamento ou parcelamento.', 'Eventuais débitos, multas e taxas apurados para viabilizar a baixa são de responsabilidade do cliente e não estão incluídos nos honorários.', 'Os prazos dependem da tramitação nos órgãos públicos e do envio da documentação pelo cliente em tempo hábil.'],
   regularizacao: ['Os honorários referem-se exclusivamente aos serviços descritos nesta proposta e não incluem o pagamento dos débitos, multas, juros e taxas devidos aos órgãos.', 'Os valores das pendências são os informados pelos órgãos na data da pesquisa fiscal e estão sujeitos a atualização (juros e multa) até a quitação ou o parcelamento.', 'Podem surgir pendências adicionais ainda não visíveis na pesquisa; nesse caso, o cliente será consultado antes de qualquer cobrança complementar.', 'Os prazos dependem da tramitação nos órgãos públicos e do envio da documentação pelo cliente em tempo hábil.'],
 };
 let propItens = [];
@@ -5773,13 +5781,29 @@ function abrirPropostaModal(id, tipoNovo) {
   document.getElementById('prop-incluir-anexos').checked = x ? x.incluirAnexos !== false : true;
   renderPropAnexos();
   renderPropPendencias();
+  document.getElementById('prop-com-regul').checked = !!(x && x.comRegularizacao);
   propTipoMudou(!x);
   openModal('modal-proposta');
 }
 
+function propModoRegul() {
+  const tipo = document.getElementById('prop-tipo').value;
+  return tipo === 'regularizacao' || (tipo === 'cancelamento' && document.getElementById('prop-com-regul').checked);
+}
+function propRegulMudou() {
+  const marcou = document.getElementById('prop-com-regul').checked;
+  if (!marcou && (propPendencias.length || propItens.some(i => i.fase !== 'baixa'))) {
+    if (!confirm('Desmarcar remove as etapas e pendências de regularização desta proposta (a baixa permanece). Continuar?')) { document.getElementById('prop-com-regul').checked = true; return; }
+    propItens = propItens.filter(i => i.fase === 'baixa'); propPendencias = [];
+  }
+  propTipoMudou(false);
+  renderPropPendencias();
+}
 function propTipoMudou(carregarSeVazio) {
   const tipo = document.getElementById('prop-tipo').value;
-  document.getElementById('prop-bloco-pesquisa').style.display = tipo === 'regularizacao' ? '' : 'none';
+  document.getElementById('prop-bloco-regul').style.display = tipo === 'cancelamento' ? '' : 'none';
+  if (tipo !== 'cancelamento') document.getElementById('prop-com-regul').checked = false;
+  document.getElementById('prop-bloco-pesquisa').style.display = propModoRegul() ? '' : 'none';
   document.getElementById('prop-btn-padrao').style.display = tipo === 'regularizacao' ? 'none' : '';
   if (carregarSeVazio === true || (!propItens.length && PROP_PADRAO[tipo].length)) {
     if (!propItens.length || carregarSeVazio === true) propCarregarPadrao(false);
@@ -5798,7 +5822,9 @@ function propCarregarPadrao(confirmar) {
   const tipo = document.getElementById('prop-tipo').value;
   const padrao = PROP_PADRAO[tipo] || [];
   if (confirmar && propItens.length && !confirm('Substituir os itens atuais pelos itens padrão?')) return;
-  propItens = padrao.map(d => ({ id: DB.id(), descricao: d, detalhe: '', valor: '' }));
+  const baixa = tipo === 'cancelamento' && document.getElementById('prop-com-regul').checked;
+  const novos = padrao.map(d => ({ id: DB.id(), descricao: d, detalhe: '', valor: '', ...(tipo === 'cancelamento' ? { fase: 'baixa' } : {}) }));
+  propItens = baixa ? [...propItens.filter(i => i.fase !== 'baixa'), ...novos] : novos;
   renderPropItens();
 }
 function propClienteMudou() {
@@ -5820,7 +5846,7 @@ function propMsgDoEditor() {
   const nome = document.getElementById('prop-nome').value.trim();
   if (!nome) { toast('⚠️ Informe o nome do cliente'); return; }
   propMsgDados = {
-    tipo: document.getElementById('prop-tipo').value, nome,
+    tipo: document.getElementById('prop-tipo').value, nome, comRegularizacao: document.getElementById('prop-com-regul').checked,
     validade: parseInt(document.getElementById('prop-validade').value, 10) || 15,
     itens: propItens.filter(i => (i.descricao||'').trim()).map(i => ({ ...i, valor: parseFloat(String(i.valor).replace(',','.')) || 0 })),
     pendencias: propPendencias.map(pd => ({ ...pd })),
@@ -5848,17 +5874,17 @@ function propMsgGerar(x, modelo) {
   const total = itens.reduce((t, i) => t + (parseFloat(i.valor) || 0), 0);
   const totPend = pends.reduce((t, pd) => t + (parseFloat(pd.valor) || 0), 0);
   const assin = 'Atenciosamente,\nEdésio Duarte\nTHOTHE Gestão Corporativa';
-  const servico = { abertura: 'a abertura da sua empresa', cancelamento: 'o encerramento (baixa) da sua empresa', regularizacao: 'a regularização fiscal da sua empresa' }[x.tipo] || 'os serviços solicitados';
+  const servico = { abertura: 'a abertura da sua empresa', cancelamento: x.comRegularizacao ? 'a regularização e o encerramento (baixa) da sua empresa' : 'o encerramento (baixa) da sua empresa', regularizacao: 'a regularização fiscal da sua empresa' }[x.tipo] || 'os serviços solicitados';
   const num = x.numero ? ` nº ${x.numero}` : '';
   const valTxt = total ? fmtMoney(total) : '';
-  const lista = itens.map((i, n) => `${n+1}. ${(i.descricao||'').split(' — ')[0]}${i.valor ? ' — ' + fmtMoney(i.valor) : ''}`).join('\n');
-  const contexto = x.tipo === 'regularizacao' && pends.length
-    ? `Analisamos a situação fiscal da empresa e identificamos ${pends.length} pendência${pends.length!==1?'s':''}${totPend ? `, que ${pends.length!==1?'somam':'soma'} ${fmtMoney(totPend)} em débitos` : ''}. O detalhamento está na proposta em anexo, junto com as etapas necessárias para regularizar tudo.${parcTxt ? ' ' + parcTxt : ''}`
+  const lista = itens.map((i, n) => `${n+1}. ${(i.descricao||'').replace(/ — [\d\/, ]+$/, '')}${i.valor ? ' — ' + fmtMoney(i.valor) : ''}`).join('\n');
+  const parcMens = pends.filter(pd => pd.parcelavel).reduce((t, pd) => t + (parseFloat(pd.valorParcela) || 0), 0);
+  const parcTxt = parcMens ? `Boa notícia: parte dos débitos pode ser parcelada, com parcelas somadas de aproximadamente ${fmtMoney(parcMens)} por mês (simulação detalhada na proposta).` : '';
+  const contexto = (x.tipo === 'regularizacao' || (x.tipo === 'cancelamento' && x.comRegularizacao)) && pends.length
+    ? `${x.tipo === 'cancelamento' ? 'Para a baixa ser aceita, a empresa precisa antes ser regularizada. ' : ''}Analisamos a situação fiscal da empresa e identificamos ${pends.length} pendência${pends.length!==1?'s':''}${totPend ? `, que ${pends.length!==1?'somam':'soma'} ${fmtMoney(totPend)} em débitos` : ''}${totPend ? ' (valor sujeito a alteração por juros, multa e correção)' : ''}. O detalhamento está na proposta em anexo, junto com as etapas necessárias.${parcTxt ? ' ' + parcTxt : ''}`
     : x.tipo === 'abertura' ? 'Cuidamos de todo o processo, do registro na Junta Comercial até a liberação das licenças, para você começar a operar com segurança.'
     : x.tipo === 'cancelamento' ? 'Cuidamos de toda a baixa nos órgãos competentes, para que a empresa seja encerrada sem pendências futuras.'
     : '';
-  const parcMens = pends.filter(pd => pd.parcelavel).reduce((t, pd) => t + (parseFloat(pd.valorParcela) || 0), 0);
-  const parcTxt = parcMens ? `Boa notícia: parte dos débitos pode ser parcelada, com parcelas somadas de aproximadamente ${fmtMoney(parcMens)} por mês (simulação detalhada na proposta).` : '';
   const cond = x.condicoes ? `Condições de pagamento: ${x.condicoes}.` : '';
   const val = `A proposta é válida por ${x.validade || 15} dias.`;
   if (modelo === 'curta') {
@@ -5975,7 +6001,7 @@ const PROP_ETAPA_POR_ORGAO = {
 function analisarPesquisaFiscal(texto) {
   const linhas = String(texto||'').split(/\r?\n/).map(l => l.replace(/\s+/g,' ').trim()).filter(l => l.length > 3);
   const periodoRe = /\b(?:0[1-9]|1[0-2])\/(?:19|20)\d{2}\b|\b(?:19|20)\d{2}\b/g;
-  const valorRe = /R\$\s*([\d.]+,\d{2})/g;
+  const valorRe = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?![\d%])/g;
   const pendencias = [];
   let secao = '', ativa = false, fonte = '';
   linhas.forEach(l => {
@@ -6029,8 +6055,9 @@ function propAnalisarPesquisa() {
   const { pendencias, itens } = analisarPesquisaFiscal(texto);
   const msg = document.getElementById('prop-analise-msg');
   if (!pendencias.length) { msg.textContent = 'Não identifiquei pendências no texto. Adicione as etapas manualmente em "+ Item".'; return; }
-  if ((propItens.length || propPendencias.length) && !confirm(`Substituir os itens e pendências atuais pelas ${pendencias.length} pendências / ${itens.length} etapas encontradas?`)) return;
-  propItens = itens; propPendencias = pendencias;
+  if ((propItens.some(i => i.fase !== 'baixa') || propPendencias.length) && !confirm(`Substituir os itens e pendências atuais pelas ${pendencias.length} pendências / ${itens.length} etapas encontradas?`)) return;
+  const fixos = document.getElementById('prop-tipo').value === 'cancelamento' ? propItens.filter(i => i.fase === 'baixa') : [];
+  propItens = [...itens, ...fixos]; propPendencias = pendencias;
   renderPropItens(); renderPropPendencias();
   const tot = pendencias.reduce((t, pd) => t + (pd.valor || 0), 0);
   msg.textContent = `${pendencias.length} pendência${pendencias.length!==1?'s':''} identificada${pendencias.length!==1?'s':''}${tot ? ` (${fmtMoney(tot)} em débitos)` : ''} em ${itens.length-1} etapa${itens.length-1!==1?'s':''} — confira e preencha o valor de cada etapa.`;
@@ -6106,6 +6133,7 @@ function salvarProposta(imprimir) {
     obs: document.getElementById('prop-obs').value.trim(),
     pendencias: propPendencias.map(pd => ({ ...pd })),
     anexos: propAnexos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho })),
+    comRegularizacao: document.getElementById('prop-tipo').value === 'cancelamento' && document.getElementById('prop-com-regul').checked,
     incluirAnexos: document.getElementById('prop-incluir-anexos').checked,
     status: antiga ? antiga.status : 'rascunho',
   };
@@ -6229,10 +6257,12 @@ async function propAdicionarAnexos(files) {
         const jaTem = new Set(propPendencias.map(pd => pd.descricao));
         const novas = r.pendencias.filter(pd => !jaTem.has(pd.descricao));
         const fim = propItens.find(i => /certid/i.test(i.descricao) && /final/i.test(i.descricao));
+        const iBaixa = propItens.findIndex(i => i.fase === 'baixa');
+        const posFim = () => iBaixa < 0 ? propItens.length : propItens.findIndex(i => i.fase === 'baixa');
         r.itens.forEach(it => {
-          if (/certid/i.test(it.descricao) && /final/i.test(it.descricao)) { if (!fim) propItens.push(it); else novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = fim.id; }); return; }
+          if (/certid/i.test(it.descricao) && /final/i.test(it.descricao)) { if (!fim) propItens.splice(posFim(), 0, it); else novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = fim.id; }); return; }
           const ex = propItens.find(i => i.descricao.split(' — ')[0] === it.descricao.split(' — ')[0]);
-          if (ex) novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = ex.id; }); else propItens.splice(fim ? propItens.indexOf(fim) : propItens.length, 0, it);
+          if (ex) novas.forEach(pd => { if (pd.etapaId === it.id) pd.etapaId = ex.id; }); else propItens.splice(fim ? propItens.indexOf(fim) : posFim(), 0, it);
         });
         propPendencias.push(...novas);
         renderPropItens(); renderPropPendencias();
@@ -6310,13 +6340,16 @@ async function imprimirProposta(id) {
   const totPend = pends.reduce((t, pd) => t + (pd.valor || 0), 0);
   const idxEtapa = id => { const k = x.itens.findIndex(i => i.id === id); return k < 0 ? '—' : String(k + 1); };
   const nPend = n => `${n} pendência${n !== 1 ? 's' : ''}`;
+  const vv = v => v ? `${fmtMoney(v)}<sup>*</sup>` : '—';
+  const aviso = `<div class="aviso"><b>Valores sujeitos a alteração.</b> Os valores indicados com <sup>*</sup> são os informados pelos órgãos na data da pesquisa fiscal e <b>podem ser alterados</b> (juros, multas, correção monetária, novos lançamentos ou revisão pelo órgão) até o pagamento ou o parcelamento.</div>`;
   let secN = 0;
-  const sec = (titulo, html) => `<div class="sec"><h2><span>${++secN}</span>${titulo}</h2>${html}</div>`;
+  const sec = (titulo, html, curta) => `<div class="sec${curta ? ' curta' : ''}"><h2><span>${++secN}</span>${titulo}</h2>${html}</div>`;
 
   // ── Diagnóstico (espelho da pesquisa fiscal) ──
   let diag = '';
   const pesq = x.pesquisa || '';
-  if (x.tipo === 'regularizacao' && (pends.length || pesq.trim())) {
+  const modoRegul = x.tipo === 'regularizacao' || (x.tipo === 'cancelamento' && x.comRegularizacao);
+  if (modoRegul && (pends.length || pesq.trim())) {
     const orgaos = [...PROP_ORGAOS.map(r => ({ nome: r[1], re: r[0] }))];
     const linhasOrg = orgaos.map(o => {
       const lista = pends.filter(pd => pd.orgao === o.nome);
@@ -6329,10 +6362,10 @@ async function imprimirProposta(id) {
     const resumo = `<table class="kpi"><tr>
       <td><b>${pends.length}</b><span>pendências identificadas</span></td>
       <td><b>${orgComPend}</b><span>órgão${orgComPend!==1?'s':''} com pendência</span></td>
-      <td><b>${totPend ? fmtMoney(totPend) : '—'}</b><span>em débitos informados</span></td>
+      <td><b>${vv(totPend)}</b><span>em débitos informados</span></td>
       <td><b>${x.itens.length}</b><span>etapa${x.itens.length!==1?'s':''} de regularização</span></td></tr></table>`;
     const tabOrg = `<h4>Situação por órgão</h4><table class="grade"><thead><tr><th>ÓRGÃO / ÁREA</th><th>SITUAÇÃO</th><th class="c">PENDÊNCIAS</th><th class="v">DÉBITOS INFORMADOS</th></tr></thead><tbody>
-      ${linhasOrg.map(r => `<tr><td>${propEsc(r.o.nome)}</td><td><span class="tag ${r.st[0]}">${r.st[1]}</span></td><td class="c">${r.lista.length || '—'}</td><td class="v">${r.val ? fmtMoney(r.val) : '—'}</td></tr>`).join('')}
+      ${linhasOrg.map(r => `<tr><td>${propEsc(r.o.nome)}</td><td><span class="tag ${r.st[0]}">${r.st[1]}</span></td><td class="c">${r.lista.length || '—'}</td><td class="v">${vv(r.val)}</td></tr>`).join('')}
       </tbody></table>`;
     let detalhe = '';
     if (pends.length) {
@@ -6340,10 +6373,10 @@ async function imprimirProposta(id) {
       detalhe = `<h4>Pendências detalhadas</h4>` + linhasOrg.filter(r => r.lista.length).map(r => `
         <table class="grade pend"><thead><tr><th colspan="6" class="grp">${propEsc(r.o.nome.toUpperCase())}</th></tr>
         <tr class="sub"><th>#</th><th>PENDÊNCIA</th><th>PERÍODO</th><th class="c">ETAPA</th><th class="v">VALOR</th><th class="c">PARCELAMENTO</th></tr></thead><tbody>
-        ${r.lista.map(pd => `<tr><td class="n">${pends.indexOf(pd) + 1}</td><td>${propEsc(pd.descricao)}</td><td>${propEsc(pd.periodo || '—')}</td><td class="c">${idxEtapa(pd.etapaId)}</td><td class="v">${pd.valor ? fmtMoney(pd.valor) : '—'}</td><td class="c">${pd.parcelavel && pd.parcelas ? `<span class="tag ok">${pd.parcelas}x${pd.valorParcela ? ' ' + fmtMoney(pd.valorParcela) : ''}</span>` : '<span class="det">à vista</span>'}</td></tr>`).join('')}
-        ${r.val ? `<tr class="subtot"><td colspan="4">Subtotal — ${propEsc(r.o.nome)}</td><td class="v">${fmtMoney(r.val)}</td><td></td></tr>` : ''}
+        ${r.lista.map(pd => `<tr><td class="n">${pends.indexOf(pd) + 1}</td><td>${propEsc(pd.descricao)}</td><td>${propEsc(pd.periodo || '—')}</td><td class="c">${idxEtapa(pd.etapaId)}</td><td class="v">${vv(pd.valor)}</td><td class="c">${pd.parcelavel && pd.parcelas ? `<span class="tag ok">${pd.parcelas}x${pd.valorParcela ? ' ' + fmtMoney(pd.valorParcela) : ''}</span>` : '<span class="det">à vista</span>'}</td></tr>`).join('')}
+        ${r.val ? `<tr class="subtot"><td colspan="4">Subtotal — ${propEsc(r.o.nome)}</td><td class="v">${vv(r.val)}</td><td></td></tr>` : ''}
         </tbody></table>`).join('');
-      if (totPend) detalhe += `<div class="totpend">Total de débitos identificados: <strong>${fmtMoney(totPend)}</strong><span>Valores conforme os órgãos, sem atualização de juros e multa.</span></div>`;
+      if (totPend) detalhe += `<div class="totpend">Total de débitos identificados: <strong>${vv(totPend)}</strong><span>* Valor sujeito a alteração — sem atualização de juros e multa.</span></div>`;
     } else {
       detalhe = `<p class="nota">A pesquisa fiscal não apontou pendências específicas; as etapas abaixo foram definidas pela análise da equipe.</p>`;
     }
@@ -6354,9 +6387,9 @@ async function imprimirProposta(id) {
       const totParc = parcelaveis.reduce((t, pd) => t + (pd.valor || 0), 0);
       const mensal = parcelaveis.reduce((t, pd) => t + (pd.valorParcela || 0), 0);
       parcHtml = `<h4>Débitos passíveis de parcelamento</h4><table class="grade"><thead><tr><th>#</th><th>DÉBITO</th><th>ÓRGÃO</th><th class="v">VALOR</th><th class="c">PARCELAS</th><th class="v">VALOR DA PARCELA</th></tr></thead><tbody>
-        ${parcelaveis.map(pd => `<tr><td class="n">${pends.indexOf(pd) + 1}</td><td>${propEsc(pd.descricao)}</td><td>${propEsc(pd.orgao)}</td><td class="v">${pd.valor ? fmtMoney(pd.valor) : '—'}</td><td class="c">${pd.parcelas}x</td><td class="v">${pd.valorParcela ? fmtMoney(pd.valorParcela) : '—'}</td></tr>`).join('')}
-        <tr class="subtot"><td colspan="3">Total parcelável / parcela mensal somada</td><td class="v">${fmtMoney(totParc)}</td><td></td><td class="v">${fmtMoney(mensal)}</td></tr></tbody></table>
-        <p class="nota">Simulação: as condições finais (nº de parcelas, entrada, juros e correção) seguem as regras de cada órgão na data da adesão.</p>`;
+        ${parcelaveis.map(pd => `<tr><td class="n">${pends.indexOf(pd) + 1}</td><td>${propEsc(pd.descricao)}</td><td>${propEsc(pd.orgao)}</td><td class="v">${vv(pd.valor)}</td><td class="c">${pd.parcelas}x</td><td class="v">${pd.valorParcela ? fmtMoney(pd.valorParcela) : '—'}</td></tr>`).join('')}
+        <tr class="subtot"><td colspan="3">Total parcelável / parcela mensal somada</td><td class="v">${vv(totParc)}</td><td></td><td class="v">${vv(mensal)}</td></tr></tbody></table>
+        <p class="nota">* Simulação: o número de parcelas, o valor de cada parcela, a entrada, os juros e a correção seguem as regras de cada órgão na data da adesão e <b>podem ser alterados</b>.</p>`;
     }
     // documentos analisados (mais de um anexo)
     const fontes = [];
@@ -6368,35 +6401,42 @@ async function imprimirProposta(id) {
         ${fontes.map((f, n) => { const l = pends.filter(pd => pd.fonte === f); const v = l.reduce((t, pd) => t + (pd.valor || 0), 0); return `<tr><td class="n">${n+1}</td><td>${propEsc(f)}</td><td class="c">${l.length || '—'}</td><td class="v">${v ? fmtMoney(v) : '—'}</td></tr>`; }).join('')}
         </tbody></table><p class="nota">Os documentos estão reproduzidos integralmente nos anexos ao final desta proposta.</p>`;
     }
-    diag = sec('DIAGNÓSTICO DA SITUAÇÃO FISCAL', resumo + tabOrg + detalhe + parcHtml + docs);
+    diag = sec(x.tipo === 'cancelamento' ? 'REGULARIZAÇÃO PRÉVIA — DIAGNÓSTICO FISCAL' : 'DIAGNÓSTICO DA SITUAÇÃO FISCAL', resumo + (totPend ? aviso : '') + tabOrg + detalhe + parcHtml + docs);
   }
 
   // ── Plano de execução ──
-  const tituloPlano = x.tipo === 'regularizacao' ? 'PLANO DE REGULARIZAÇÃO' : 'ETAPAS DO SERVIÇO';
+  const fases = x.tipo === 'cancelamento' && x.comRegularizacao && x.itens.some(i => i.fase === 'baixa') && x.itens.some(i => i.fase !== 'baixa');
+  const tituloPlano = x.tipo === 'regularizacao' ? 'PLANO DE REGULARIZAÇÃO' : fases ? 'PLANO DE EXECUÇÃO — REGULARIZAÇÃO E BAIXA' : 'ETAPAS DO SERVIÇO';
+  const colN = pends.length ? 4 : 3;
+  const subFase = t => `<tr class="fase"><td colspan="${colN}">${t}</td></tr>`;
+  let faseAtual = '';
+  const linhasPlano = x.itens.map((i, n) => {
+    let cab = '';
+    if (fases) { const f = i.fase === 'baixa' ? 'b' : 'r'; if (f !== faseAtual) { faseAtual = f; cab = subFase(f === 'r' ? 'FASE 1 — REGULARIZAÇÃO DA EMPRESA (ANTES DA BAIXA)' : 'FASE 2 — CANCELAMENTO (BAIXA) DA EMPRESA'); } }
+    const rel = pends.map((pd, k) => ({ k: k+1, pd })).filter(o => o.pd.etapaId === i.id);
+    return cab + `<tr><td class="n">${n+1}</td><td>${propEsc(i.descricao)}${i.detalhe && !rel.length ? `<div class="det">${propEsc(i.detalhe)}</div>` : ''}</td>${pends.length ? `<td class="c">${rel.length ? rel.map(o => o.k).join(', ') : '—'}</td>` : ''}<td class="v">${fmtMoney(i.valor)}</td></tr>`;
+  }).join('');
   const plano = sec(tituloPlano, `<table class="grade"><thead><tr><th>#</th><th>ETAPA</th>${pends.length ? '<th class="c">RESOLVE PENDÊNCIAS</th>' : ''}<th class="v">HONORÁRIOS</th></tr></thead><tbody>
-    ${x.itens.map((i, n) => {
-      const rel = pends.map((pd, k) => ({ k: k+1, pd })).filter(o => o.pd.etapaId === i.id);
-      return `<tr><td class="n">${n+1}</td><td>${propEsc(i.descricao)}${i.detalhe && !rel.length ? `<div class="det">${propEsc(i.detalhe)}</div>` : ''}</td>${pends.length ? `<td class="c">${rel.length ? rel.map(o => o.k).join(', ') : '—'}</td>` : ''}<td class="v">${fmtMoney(i.valor)}</td></tr>`;
-    }).join('')}
-    <tr class="totrow"><td colspan="${pends.length ? 3 : 2}">TOTAL DOS HONORÁRIOS</td><td class="v">${fmtMoney(x.total)}</td></tr></tbody></table>`);
+    ${linhasPlano}
+    <tr class="totrow"><td colspan="${colN - 1}">TOTAL DOS HONORÁRIOS</td><td class="v">${fmtMoney(x.total)}</td></tr></tbody></table>`);
 
   // ── Investimento e condições ──
   const invest = sec('INVESTIMENTO E CONDIÇÕES', `<table class="grade chave"><tbody>
     <tr><th>Honorários totais</th><td>${fmtMoney(x.total)}</td></tr>
     <tr><th>Forma de pagamento</th><td>${x.condicoes ? propEsc(x.condicoes).replace(/\n/g, '<br>') : 'A combinar'}</td></tr>
     <tr><th>Validade da proposta</th><td>${x.validade || 15} dias — até ${vencFmt}</td></tr>
-    ${x.tipo === 'regularizacao' && totPend ? `<tr><th>Débitos nos órgãos (não incluídos)</th><td>${fmtMoney(totPend)} <span class="det">pagos diretamente aos órgãos, à vista ou parcelados</span></td></tr>` : ''}
-    ${pends.some(pd => pd.parcelavel && pd.valorParcela) ? `<tr><th>Parcelamento dos débitos</th><td>≈ ${fmtMoney(pends.filter(pd => pd.parcelavel).reduce((t, pd) => t + (pd.valorParcela || 0), 0))} por mês <span class="det">(soma das parcelas simuladas)</span></td></tr>` : ''}
-    </tbody></table>`);
+    ${x.tipo === 'regularizacao' && totPend ? `<tr><th>Débitos nos órgãos (não incluídos)</th><td>${vv(totPend)} <span class="det">pagos diretamente aos órgãos, à vista ou parcelados — valor sujeito a alteração</span></td></tr>` : ''}
+    ${pends.some(pd => pd.parcelavel && pd.valorParcela) ? `<tr><th>Parcelamento dos débitos</th><td>≈ <sup>*</sup>${fmtMoney(pends.filter(pd => pd.parcelavel).reduce((t, pd) => t + (pd.valorParcela || 0), 0))} por mês <span class="det">(soma das parcelas simuladas — pode ser alterada pelo órgão)</span></td></tr>` : ''}
+    </tbody></table>`, true);
 
   // ── Premissas e próximos passos ──
-  const premissas = sec('PREMISSAS E OBSERVAÇÕES', `<ul class="prem">${(PROP_PREMISSAS[x.tipo] || []).map(t => `<li>${propEsc(t)}</li>`).join('')}${x.obs ? `<li>${propEsc(x.obs).replace(/\n/g, '<br>')}</li>` : ''}</ul>`);
+  const premissas = sec('PREMISSAS E OBSERVAÇÕES', `<ul class="prem">${(PROP_PREMISSAS[x.tipo] || []).map(t => `<li>${propEsc(t)}</li>`).join('')}${x.obs ? `<li>${propEsc(x.obs).replace(/\n/g, '<br>')}</li>` : ''}</ul>`, true);
   const passos = sec('PRÓXIMOS PASSOS', `<table class="grade"><thead><tr><th>#</th><th>PASSO</th><th>RESPONSÁVEL</th></tr></thead><tbody>
     <tr><td class="n">1</td><td>Aprovação desta proposta</td><td>Cliente</td></tr>
     <tr><td class="n">2</td><td>Envio da documentação e das procurações necessárias</td><td>Cliente</td></tr>
     <tr><td class="n">3</td><td>Início da execução das etapas, com atualização periódica do andamento</td><td>THOTHE</td></tr>
     <tr><td class="n">4</td><td>Conclusão e entrega ${x.tipo === 'regularizacao' ? 'das certidões de regularidade fiscal' : 'da documentação final'}</td><td>THOTHE</td></tr>
-    </tbody></table>`);
+    </tbody></table>`, true);
   const corpoHtml = diag + plano + invest + premissas + passos;
   win.document.open();
   win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Proposta ${propEsc(x.numero)} — ${propEsc(x.nome)}</title>
@@ -6411,7 +6451,7 @@ async function imprimirProposta(id) {
   .topo .sub{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.3em;margin-top:6px;color:#c9a24b}
   .topo .cnpj{font-size:12px;margin-top:8px;color:#a99f8a;letter-spacing:.05em}
   .faixa{height:4px;background:linear-gradient(90deg,#c9a24b,#f0d793,#c9a24b)}
-  .corpo{padding:30px 40px 0}
+  .corpo{padding:10px 40px 0}
   .titulo{font-family:'Cinzel',serif;font-size:20px;letter-spacing:.16em;text-align:center;margin:6px 0 4px;color:#8a6a24}
   .meta{text-align:center;font-size:13px;color:#6b614d;margin-bottom:26px;letter-spacing:.03em}
   .cli{border:1px solid #d9c9a0;background:#fbf8ef;border-radius:6px;padding:14px 18px;margin-bottom:20px}
@@ -6470,21 +6510,32 @@ async function imprimirProposta(id) {
   .anexo img{display:block;max-width:100%;margin:0 auto;border:1px solid #e6dcc0}
   .anexo pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:11.5px;line-height:1.45}
   .anexo-aviso{font-size:13px;color:#8a7f69}
+  @page{size:A4;margin:0}
+  table.paginado{width:100%;border-collapse:collapse;margin:0}
+  table.paginado>thead>tr>td,table.paginado>tfoot>tr>td,table.paginado>tbody>tr>td{padding:0;border:0;background:none}
+  .esp{height:14mm}
+  .aviso{border-left:4px solid #c9a24b;background:#fbf3dc;padding:10px 14px;font-size:13px;line-height:1.5;margin:8px 0 12px;color:#4a3d18;page-break-inside:avoid}
+  sup{font-size:.7em;color:#8f2d1f;font-weight:700}
+  table.grade tr.fase td{background:#efe6c8;color:#5c4818;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.14em;font-weight:700;text-align:left;border-top:2px solid #c9a24b}
+  .sec h2,.sec h4{page-break-after:avoid;break-after:avoid;break-inside:avoid}
+  .sec.curta{break-inside:avoid;page-break-inside:avoid}
+  .assin,.rodape{page-break-inside:avoid}
   @media print{ .pag{max-width:none} }
 </style></head><body><div class="pag">
   <div class="topo"><div class="logo"></div><div><h1>THOTHE</h1><div class="sub">GESTÃO CORPORATIVA</div><div class="cnpj">${propEsc(EMPRESA_NOME)} · CNPJ ${propEsc(EMPRESA_CNPJ)}</div></div></div>
   <div class="faixa"></div>
+  <table class="paginado"><thead><tr><td><div class="esp"></div></td></tr></thead><tfoot><tr><td><div class="esp"></div></td></tr></tfoot><tbody><tr><td>
   <div class="corpo">
     <div class="titulo">PROPOSTA DE ${PROP_TIPOS[x.tipo].toUpperCase()}</div>
     <div class="meta">Nº ${propEsc(x.numero)} · ${dataExt} · válida até ${vencFmt}</div>
     <div class="cli"><div class="l">CLIENTE</div><div class="n">${propEsc(x.nome)}</div>${x.docto ? `<div class="d">CPF/CNPJ: ${propEsc(x.docto)}</div>` : ''}</div>
-    <div class="intro">${PROP_INTRO[x.tipo]}</div>
+    <div class="intro">${x.tipo === 'cancelamento' && x.comRegularizacao ? PROP_INTRO_CANCEL_REGUL : PROP_INTRO[x.tipo]}</div>
     ${corpoHtml}
     <div class="assin"><div>${propEsc(EMPRESA_NOME)}</div><div>${propEsc(x.nome)}<br>De acordo</div></div>
     <div class="rodape">EXCELÊNCIA · ESTRATÉGIA · RESULTADOS</div>
-  </div></div>${anexosHtml}</body></html>`);
+  </div></td></tr></tbody></table></div>${anexosHtml}</body></html>`);
   win.document.close(); win.focus();
-  const imprimir = () => setTimeout(() => win.print(), 900);
+  const imprimir = () => { const go = () => setTimeout(() => win.print(), 600); try { win.document.fonts.ready.then(go); } catch (e) { go(); } };
   if (win.document.readyState === 'complete') imprimir(); else win.addEventListener('load', imprimir);
 }
 
