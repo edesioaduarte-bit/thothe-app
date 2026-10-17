@@ -1459,7 +1459,6 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="bv-btn-voz" onclick="alternarVozBoasVindas()" title="Ouvir ou silenciar a saudação falada">🔊 Ouvir</button>
       <button class="btn btn-ghost" onclick="fecharBoasVindas()">Fechar</button>
       <button class="btn btn-primary" onclick="fecharBoasVindas();showPage('agenda')">📅 Ver minha agenda</button>
     </div>
@@ -7837,64 +7836,7 @@ function itensBoasVindas() {
   return itens;
 }
 
-/* ── Saudação falada com voz feminina (síntese de voz do próprio navegador) ── */
-let bvVozAtiva = (() => { try { return localStorage.getItem('thothe_voz') !== '0'; } catch (e) { return true; } })();
-let bvTextoFala = '', bvFalou = false;
-function vozFeminina() {
-  const vozes = (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(v => /^pt(-|_)?BR/i.test(v.lang) || /^pt/i.test(v.lang));
-  if (!vozes.length) return null;
-  const fem = /francisca|maria|luciana|helena|thalita|vit[oó]ria|giovanna|leticia|let[ií]cia|camila|fernanda|yara|raquel|google portugu[eê]s|feminin|female|natural/i;
-  const masc = /daniel|antonio|ant[oô]nio|felipe|ricardo|jorge|donato|male\b|masculin|paulo|jo[aã]o/i;
-  return vozes.find(v => /^pt-BR/i.test(v.lang) && fem.test(v.name) && !masc.test(v.name))
-      || vozes.find(v => fem.test(v.name) && !masc.test(v.name))
-      || vozes.find(v => /^pt-BR/i.test(v.lang) && !masc.test(v.name))
-      || vozes[0];
-}
-function textoFaladoBoasVindas(itens) {
-  const a = new Date(), h = a.getHours(), m = a.getMinutes();
-  const hora = h === 1 ? 'É uma hora' : `São ${h} horas`;
-  const saud = saudacaoPorHorario().texto;
-  let t = `${saud}, Edésio. ${hora}${m ? ` e ${m} ${m === 1 ? 'minuto' : 'minutos'}` : ''}. `;
-  const d = climaDoCache();
-  if (d && d.current) {
-    const chuva = d.daily && d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[0] : null;
-    t += `Faz ${Math.round(d.current.temperature_2m)} graus, com ${(CLIMA_DESCRICOES[d.current.weather_code] || 'tempo estável').toLowerCase()}. `;
-    if (chuva >= 50) t += 'Leve um guarda-chuva. ';
-  }
-  if (itens.length) {
-    t += 'Para hoje: ' + itens.slice(0, 3).map(it => it.tx.replace(/\s*·\s*/g, ', ')).join('. ') + '. ';
-  } else t += 'Não há nada pendente nem atrasado. ';
-  return t + 'Tenha um ótimo dia!';
-}
-function falarBoasVindas() {
-  if (!window.speechSynthesis || !bvVozAtiva || !bvTextoFala) return;
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(bvTextoFala);
-    const v = vozFeminina();
-    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'pt-BR';
-    u.rate = 0.97; u.pitch = 1.1; u.volume = 1;
-    u.onstart = () => { bvFalou = true; atualizarBotaoVoz(); };
-    u.onend = () => atualizarBotaoVoz();
-    u.onerror = () => { bvFalou = false; atualizarBotaoVoz(); };
-    speechSynthesis.speak(u);
-  } catch (e) {}
-}
-function atualizarBotaoVoz() {
-  const b = document.getElementById('bv-btn-voz'); if (!b) return;
-  const falando = window.speechSynthesis && speechSynthesis.speaking;
-  b.textContent = !bvVozAtiva ? '🔈 Ativar voz' : falando ? '🔇 Silenciar' : '🔊 Ouvir';
-}
-function alternarVozBoasVindas() {
-  if (!window.speechSynthesis) { toast('⚠️ Este navegador não tem voz para leitura'); return; }
-  if (speechSynthesis.speaking) { speechSynthesis.cancel(); atualizarBotaoVoz(); return; }
-  bvVozAtiva = true; try { localStorage.setItem('thothe_voz', '1'); } catch (e) {}
-  falarBoasVindas(); setTimeout(atualizarBotaoVoz, 300);
-}
-function fecharBoasVindas() {
-  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
-  closeModal('modal-boasvindas');
-}
+function fecharBoasVindas() { closeModal('modal-boasvindas'); }
 
 function abrirBoasVindas() {
   const saud = saudacaoPorHorario();
@@ -7919,20 +7861,6 @@ function abrirBoasVindas() {
   const vs = versosDisponiveis(); const vv = vs.length ? vs[(typeof versoIdx === 'number' ? versoIdx : 0) % vs.length] : null;
   set('bv-verso', vv ? `“${vv.t}”<small>${vv.r || ''}</small>` : '');
   openModal('modal-boasvindas');
-  bvTextoFala = textoFaladoBoasVindas(itens); bvFalou = false; atualizarBotaoVoz();
-  if (window.speechSynthesis && bvVozAtiva) {
-    const tentar = () => { falarBoasVindas();
-      // navegadores só liberam áudio após um clique/tecla: se não começou, fala no primeiro gesto
-      setTimeout(() => {
-        if (!bvFalou && document.getElementById('modal-boasvindas').classList.contains('open')) {
-          const gesto = () => { document.removeEventListener('pointerdown', gesto, true); document.removeEventListener('keydown', gesto, true); if (!bvFalou && document.getElementById('modal-boasvindas').classList.contains('open')) falarBoasVindas(); };
-          document.addEventListener('pointerdown', gesto, true); document.addEventListener('keydown', gesto, true);
-        }
-      }, 900);
-    };
-    if (speechSynthesis.getVoices().length) tentar();
-    else { let fez = false; const go = () => { if (fez) return; fez = true; tentar(); }; speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 800); }
-  }
 }
 function agendarBoasVindas() {
   let visto = false;
