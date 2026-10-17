@@ -416,6 +416,32 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 #auth-gate .box { animation: riseIn .8s .2s both; }
 #auth-gate .card { background: rgba(24,20,13,.62); }
 #auth-gate .splash-ring { width: 104px; height: 104px; }
+
+/* boas-vindas ao abrir o sistema */
+.bv-topo { position: relative; padding: 26px 26px 20px; overflow: hidden; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(217,178,95,.14), transparent 70%); }
+.bv-sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.bv-sky .astro { position: absolute; right: 36px; top: 20px; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #FFF3C4, #F6C453 60%, #E89A1C); box-shadow: 0 0 36px 10px rgba(246,196,83,.4); animation: astroFloat 7s ease-in-out infinite; }
+.bv-sky.noite .astro { background: radial-gradient(circle at 35% 35%, #fff, #E5E7F5 65%, #B9BEDD); box-shadow: 0 0 30px 8px rgba(190,200,255,.35); }
+.bv-sky .nuvem { position: absolute; height: 18px; width: 72px; border-radius: 30px; background: rgba(255,255,255,.12); animation: nuvemAnda linear infinite; }
+.bv-sky .nuvem::before { content: ''; position: absolute; width: 30px; height: 30px; left: 12px; top: -14px; border-radius: 50%; background: inherit; }
+.bv-sky .n1 { top: 30%; animation-duration: 40s; } .bv-sky .n2 { top: 62%; animation-duration: 64s; animation-delay: -22s; }
+.bv-topo > *:not(.bv-sky) { position: relative; z-index: 1; }
+.bv-saud { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; animation: riseIn .7s both; }
+.bv-data { font-size: 14px; color: var(--text2); margin-top: 6px; animation: riseIn .7s .1s both; }
+.bv-chips { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; animation: riseIn .7s .2s both; }
+.bv-chip { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 14px; background: rgba(var(--ink), .06); border: 1px solid var(--border); backdrop-filter: blur(8px); }
+.bv-chip > span { font-size: 28px; }
+.bv-chip b { display: block; font-size: 20px; font-variant-numeric: lining-nums tabular-nums; line-height: 1.1; }
+.bv-chip small { font-size: 11.5px; color: var(--text3); }
+.bv-titulo { font-family: var(--font-brand); font-size: 11px; letter-spacing: .18em; color: var(--gold); margin-bottom: 10px; text-transform: uppercase; }
+.bv-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: rgba(var(--ink), .045); border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; font-size: 13.5px; transition: transform .2s, border-color .2s; animation: riseIn .5s both; }
+.bv-item:hover { transform: translateX(4px); border-color: var(--gold); }
+.bv-item .ic { font-size: 18px; }
+.bv-item .tx { flex: 1; }
+.bv-item .tx small { display: block; color: var(--text3); font-size: 11.5px; margin-top: 1px; }
+.bv-item.urg { border-color: rgba(248,113,113,.4); background: rgba(248,113,113,.08); }
+.bv-verso { margin: 14px 0 10px; padding: 10px 14px; border-left: 3px solid var(--gold); font-family: var(--font-display); font-style: italic; font-size: 15.5px; line-height: 1.4; color: var(--text2); }
+.bv-verso small { display: block; font-family: var(--font-brand); font-style: normal; font-size: 10px; letter-spacing: .16em; color: var(--gold); margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; } }
 </style>
 </head>
@@ -1410,6 +1436,31 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="closeModal('modal-prop-msg')">Fechar</button>
       <button class="btn btn-ghost" onclick="propMsgWhats()">WhatsApp</button>
       <button class="btn btn-primary" onclick="propMsgCopiar()">📋 Copiar mensagem</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-boasvindas">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-body" style="padding:0;max-height:88vh">
+      <div class="bv-topo">
+        <div class="bv-sky" id="bv-sky"><span class="astro"></span><i class="nuvem n1"></i><i class="nuvem n2"></i></div>
+        <div class="bv-saud" id="bv-saud"></div>
+        <div class="bv-data" id="bv-data"></div>
+        <div class="bv-chips">
+          <div class="bv-chip"><span id="bv-clima-ico">🌡️</span><div><b id="bv-temp">--°C</b><small id="bv-clima-desc">carregando clima…</small></div></div>
+          <div class="bv-chip"><span>🕒</span><div><b id="bv-hora">--:--</b><small>horário local</small></div></div>
+        </div>
+      </div>
+      <div style="padding:18px 24px 6px">
+        <div class="bv-titulo" id="bv-titulo">Para hoje</div>
+        <div id="bv-lista"></div>
+        <div class="bv-verso" id="bv-verso"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-boasvindas')">Fechar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-boasvindas');showPage('agenda')">📅 Ver minha agenda</button>
     </div>
   </div>
 </div>
@@ -7720,6 +7771,7 @@ function startApp() {
   aplicarEstadoSidebarSalvo();
   aplicarIconeTema();
   showPage('dashboard');
+  agendarBoasVindas();
   if (getTimersAtivos().length) iniciarLoopTimer();
   verificarSincronia();
   if (SUPA_URL && SUPA_KEY) {
@@ -7731,6 +7783,87 @@ function startApp() {
     migrarObrigFechamentoRecorrente();
     gerarOcorrenciasRecorrentesFuturas();
   }
+}
+
+
+/* ── Boas-vindas ao abrir o sistema: saudação, clima, hora e o que merece atenção hoje ── */
+let bvRelogio = null;
+function climaDoCache() {
+  try { const c = JSON.parse(localStorage.getItem('gw_clima_cache') || 'null'); return c && c.dados ? c.dados : null; } catch (e) { return null; }
+}
+function atualizarClimaBoasVindas() {
+  const d = climaDoCache(); if (!d || !d.current) return;
+  const cur = d.current, code = cur.weather_code;
+  const dia = cur.is_day !== undefined ? cur.is_day === 1 : (new Date().getHours() >= 6 && new Date().getHours() < 18);
+  const ico = (!dia && (code === 0 || code === 1)) ? '🌙' : (CLIMA_ICONES[code] || '🌡️');
+  const chuva = d.daily && d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[0] : null;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('bv-clima-ico', ico); set('bv-temp', `${Math.round(cur.temperature_2m)}°C`);
+  set('bv-clima-desc', `${CLIMA_DESCRICOES[code] || ''}${chuva !== null ? ` · chuva ${chuva}%` : ''}${chuva >= 50 ? ' · leve o guarda-chuva ☂️' : ''}`);
+}
+function itensBoasVindas() {
+  const hoje = today(), em3 = addDiasStr(hoje, 3);
+  const tarefas = DB.get('tarefas').filter(t => t.status !== 'concluida');
+  const obrig = DB.get('obrigacoes').filter(o => o.status !== 'concluida' && o.venc);
+  const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+  const itens = [];
+  const venc = tarefas.filter(t => t.data && t.data < hoje);
+  const obrigAtr = obrig.filter(o => o.venc < hoje);
+  if (venc.length || obrigAtr.length) {
+    const partes = [];
+    if (venc.length) partes.push(plural(venc.length, 'tarefa vencida', 'tarefas vencidas'));
+    if (obrigAtr.length) partes.push(plural(obrigAtr.length, 'obrigação atrasada', 'obrigações atrasadas'));
+    itens.push({ ic: '⚠️', urg: true, tx: partes.join(' e '), sub: 'Resolva primeiro o que já passou do prazo', ir: "showPage('agenda')" });
+  }
+  const hojeT = tarefas.filter(t => t.data === hoje);
+  const hojeO = obrig.filter(o => o.venc === hoje);
+  if (hojeT.length || hojeO.length) {
+    const nomes = hojeT.slice(0, 2).map(t => t.titulo).concat(hojeO.slice(0, 1).map(o => o.titulo)).filter(Boolean).join(' · ');
+    itens.push({ ic: '📅', tx: `${plural(hojeT.length + hojeO.length, 'compromisso', 'compromissos')} para hoje`, sub: nomes, ir: "showPage('agenda')" });
+  }
+  const prox = obrig.filter(o => o.venc > hoje && o.venc <= em3);
+  if (prox.length) itens.push({ ic: '📋', tx: `${plural(prox.length, 'obrigação vence', 'obrigações vencem')} nos próximos 3 dias`, sub: 'Antecipe para não correr no último dia', ir: "showPage('obrigacoes')" });
+  const aguard = DB.get('propostas').filter(x => x.status === 'enviada');
+  if (aguard.length) itens.push({ ic: '📄', tx: `${plural(aguard.length, 'proposta aguardando', 'propostas aguardando')} resposta do cliente`, sub: 'Vale um contato para acompanhar', ir: "showPage('propostas')" });
+  const rascunho = DB.get('propostas').filter(x => x.status === 'rascunho');
+  if (rascunho.length) itens.push({ ic: '✍️', tx: `${plural(rascunho.length, 'proposta em rascunho', 'propostas em rascunho')}`, sub: 'Falta enviar ao cliente', ir: "showPage('propostas')" });
+  try {
+    const mes = mesAtual(), fin = financeiroRealizado();
+    const pend = DB.get('clientes').filter(c => c.status === 'ativo' && c.temFechamento === true && c.honorario > 0)
+      .filter(c => fin.filter(f => f.tipo === 'receita' && f.clienteId === c.id && f.data && f.data.slice(0, 7) === mes).reduce((t, f) => t + f.valor, 0) < c.honorario);
+    if (pend.length) itens.push({ ic: '💰', tx: `${plural(pend.length, 'cliente com honorário', 'clientes com honorário')} ainda em aberto este mês`, sub: 'Confira o financeiro', ir: "showPage('financeiro')" });
+  } catch (e) {}
+  return itens;
+}
+function abrirBoasVindas() {
+  const saud = saudacaoPorHorario();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+  set('bv-saud', `${saud.texto}, <span class="nome-ouro">Edésio</span>.`);
+  const sky = document.getElementById('bv-sky'); if (sky) sky.className = 'bv-sky' + (saud.texto === 'Boa noite' ? ' noite' : '');
+  const tick = () => {
+    const a = new Date();
+    set('bv-hora', `${String(a.getHours()).padStart(2, '0')}:${String(a.getMinutes()).padStart(2, '0')}`);
+    set('bv-data', a.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }));
+  };
+  tick(); clearInterval(bvRelogio); bvRelogio = setInterval(tick, 15000);
+  atualizarClimaBoasVindas();
+  setTimeout(atualizarClimaBoasVindas, 2500); setTimeout(atualizarClimaBoasVindas, 6000);   // caso o clima ainda esteja chegando
+  const itens = itensBoasVindas();
+  set('bv-titulo', itens.length ? 'O que merece atenção hoje' : 'Tudo em ordem');
+  set('bv-lista', itens.length ? itens.slice(0, 5).map((it, n) => `
+    <div class="bv-item ${it.urg ? 'urg' : ''}" style="animation-delay:${.25 + n * .08}s" onclick="closeModal('modal-boasvindas');${it.ir}">
+      <span class="ic">${it.ic}</span><div class="tx">${it.tx}${it.sub ? `<small>${String(it.sub).replace(/</g, '&lt;')}</small>` : ''}</div><span style="color:var(--text3)">→</span>
+    </div>`).join('') : '<div class="bv-item" style="cursor:default">✨ <div class="tx">Nada pendente ou atrasado — aproveite o dia com tranquilidade.</div></div>');
+  const v = (versosDisponiveis()[0]) || null;
+  const vs = versosDisponiveis(); const vv = vs.length ? vs[(typeof versoIdx === 'number' ? versoIdx : 0) % vs.length] : null;
+  set('bv-verso', vv ? `“${vv.t}”<small>${vv.r || ''}</small>` : '');
+  openModal('modal-boasvindas');
+}
+function agendarBoasVindas() {
+  let visto = false;
+  try { visto = sessionStorage.getItem('thothe_bv') === '1'; sessionStorage.setItem('thothe_bv', '1'); } catch (e) {}
+  if (visto) return;
+  setTimeout(abrirBoasVindas, Math.max(0, 2400 - performance.now()) + 900);
 }
 
 function checkMobile() {
