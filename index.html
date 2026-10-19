@@ -812,6 +812,13 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ AGENDA ══════════ -->
       <div class="page" id="page-agenda">
+        <div class="card hud" id="agenda-em-andamento-card" style="display:none;position:sticky;top:0;z-index:20;margin-bottom:14px;backdrop-filter:blur(14px);background:var(--surface);border-color:rgba(87,184,255,.5);box-shadow:0 0 0 1px rgba(87,184,255,.25)">
+          <div class="card-header">
+            <span class="card-title" style="color:var(--accent-m)">🔴 Em execução agora</span>
+          </div>
+          <div id="agenda-em-andamento-lista"></div>
+        </div>
+
         <!-- ══════════ MINHA AGENDA — hoje + vencidas (visão principal) ══════════ -->
         <div class="card hud" style="margin-bottom:14px">
           <div class="card-header" style="flex-wrap:wrap;gap:10px">
@@ -848,13 +855,6 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <div style="margin-left:auto;font-size:11px;color:var(--text3)" id="agfoco-resumo"></div>
           </div>
           <div id="agfoco-lista" style="padding:14px 20px"></div>
-        </div>
-
-        <div class="card hud" id="agenda-em-andamento-card" style="display:none;margin-bottom:14px;border-color:rgba(87,184,255,.5);box-shadow:0 0 0 1px rgba(87,184,255,.25)">
-          <div class="card-header">
-            <span class="card-title" style="color:var(--accent-m)">🔴 Em execução agora</span>
-          </div>
-          <div id="agenda-em-andamento-lista"></div>
         </div>
 
         <!-- ══════════ Calendário completo, feriados, obrigações e horas (secundário, recolhido) ══════════ -->
