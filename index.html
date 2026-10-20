@@ -1532,6 +1532,17 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <label class="form-label">Referente a *</label>
         <input class="form-control" id="rec-referente" placeholder="Ex: honorários contábeis de Setembro/2026">
       </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Competência</label><input class="form-control" type="month" id="rec-comp"></div>
+        <div class="form-group"><label class="form-label">Contato do pagador</label><input class="form-control" id="rec-contato" placeholder="E-mail / telefone"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Endereço do pagador (opcional)</label><input class="form-control" id="rec-end" placeholder="Rua, nº, bairro, cidade/UF"></div>
+      <div class="form-group"><label class="form-label">Discriminação dos serviços (detalhe)</label><textarea class="form-control" id="rec-detalhe" rows="3" placeholder="Ex: Escrituração contábil, apuração do Simples Nacional (PGDAS), folha de pagamento e obrigações acessórias do mês."></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Desconto (R$)</label><input class="form-control" type="number" step="0.01" id="rec-desc" placeholder="0,00"></div>
+        <div class="form-group"><label class="form-label">Juros/multa (R$)</label><input class="form-control" type="number" step="0.01" id="rec-acres" placeholder="0,00"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Observações</label><input class="form-control" id="rec-obs" placeholder="Opcional"></div>
       <div class="form-group">
         <label class="form-label">Forma de pagamento</label>
         <select class="form-control" id="rec-forma">
@@ -5698,6 +5709,9 @@ function abrirReciboModal(clienteId, valor, referente, data) {
   document.getElementById('rec-data').value = data || today();
   document.getElementById('rec-referente').value = referente || '';
   document.getElementById('rec-forma').value = '';
+  document.getElementById('rec-comp').value = (data || today()).slice(0,7);
+  document.getElementById('rec-contato').value = c ? (c.contato || '') : '';
+  ['rec-end','rec-detalhe','rec-desc','rec-acres','rec-obs'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
   openModal('modal-recibo');
 }
@@ -5710,6 +5724,7 @@ function recPreencherPorCliente() {
   document.getElementById('rec-nome').value = c.nome;
   document.getElementById('rec-docto').value = c.docto || '';
   if (!document.getElementById('rec-valor').value && c.honorario) document.getElementById('rec-valor').value = c.honorario.toFixed(2);
+  document.getElementById('rec-contato').value = c.contato || document.getElementById('rec-contato').value;
 }
 
 function proximoNumeroRecibo(ano) {
@@ -5725,13 +5740,19 @@ function emitirRecibo() {
   const referente = document.getElementById('rec-referente').value.trim();
   const cidade = document.getElementById('rec-cidade').value.trim() || 'São Paulo';
   const forma = document.getElementById('rec-forma').value;
+  const extra = {
+    competencia: document.getElementById('rec-comp').value, contato: document.getElementById('rec-contato').value.trim(),
+    endereco: document.getElementById('rec-end').value.trim(), detalhe: document.getElementById('rec-detalhe').value.trim(),
+    desconto: parseFloat(document.getElementById('rec-desc').value) || 0, acrescimos: parseFloat(document.getElementById('rec-acres').value) || 0,
+    obs: document.getElementById('rec-obs').value.trim(),
+  };
 
   if (!nome) { toast('⚠️ Informe o nome do pagador'); return; }
   if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
   if (!referente) { toast('⚠️ Informe a que se refere o recibo'); return; }
 
   const recibos = DB.get('recibos');
-  const rec = { id: DB.id(), numero: proximoNumeroRecibo(data.slice(0,4)), clienteId: document.getElementById('rec-cliente').value || '', nome, docto, valor, data, referente, cidade, forma, criadoEm: new Date().toISOString() };
+  const rec = { id: DB.id(), numero: proximoNumeroRecibo(data.slice(0,4)), clienteId: document.getElementById('rec-cliente').value || '', nome, docto, valor, data, referente, cidade, forma, ...extra, criadoEm: new Date().toISOString() };
   recibos.push(rec);
   DB.set('recibos', recibos);
   closeModal('modal-recibo');
@@ -5740,68 +5761,127 @@ function emitirRecibo() {
   toast(`🧾 Recibo ${rec.numero} emitido`);
 }
 
+function totalRecibo(r) { return Math.round(((r.valor||0) - (r.desconto||0) + (r.acrescimos||0)) * 100) / 100; }
+function codigoRecibo(r) {
+  let h = 0; const t = `${r.numero}|${r.nome}|${r.valor}|${r.data}|${r.criadoEm||''}`;
+  for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
+  return h.toString(16).toUpperCase().padStart(8, '0').replace(/(.{4})(.{4})/, '$1-$2');
+}
+
 function imprimirRecibo(rec) {
-  const { nome, docto, valor, data, referente, cidade, forma, numero } = rec;
-  const dataFmt = fmtDate(data);
-  const [y,m,d] = data.split('-');
-  const dataExtensoFmt = `${cidade || 'São Paulo'}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
+  const r = rec, E = propEsc, total = totalRecibo(r);
+  const [y,m,d] = r.data.split('-');
+  const cidade = r.cidade || 'São Paulo';
+  const dataExtenso = `${cidade}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
+  const comp = r.competencia ? `${String(r.competencia.slice(5,7))}/${r.competencia.slice(0,4)}` : `${m}/${y}`;
+  const emitido = r.criadoEm ? new Date(r.criadoEm) : new Date();
+  const emitidoTxt = `${emitido.toLocaleDateString('pt-BR')} às ${emitido.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+  const logo = getComputedStyle(document.documentElement).getPropertyValue('--logo').trim();
   const win = window.open('', '_blank');
   if (!win) { toast('⚠️ O navegador bloqueou a janela de impressão — permita pop-ups para este site.'); return; }
-
+  const f = (v) => fmtMoney(v);
   win.document.write(`<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo ${numero} — ${propEsc(nome)}</title>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo ${E(r.numero)} — ${E(r.nome)}</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color:#111; padding:48px; max-width:720px; margin:0 auto; background:#fff; }
-  .recibo { border:1.5px solid #222; border-radius:10px; padding:36px 40px; }
-  .topo { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #222; padding-bottom:16px; margin-bottom:24px; }
-  .topo h1 { font-size:16px; margin:0 0 3px; letter-spacing:.03em; }
-  .topo .cnpj { font-size:11.5px; color:#555; }
-  .topo .numrec { text-align:right; font-size:11px; color:#555; }
-  .titulo { text-align:center; font-size:20px; font-weight:700; letter-spacing:.12em; margin:0 0 26px; }
-  .valor-box { text-align:center; font-size:26px; font-weight:700; border:1.5px solid #222; border-radius:8px; padding:12px; margin-bottom:26px; }
-  .corpo { font-size:14px; line-height:1.9; text-align:justify; margin-bottom:34px; }
-  .corpo strong { font-weight:700; }
-  .assinatura { margin-top:60px; text-align:center; }
-  .linha-assinatura { border-top:1px solid #222; width:320px; margin:0 auto 6px; }
-  .assinatura .nome { font-size:13px; font-weight:600; }
-  .assinatura .cnpj { font-size:11px; color:#555; }
-  .data-local { text-align:right; font-size:13px; margin-bottom:46px; }
-  @media print { body { padding:14mm; } .recibo { border-color:#000; } }
-</style></head>
-<body>
-  <div class="recibo">
-    <div class="topo">
-      <div>
-        <h1>${EMPRESA_NOME}</h1>
-        <div class="cnpj">CNPJ ${EMPRESA_CNPJ}</div>
-      </div>
-      <div class="numrec">Recibo nº <b>${numero}</b><br>${dataFmt}</div>
-    </div>
-    <div class="titulo">RECIBO</div>
-    <div class="valor-box">R$ ${fmtMoney(valor).replace('R$','').trim()}</div>
-    <div class="corpo">
-      Recebemos de <strong>${propEsc(nome)}</strong>${docto ? `, inscrito(a) no CPF/CNPJ sob o nº <strong>${propEsc(docto)}</strong>,` : ','}
-      a importância de <strong>${valorPorExtenso(valor)}</strong>, referente a <strong>${propEsc(referente)}</strong>${forma ? `, pago via <strong>${propEsc(forma)}</strong>` : ''}.
-      <br><br>
-      Para clareza e devidos efeitos, firmamos o presente recibo.
-    </div>
-    <div class="data-local">${dataExtensoFmt}</div>
-    <div class="assinatura">
-      <div class="linha-assinatura"></div>
-      <div class="nome">${EMPRESA_NOME}</div>
-      <div class="cnpj">CNPJ ${EMPRESA_CNPJ}</div>
-      <div class="cnpj" style="margin-top:8px"><b>${RESP_NOME}</b><br>Contador responsável · ${RESP_CRC}</div>
-    </div>
+  @page { size:A4; margin:10mm; }
+  * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family:'Segoe UI',Arial,sans-serif; color:#15171c; margin:0; background:#fff; font-size:11.5px; }
+  .pag { max-width:190mm; margin:0 auto; padding:6mm 0; }
+  .cx { border:1px solid #2a2d34; }
+  .topo { display:grid; grid-template-columns:1.6fr 1fr; background:#0d0d0f; color:#f4ead2; border:1px solid #0d0d0f; }
+  .topo .e { display:flex; gap:14px; align-items:center; padding:14px 18px; }
+  .logo { width:62px; height:62px; border-radius:50%; background:${logo} center/cover no-repeat; flex-shrink:0; box-shadow:0 0 0 1.5px #c9a24b; }
+  .topo h1 { margin:0; font-size:17px; letter-spacing:.14em; color:#d9b45a; font-weight:700; }
+  .topo .s { font-size:9px; letter-spacing:.3em; color:#bba66e; margin:2px 0 5px; }
+  .topo .c { font-size:10.5px; color:#d8cfb6; }
+  .topo .d { background:#1a1a1e; border-left:2px solid #c9a24b; padding:14px 18px; display:flex; flex-direction:column; justify-content:center; }
+  .topo .d .t { font-size:15px; letter-spacing:.16em; font-weight:700; color:#d9b45a; }
+  .topo .d .n { font-size:21px; font-weight:700; margin:3px 0; }
+  .topo .d .x { font-size:10px; color:#bfb593; }
+  .grade { display:grid; border:1px solid #2a2d34; border-top:0; }
+  .g4 { grid-template-columns:repeat(4,1fr); } .g3 { grid-template-columns:repeat(3,1fr); } .g2 { grid-template-columns:1fr 1fr; } .g1 { grid-template-columns:1fr; }
+  .cel { padding:6px 10px 7px; border-right:1px solid #cfd2d8; border-bottom:1px solid #cfd2d8; min-height:36px; }
+  .cel:last-child { border-right:0; }
+  .l { font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:#6b6f78; font-weight:600; }
+  .v { font-size:12px; margin-top:2px; font-weight:600; word-break:break-word; }
+  .sec { background:#ece6d4; border:1px solid #2a2d34; border-top:0; padding:5px 10px; font-size:9.5px; letter-spacing:.16em; font-weight:700; color:#5a4a1c; }
+  table { width:100%; border-collapse:collapse; border:1px solid #2a2d34; border-top:0; }
+  th { background:#f4f1e6; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:#6b6f78; text-align:left; padding:6px 10px; border-bottom:1px solid #cfd2d8; }
+  td { padding:9px 10px; vertical-align:top; font-size:12px; }
+  td.r, th.r { text-align:right; white-space:nowrap; }
+  .det { font-size:10.5px; color:#555; margin-top:4px; line-height:1.5; font-weight:400; }
+  .tot { background:#0d0d0f; color:#f4ead2; border:1px solid #0d0d0f; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; margin-top:0; }
+  .tot .l { color:#bba66e; } .tot .big { font-size:22px; font-weight:700; color:#d9b45a; }
+  .ext { border:1px solid #2a2d34; border-top:0; padding:8px 12px; font-size:11.5px; font-style:italic; }
+  .ass { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin:34px 6px 12px; text-align:center; }
+  .ass .li { border-top:1px solid #2a2d34; padding-top:5px; font-size:10.5px; }
+  .ass b { font-size:11.5px; }
+  .rod { border-top:1px solid #cfd2d8; padding-top:8px; font-size:9.5px; color:#6b6f78; display:flex; justify-content:space-between; gap:14px; line-height:1.5; }
+  .aviso { font-size:9.5px; color:#6b6f78; margin-top:10px; line-height:1.5; }
+  .local { text-align:right; font-size:11.5px; margin:14px 4px 0; }
+</style></head><body><div class="pag">
+  <div class="topo">
+    <div class="e"><div class="logo"></div><div><h1>THOTHE</h1><div class="s">GESTÃO CORPORATIVA</div><div class="c">${E(EMPRESA_NOME)}<br>CNPJ ${E(EMPRESA_CNPJ)}</div></div></div>
+    <div class="d"><div class="t">RECIBO</div><div class="n">Nº ${E(r.numero)}</div><div class="x">Emitido em ${emitidoTxt}</div></div>
   </div>
-</body></html>`);
+  <div class="grade g4">
+    <div class="cel"><div class="l">Nº do recibo</div><div class="v">${E(r.numero)}</div></div>
+    <div class="cel"><div class="l">Data do pagamento</div><div class="v">${fmtDate(r.data)}</div></div>
+    <div class="cel"><div class="l">Competência</div><div class="v">${comp}</div></div>
+    <div class="cel"><div class="l">Código de verificação</div><div class="v">${codigoRecibo(r)}</div></div>
+  </div>
+
+  <div class="sec" style="margin-top:8px">PRESTADOR DO SERVIÇO</div>
+  <div class="grade g3">
+    <div class="cel" style="grid-column:span 2"><div class="l">Razão social</div><div class="v">${E(EMPRESA_NOME)}</div></div>
+    <div class="cel"><div class="l">CNPJ</div><div class="v">${E(EMPRESA_CNPJ)}</div></div>
+    <div class="cel" style="grid-column:span 2"><div class="l">Responsável técnico</div><div class="v">${E(RESP_NOME)}</div></div>
+    <div class="cel"><div class="l">Registro profissional</div><div class="v">${E(RESP_CRC)}</div></div>
+  </div>
+
+  <div class="sec" style="margin-top:8px">TOMADOR / PAGADOR</div>
+  <div class="grade g3">
+    <div class="cel" style="grid-column:span 2"><div class="l">Nome / Razão social</div><div class="v">${E(r.nome)}</div></div>
+    <div class="cel"><div class="l">CPF / CNPJ</div><div class="v">${E(r.docto || '—')}</div></div>
+    <div class="cel" style="grid-column:span 2"><div class="l">Endereço</div><div class="v">${E(r.endereco || '—')}</div></div>
+    <div class="cel"><div class="l">Contato</div><div class="v">${E(r.contato || '—')}</div></div>
+  </div>
+
+  <div class="sec" style="margin-top:8px">DISCRIMINAÇÃO DOS SERVIÇOS</div>
+  <table>
+    <thead><tr><th style="width:34px">Item</th><th>Descrição</th><th class="r">Valor</th></tr></thead>
+    <tbody><tr><td>1</td><td><b>${E(r.referente)}</b>${r.detalhe ? `<div class="det">${E(r.detalhe).replace(/\n/g,'<br>')}</div>` : ''}</td><td class="r">${f(r.valor)}</td></tr></tbody>
+  </table>
+
+  <div class="sec" style="margin-top:8px">VALORES</div>
+  <div class="grade g4">
+    <div class="cel"><div class="l">Valor dos serviços</div><div class="v">${f(r.valor)}</div></div>
+    <div class="cel"><div class="l">(−) Desconto</div><div class="v">${f(r.desconto||0)}</div></div>
+    <div class="cel"><div class="l">(+) Juros / multa</div><div class="v">${f(r.acrescimos||0)}</div></div>
+    <div class="cel"><div class="l">Forma de pagamento</div><div class="v">${E(r.forma || 'Não informada')}</div></div>
+  </div>
+  <div class="tot"><div><div class="l">VALOR TOTAL RECEBIDO</div></div><div class="big">${f(total)}</div></div>
+  <div class="ext"><b>Por extenso:</b> ${E(valorPorExtenso(total))}.</div>
+
+  <div class="grade g1" style="margin-top:8px">
+    <div class="cel" style="border-right:0"><div class="l">Declaração</div><div class="v" style="font-weight:400;line-height:1.6">Declaramos ter recebido de <b>${E(r.nome)}</b>${r.docto ? `, CPF/CNPJ <b>${E(r.docto)}</b>,` : ''} a importância de <b>${f(total)}</b> (${E(valorPorExtenso(total))}), referente a <b>${E(r.referente)}</b>, dando-lhe plena e total quitação.${r.obs ? `<br><span style="color:#555">Obs.: ${E(r.obs)}</span>` : ''}</div></div>
+  </div>
+
+  <div class="local">${E(dataExtenso)}</div>
+  <div class="ass">
+    <div><div class="li"><b>${E(EMPRESA_NOME)}</b><br>CNPJ ${E(EMPRESA_CNPJ)}<br>${E(RESP_NOME)} · ${E(RESP_CRC)}</div></div>
+    <div><div class="li"><b>${E(r.nome)}</b><br>${r.docto ? 'CPF/CNPJ ' + E(r.docto) : 'Pagador'}<br>Ciente</div></div>
+  </div>
+  <div class="aviso">Este recibo comprova o pagamento e a quitação dos valores nele descritos. Não substitui a nota fiscal de serviços, que deve ser emitida conforme a legislação municipal aplicável.</div>
+  <div class="rod"><span>${E(EMPRESA_NOME)} · CNPJ ${E(EMPRESA_CNPJ)} · Responsável: ${E(RESP_TXT)}</span><span>Recibo ${E(r.numero)} · cód. ${codigoRecibo(r)}</span></div>
+</div></body></html>`);
   win.document.close();
   win.focus();
-  setTimeout(() => win.print(), 350);
+  setTimeout(() => win.print(), 450);
 }
 
 function textoRecibo(r) {
-  return `*RECIBO Nº ${r.numero}*\n${EMPRESA_NOME} · CNPJ ${EMPRESA_CNPJ}\n\nRecebemos de ${r.nome}${r.docto ? ` (CPF/CNPJ ${r.docto})` : ''} a importância de ${fmtMoney(r.valor)} (${valorPorExtenso(r.valor)}), referente a ${r.referente}${r.forma ? `, pago via ${r.forma}` : ''}.\n\n${r.cidade || 'São Paulo'}, ${fmtDate(r.data)}.\n${RESP_NOME} — ${RESP_CRC}`;
+  return `*RECIBO Nº ${r.numero}*\n${EMPRESA_NOME} · CNPJ ${EMPRESA_CNPJ}\n\nRecebemos de ${r.nome}${r.docto ? ` (CPF/CNPJ ${r.docto})` : ''} a importância de ${fmtMoney(totalRecibo(r))} (${valorPorExtenso(totalRecibo(r))}), referente a ${r.referente}${r.forma ? `, pago via ${r.forma}` : ''}.\n\n${r.cidade || 'São Paulo'}, ${fmtDate(r.data)}.\n${RESP_NOME} — ${RESP_CRC}`;
 }
 function copiarRecibo(id) {
   const r = DB.get('recibos').find(x=>x.id===id); if (!r) return;
@@ -5820,7 +5900,7 @@ function renderRecibos() {
   const q = (document.getElementById('rcb-busca').value || '').toLowerCase().trim();
   let lista = DB.get('recibos').slice().sort((a,b) => (b.data||'').localeCompare(a.data||'') || (b.numero||'').localeCompare(a.numero||''));
   if (q) lista = lista.filter(r => `${r.numero} ${r.nome} ${r.referente} ${r.docto||''}`.toLowerCase().includes(q));
-  const total = lista.reduce((s,r)=>s+r.valor,0);
+  const total = lista.reduce((s,r)=>s+totalRecibo(r),0);
   document.getElementById('rcb-resumo').textContent = `${lista.length} recibo${lista.length!==1?'s':''} · total ${fmtMoney(total)}`;
   if (!lista.length) { el.innerHTML = `<div class="empty-state" style="padding:28px"><div class="ico">🧾</div><div class="txt">${q ? 'Nenhum recibo encontrado' : 'Nenhum recibo emitido ainda — clique em “Novo recibo”'}</div></div>`; return; }
   el.innerHTML = lista.map(r => `
@@ -5830,7 +5910,7 @@ function renderRecibos() {
         <div style="font-size:13px;font-weight:600">${propEsc(r.nome)}</div>
         <div style="font-size:11.5px;color:var(--text3)">${propEsc(r.referente)} · ${fmtDate(r.data)}${r.forma ? ' · ' + propEsc(r.forma) : ''}</div>
       </div>
-      <div style="font-weight:700;font-size:14px">${fmtMoney(r.valor)}</div>
+      <div style="font-weight:700;font-size:14px">${fmtMoney(totalRecibo(r))}</div>
       <button class="btn btn-ghost btn-sm" onclick="reimprimirRecibo('${r.id}')" title="Imprimir / salvar PDF">🖨️</button>
       <button class="btn btn-ghost btn-sm" onclick="copiarRecibo('${r.id}')" title="Copiar texto para WhatsApp/e-mail">📋</button>
       <button class="btn btn-ghost btn-sm" onclick="excluirRecibo('${r.id}')" title="Excluir">🗑️</button>
