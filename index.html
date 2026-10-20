@@ -1526,7 +1526,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
         <div class="form-group">
           <label class="form-label">Data do recibo</label>
-          <input class="form-control" type="date" id="rec-data">
+          <input class="form-control" type="date" id="rec-data" onchange="recDataMudou()">
         </div>
       </div>
       <div class="form-group">
@@ -1534,7 +1534,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <input class="form-control" id="rec-referente" placeholder="Ex: honorários contábeis de Setembro/2026">
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Competência</label><input class="form-control" type="month" id="rec-comp"></div>
+        <div class="form-group"><label class="form-label">Competência</label><input class="form-control" type="month" id="rec-comp" onchange="this.dataset.auto='0'"></div>
         <div class="form-group"><label class="form-label">Contato do pagador</label><input class="form-control" id="rec-contato" placeholder="E-mail / telefone"></div>
       </div>
       <div class="form-group"><label class="form-label">Endereço do pagador (opcional)</label><input class="form-control" id="rec-end" placeholder="Rua, nº, bairro, cidade/UF"></div>
@@ -4430,7 +4430,7 @@ function saveFinanceiro() {
   closeModal('modal-financeiro');
   let rec = null;
   if (item.tipo === 'receita' && item.status === 'recebido' && !(antes && antes.status === 'recebido') && document.getElementById('finc-recibo-auto').checked) {
-    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data, referente: item.desc, competencia: item.data.slice(0,7) });
+    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data, referente: item.desc, competencia: competenciaPadrao(item.data) });
   }
   toast(rec ? `💰 Lançamento salvo · 🧾 recibo ${rec.numero} salvo em Recibos` : '💰 Lançamento salvo');
   renderAll();
@@ -4451,7 +4451,7 @@ function marcarLancamentoBaixado(id) {
   DB.set('financeiro', financeiro);
   let rec = null;
   if (item.tipo === 'receita' && reciboAutoAtivo()) {
-    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data || today(), referente: item.desc, competencia: (item.data || today()).slice(0,7) });
+    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data || today(), referente: item.desc, competencia: competenciaPadrao(item.data || today()) });
   }
   toast(rec ? `✅ Lançamento baixado · 🧾 recibo ${rec.numero} salvo em Recibos` : '✅ Lançamento baixado');
   renderAll();
@@ -5723,13 +5723,18 @@ function abrirReciboModal(clienteId, valor, referente, data) {
   document.getElementById('rec-data').value = data || today();
   document.getElementById('rec-referente').value = referente || '';
   document.getElementById('rec-forma').value = '';
-  document.getElementById('rec-comp').value = (data || today()).slice(0,7);
+  document.getElementById('rec-comp').dataset.auto = '1';
+  document.getElementById('rec-comp').value = competenciaPadrao(data || today());
   document.getElementById('rec-contato').value = c ? (c.contato || '') : '';
   ['rec-end','rec-detalhe','rec-desc','rec-acres','rec-obs'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
   openModal('modal-recibo');
 }
 
+function recDataMudou() {
+  const comp = document.getElementById('rec-comp'), dt = document.getElementById('rec-data').value;
+  if (dt && comp.dataset.auto !== '0') comp.value = competenciaPadrao(dt);
+}
 function recPreencherPorCliente() {
   const clienteId = document.getElementById('rec-cliente').value;
   if (!clienteId) return;
@@ -6060,10 +6065,16 @@ function reciboAutoSalvar(v) {
   try { localStorage.setItem('thothe_recibo_auto', v ? '1' : '0'); } catch (e) {}
   ['baixa-recibo-auto','finc-recibo-auto'].forEach(i => { const el = document.getElementById(i); if (el) el.checked = v; });
 }
+// Competência padrão = mês ANTERIOR ao do recebimento (AAAA-MM)
+function competenciaPadrao(dataIso) {
+  const [y, m] = (dataIso || today()).split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 function competenciaDeRotulo(rot, dataIso) {
   const m = String(rot || '').match(/([A-Za-zçÇãÃ]+)\s*\/\s*(\d{4})/);
   if (m) { const i = MONTH_NAMES.findIndex(n => n.toLowerCase() === m[1].toLowerCase()); if (i > -1) return `${m[2]}-${String(i+1).padStart(2,'0')}`; }
-  return (dataIso || today()).slice(0,7);
+  return competenciaPadrao(dataIso);
 }
 // Cria o recibo (numerado, salvo no histórico) a partir de uma baixa, sem abrir impressão.
 // Se o lançamento já tem recibo, reaproveita o existente — nunca duplica.
@@ -6077,7 +6088,7 @@ function gerarReciboDaBaixa(d) {
   const rec = {
     id: DB.id(), numero: proximoNumeroRecibo(d.data.slice(0,4)), clienteId: d.clienteId || '',
     nome: (c && c.nome) || d.nome || 'Pagador', docto: (c && c.docto) || '', valor: d.valor, data: d.data,
-    referente: d.referente, cidade: 'São Paulo', forma: d.forma || '', competencia: d.competencia || d.data.slice(0,7),
+    referente: d.referente, cidade: 'São Paulo', forma: d.forma || '', competencia: d.competencia || competenciaPadrao(d.data),
     contato: (c && c.contato) || '', endereco: '', detalhe: '', desconto: 0, acrescimos: 0, obs: '',
     financeiroId: d.financeiroId || '', automatico: true, criadoEm: new Date().toISOString(),
   };
@@ -6123,7 +6134,7 @@ function confirmarBaixaRecebimento() {
   closeModal('modal-baixa-recebimento');
   let rec = null;
   if (document.getElementById('baixa-recibo-auto').checked) {
-    rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? `honorários contábeis de ${mesRotulo}` : descricaoBase, competencia: competenciaDeRotulo(mesRotulo, data) });
+    rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? `honorários contábeis de ${mesLabel(competenciaPadrao(data))}` : descricaoBase, competencia: competenciaPadrao(data) });
   }
   toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} salvo em Recibos` : `💰 Recebimento de ${nomeExibicao} confirmado`);
   renderAll();
