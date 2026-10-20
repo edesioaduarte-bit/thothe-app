@@ -1334,6 +1334,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" type="date" id="baixa-data">
         </div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="baixa-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa</label>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-baixa-recebimento')">Cancelar</button>
@@ -1715,6 +1716,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <option value="recebido">✅ Já baixado (recebido/pago)</option>
           </select>
         </div>
+        <div class="form-group" id="finc-recibo-box"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="finc-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa</label></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4400,6 +4402,7 @@ function openFinanceiroModal(id) {
     document.getElementById('finc-data').value = (typeof finMesAtual !== 'undefined' && finMesAtual === mesAtual()) ? today() : ultimoDiaDoMes(finMesAtual);
     document.getElementById('finc-status').value = 'pendente';
   }
+  document.getElementById('finc-recibo-auto').checked = reciboAutoAtivo();
   openModal('modal-financeiro');
 }
 
@@ -4410,6 +4413,7 @@ function saveFinanceiro() {
   if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
   const editId = document.getElementById('finc-edit-id').value;
   const financeiro = DB.get('financeiro');
+  const antes = editId ? financeiro.find(x=>x.id===editId) : null;
   const item = {
     id: editId || DB.id(),
     tipo: document.getElementById('finc-tipo').value,
@@ -4423,7 +4427,11 @@ function saveFinanceiro() {
   else financeiro.push(item);
   DB.set('financeiro', financeiro);
   closeModal('modal-financeiro');
-  toast('💰 Lançamento salvo');
+  let rec = null;
+  if (item.tipo === 'receita' && item.status === 'recebido' && !(antes && antes.status === 'recebido') && document.getElementById('finc-recibo-auto').checked) {
+    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data, referente: item.desc, competencia: item.data.slice(0,7) });
+  }
+  toast(rec ? `💰 Lançamento salvo · 🧾 recibo ${rec.numero} gerado` : '💰 Lançamento salvo');
   renderAll();
 }
 
@@ -4440,7 +4448,11 @@ function marcarLancamentoBaixado(id) {
   if (!item) return;
   item.status = 'recebido';
   DB.set('financeiro', financeiro);
-  toast('✅ Lançamento baixado');
+  let rec = null;
+  if (item.tipo === 'receita' && reciboAutoAtivo()) {
+    rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data || today(), referente: item.desc, competencia: (item.data || today()).slice(0,7) });
+  }
+  toast(rec ? `✅ Lançamento baixado · 🧾 recibo ${rec.numero} gerado` : '✅ Lançamento baixado');
   renderAll();
 }
 
@@ -5685,6 +5697,7 @@ function abrirBaixaRecebimentoModal(clienteId, valorSugerido, mesRotulo, avulsoI
   document.getElementById('baixa-valor').value = (valorSugerido !== undefined && valorSugerido !== null) ? valorSugerido : (c ? (c.honorario || '') : '');
   document.getElementById('baixa-data').value = dataSugerida || today();
   document.getElementById('baixa-mes-rotulo').value = mesRotulo || mesLabel(fechMesAtual);
+  document.getElementById('baixa-recibo-auto').checked = reciboAutoAtivo();
   openModal('modal-baixa-recebimento');
 }
 
@@ -6040,6 +6053,38 @@ function renderDevidoAnterior() {
   `).join('');
 }
 
+/* ── Recibo automático ao dar baixa ── */
+function reciboAutoAtivo() { try { return localStorage.getItem('thothe_recibo_auto') !== '0'; } catch (e) { return true; } }
+function reciboAutoSalvar(v) {
+  try { localStorage.setItem('thothe_recibo_auto', v ? '1' : '0'); } catch (e) {}
+  ['baixa-recibo-auto','finc-recibo-auto'].forEach(i => { const el = document.getElementById(i); if (el) el.checked = v; });
+}
+function competenciaDeRotulo(rot, dataIso) {
+  const m = String(rot || '').match(/([A-Za-zçÇãÃ]+)\s*\/\s*(\d{4})/);
+  if (m) { const i = MONTH_NAMES.findIndex(n => n.toLowerCase() === m[1].toLowerCase()); if (i > -1) return `${m[2]}-${String(i+1).padStart(2,'0')}`; }
+  return (dataIso || today()).slice(0,7);
+}
+// Cria o recibo (numerado, salvo no histórico) a partir de uma baixa e abre a impressão.
+// Se o lançamento já tem recibo, apenas reabre o existente — nunca duplica.
+function gerarReciboDaBaixa(d) {
+  const recibos = DB.get('recibos');
+  if (d.financeiroId) {
+    const ja = recibos.find(r => r.financeiroId === d.financeiroId);
+    if (ja) { imprimirRecibo(ja); return ja; }
+  }
+  const c = d.clienteId ? DB.get('clientes').find(x=>x.id===d.clienteId) : null;
+  const rec = {
+    id: DB.id(), numero: proximoNumeroRecibo(d.data.slice(0,4)), clienteId: d.clienteId || '',
+    nome: (c && c.nome) || d.nome || 'Pagador', docto: (c && c.docto) || '', valor: d.valor, data: d.data,
+    referente: d.referente, cidade: 'São Paulo', forma: d.forma || '', competencia: d.competencia || d.data.slice(0,7),
+    contato: (c && c.contato) || '', endereco: '', detalhe: '', desconto: 0, acrescimos: 0, obs: '',
+    financeiroId: d.financeiroId || '', automatico: true, criadoEm: new Date().toISOString(),
+  };
+  recibos.push(rec); DB.set('recibos', recibos);
+  imprimirRecibo(rec);
+  return rec;
+}
+
 function confirmarBaixaRecebimento() {
   const clienteId = document.getElementById('baixa-cliente-id').value;
   const avulsoId = document.getElementById('baixa-avulso-id').value;
@@ -6055,8 +6100,9 @@ function confirmarBaixaRecebimento() {
   const nomeExibicao = c ? c.nome : (avulso ? avulso.descricao : 'Valor avulso');
 
   const financeiro = DB.get('financeiro');
+  const novoFinId = DB.id();
   financeiro.push({
-    id: DB.id(),
+    id: novoFinId,
     tipo: 'receita',
     servico: c ? (c.tipo || 'geral') : 'geral',
     desc: c ? `${descricaoBase} — ${c.nome}` : descricaoBase,
@@ -6075,7 +6121,11 @@ function confirmarBaixaRecebimento() {
   }
 
   closeModal('modal-baixa-recebimento');
-  toast(`💰 Recebimento de ${nomeExibicao} confirmado`);
+  let rec = null;
+  if (document.getElementById('baixa-recibo-auto').checked) {
+    rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? `honorários contábeis de ${mesRotulo}` : descricaoBase, competencia: competenciaDeRotulo(mesRotulo, data) });
+  }
+  toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} gerado` : `💰 Recebimento de ${nomeExibicao} confirmado`);
   renderAll();
 }
 
