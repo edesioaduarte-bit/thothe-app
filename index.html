@@ -2478,6 +2478,7 @@ function linhaAgendaComAcoes(item, ehTarefa) {
       acoesHtml = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${item.clienteId||''}','${(item.titulo||'').replace(/'/g,"\\'")}','${item.id}')" title="Iniciar tarefa e cronômetro">▶ Iniciar</button>`;
     }
   }
+  if (!ehTarefa) acoesHtml = acaoTimerObrig(item);
   acoesHtml += `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();${deleteFn}" title="Excluir">🗑️</button>`;
 
   return `
@@ -3020,6 +3021,11 @@ function pararTimer(id) {
       DB.set('tarefas', tarefas);
       tarefaConcluida = true;
     }
+  }
+
+  if (t.tarefaId && !tarefaConcluida) {
+    const obrs = DB.get('obrigacoes'), o = obrs.find(x=>x.id===t.tarefaId);
+    if (o && o.status !== 'concluida') { toggleObrigStatus(o.id); tarefaConcluida = true; }
   }
 
   if (registrou && tarefaConcluida) toast(`✅ Tarefa concluída · ${fmtDuracaoCurta(segundos)} registrado`);
@@ -3627,6 +3633,18 @@ function setAgendaFocoStatus(v) {
   renderAgendaFoco();
 }
 
+// Botão ▶ Iniciar / ⏸ Pausar para obrigações (usa o mesmo cronômetro das tarefas)
+function acaoTimerObrig(o) {
+  if (o.status === 'concluida') return '';
+  const timer = getTimerPorTarefa(o.id);
+  if (timer) {
+    return `<span id="agendalinha-timer-${o.id}" style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${timer.pausado?'var(--amber)':'var(--accent-m)'};min-width:54px;text-align:right">${fmtDuracao(Math.floor(elapsedSegundos(timer)))}</span>
+      ${timer.pausado
+        ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();retomarTimer('${timer.id}')" title="Retomar">▶</button>`
+        : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();pausarTimer('${timer.id}')" title="Pausar">⏸</button>`}`;
+  }
+  return `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();iniciarTarefaComoTimer('${o.clienteId||''}','${(o.titulo||'').replace(/'/g,"\\'")}','${o.id}')" title="Iniciar e cronometrar">▶ Iniciar</button>`;
+}
 function linhaAgendaObrigFoco(o, vencida) {
   const cliente = o.clienteId ? DB.get('clientes').find(c=>c.id===o.clienteId) : null;
   const concluida = o.status === 'concluida';
@@ -3638,6 +3656,7 @@ function linhaAgendaObrigFoco(o, vencida) {
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaque?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}📋 ${(o.titulo||'').replace(/</g,'&lt;')} <span class="chip chip-purple" style="font-size:9px">Obrigação</span>${o.venc && o.venc !== today() ? ` <span style="font-size:10.5px;color:var(--text3)">· venc. ${fmtDate(o.venc)}</span>` : ''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
     </div>
+    ${acaoTimerObrig(o)}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')" title="Excluir">🗑️</button>
   </div>`;
 }
