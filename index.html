@@ -4547,7 +4547,9 @@ function renderPrevisaoRecebimento() {
   if (!linhas.length) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:20px"><div class="txt">${previsaoFiltro==='pendentes' ? 'Nenhuma pendência 🎉' : 'Nada previsto ainda'}</div><div class="sub">Marque clientes com "fechamento mensal recorrente", cadastre um valor avulso, ou faça um lançamento</div></div></td></tr>`;
   } else {
+    const recibosTodos = DB.get('recibos');
     tbody.innerHTML = linhas.map(l => {
+      const recL = l.recebido > 0 ? recibosTodos.filter(r => (l.clienteId ? (r.clienteId === l.clienteId && (r.data||'').slice(0,7) === mes) : r.financeiroId === l.id)).slice(-1)[0] : null;
       const rowClick = l.clienteId ? `onclick="openClienteModal('${l.clienteId}')"` : '';
       return `
       <tr ${rowClick} style="${rowClick?'cursor:pointer':''}">
@@ -4555,14 +4557,14 @@ function renderPrevisaoRecebimento() {
         <td><span class="chip ${origemChip[l.origem]}">${origemLabel[l.origem]}</span></td>
         <td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(l.previsto)}</td>
         <td style="text-align:right;font-family:var(--font-mono);color:${l.recebido>0?'var(--green)':'var(--text3)'}">${fmtMoney(l.recebido)}</td>
-        <td>${l.statusChip}</td>
+        <td>${l.statusChip}${recL ? `<div><span class="chip chip-green" style="font-size:10px;margin-top:4px;cursor:pointer" title="Recibo emitido — clique para imprimir" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')">🧾 Recibo ${propEsc(recL.numero)} ✓</span></div>` : ''}</td>
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${l.id}')" title="Marcar como recebido">💰 Marcar recebido</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}
-          ${l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'honorários contábeis de ${mesLabel(mes)}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
+          ${recL ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')" title="Recibo ${recL.numero} já emitido — imprimir novamente">🧾✓</button>` : l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'honorários contábeis de ${mesLabel(mes)}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -5777,6 +5779,7 @@ function emitirRecibo(imprimir) {
   closeModal('modal-recibo');
   if (imprimir !== false) imprimirRecibo(rec);
   if (document.getElementById('page-recibos').classList.contains('active')) renderRecibos();
+  try { renderFinanceiro(); } catch (e) {}
   toast(`🧾 Recibo ${rec.numero} emitido`);
 }
 
