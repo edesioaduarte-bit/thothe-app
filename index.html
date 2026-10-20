@@ -497,6 +497,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <div class="nav-item" data-page="agenda" onclick="showPage('agenda')" title="Agenda"><span class="ico"><i class="ti ti-checklist"></i></span><span class="nav-text">Agenda</span></div>
       <div class="nav-item" data-page="financeiro" onclick="showPage('financeiro')" title="Financeiro ThoThe"><span class="ico"><i class="ti ti-currency-dollar"></i></span><span class="nav-text">Financeiro ThoThe</span></div>
       <div class="nav-item" data-page="relatorios" onclick="showPage('relatorios')" title="Relatórios"><span class="ico"><i class="ti ti-report-analytics"></i></span><span class="nav-text">Relatórios</span></div>
+      <div class="nav-item" data-page="recibos" onclick="showPage('recibos')" title="Recibos"><span class="ico"><i class="ti ti-receipt"></i></span><span class="nav-text">Recibos</span></div>
       <div class="nav-item" data-page="propostas" onclick="showPage('propostas')" title="Propostas"><span class="ico"><i class="ti ti-file-text"></i></span><span class="nav-text">Propostas</span></div>
       <div class="nav-item" data-page="rotina" onclick="showPage('rotina')" title="Rotina Pessoal"><span class="ico"><i class="ti ti-heartbeat"></i></span><span class="nav-text">Rotina Pessoal</span></div>
     </div>
@@ -1086,6 +1087,23 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
 
       <!-- ══════════ ROTINA PESSOAL ══════════ -->
+      <div class="page" id="page-recibos">
+        <div class="card hud" style="margin-bottom:18px">
+          <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px 22px">
+            <div style="flex:1;min-width:220px">
+              <div style="font-family:var(--font-brand);font-size:13px;letter-spacing:.12em;color:var(--gold)">RECIBOS</div>
+              <div style="font-size:12.5px;color:var(--text2);margin-top:4px">Emita, reimprima e guarde o histórico. Cada recibo recebe numeração sequencial.</div>
+            </div>
+            <input class="form-control" id="rcb-busca" placeholder="Buscar por nome, número ou assunto…" oninput="renderRecibos()" style="max-width:260px">
+            <button class="btn btn-primary" onclick="abrirReciboModal()">🧾 Novo recibo</button>
+          </div>
+        </div>
+        <div class="card hud">
+          <div id="rcb-resumo" style="padding:12px 22px;font-size:12px;color:var(--text3);border-bottom:1px solid var(--border)"></div>
+          <div id="rcb-lista" style="padding:12px 16px"></div>
+        </div>
+      </div>
+
       <div class="page" id="page-propostas">
         <div class="card hud" style="margin-bottom:18px">
           <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px 22px">
@@ -1515,13 +1533,19 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <input class="form-control" id="rec-referente" placeholder="Ex: honorários contábeis de Setembro/2026">
       </div>
       <div class="form-group">
+        <label class="form-label">Forma de pagamento</label>
+        <select class="form-control" id="rec-forma">
+          <option value="">Não informar</option><option>PIX</option><option>Transferência bancária</option><option>Boleto</option><option>Dinheiro</option><option>Cartão</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label class="form-label">Cidade</label>
         <input class="form-control" id="rec-cidade" placeholder="São Paulo">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-recibo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="emitirRecibo()">🖨️ Gerar e imprimir</button>
+      <button class="btn btn-primary" onclick="emitirRecibo()">🖨️ Emitir e imprimir</button>
     </div>
   </div>
 </div>
@@ -1905,7 +1929,7 @@ const DB = {
 
   pushAll: async () => {
     if (!SUPA_URL || !SUPA_KEY) return false;
-    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas'];
+    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos'];
     try {
       for (const k of chaves) { await DB._push(k, DB.get(k)); }
       return true;
@@ -2657,6 +2681,7 @@ const PAGE_CONFIG = {
   financeiro:  { title: 'Financeiro ThoThe', sub: 'receita e despesa do próprio escritório' },
   relatorios:  { title: 'Relatórios', sub: 'análises e indicadores do escritório' },
   propostas:   { title: 'Propostas', sub: 'abertura, cancelamento e regularização' },
+  recibos:     { title: 'Recibos', sub: 'emissão e histórico de recibos' },
   rotina:      { title: 'Rotina Pessoal', sub: 'hábitos e acompanhamento do dia a dia' },
 };
 
@@ -2681,6 +2706,7 @@ function showPage(id) {
   if (id === 'relatorios') renderRelatorioAtual();
   if (id === 'rotina') renderRotina();
   if (id === 'propostas') renderPropostas();
+  if (id === 'recibos') renderRecibos();
 }
 
 function renderAll() {
@@ -5671,6 +5697,7 @@ function abrirReciboModal(clienteId, valor, referente, data) {
   document.getElementById('rec-valor').value = (valor !== undefined && valor !== null) ? Number(valor).toFixed(2) : '';
   document.getElementById('rec-data').value = data || today();
   document.getElementById('rec-referente').value = referente || '';
+  document.getElementById('rec-forma').value = '';
   document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
   openModal('modal-recibo');
 }
@@ -5685,6 +5712,11 @@ function recPreencherPorCliente() {
   if (!document.getElementById('rec-valor').value && c.honorario) document.getElementById('rec-valor').value = c.honorario.toFixed(2);
 }
 
+function proximoNumeroRecibo(ano) {
+  const n = DB.get('recibos').filter(r => (r.numero||'').startsWith(`R-${ano}-`)).length + 1;
+  return `R-${ano}-${String(n).padStart(3,'0')}`;
+}
+
 function emitirRecibo() {
   const nome = document.getElementById('rec-nome').value.trim();
   const docto = document.getElementById('rec-docto').value.trim();
@@ -5692,20 +5724,32 @@ function emitirRecibo() {
   const data = document.getElementById('rec-data').value || today();
   const referente = document.getElementById('rec-referente').value.trim();
   const cidade = document.getElementById('rec-cidade').value.trim() || 'São Paulo';
+  const forma = document.getElementById('rec-forma').value;
 
   if (!nome) { toast('⚠️ Informe o nome do pagador'); return; }
   if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
   if (!referente) { toast('⚠️ Informe a que se refere o recibo'); return; }
 
+  const recibos = DB.get('recibos');
+  const rec = { id: DB.id(), numero: proximoNumeroRecibo(data.slice(0,4)), clienteId: document.getElementById('rec-cliente').value || '', nome, docto, valor, data, referente, cidade, forma, criadoEm: new Date().toISOString() };
+  recibos.push(rec);
+  DB.set('recibos', recibos);
+  closeModal('modal-recibo');
+  imprimirRecibo(rec);
+  if (document.getElementById('page-recibos').classList.contains('active')) renderRecibos();
+  toast(`🧾 Recibo ${rec.numero} emitido`);
+}
+
+function imprimirRecibo(rec) {
+  const { nome, docto, valor, data, referente, cidade, forma, numero } = rec;
   const dataFmt = fmtDate(data);
   const [y,m,d] = data.split('-');
-  const dataExtensoFmt = `${cidade}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
-
+  const dataExtensoFmt = `${cidade || 'São Paulo'}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
   const win = window.open('', '_blank');
   if (!win) { toast('⚠️ O navegador bloqueou a janela de impressão — permita pop-ups para este site.'); return; }
 
   win.document.write(`<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo — ${nome}</title>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo ${numero} — ${propEsc(nome)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color:#111; padding:48px; max-width:720px; margin:0 auto; background:#fff; }
@@ -5732,13 +5776,13 @@ function emitirRecibo() {
         <h1>${EMPRESA_NOME}</h1>
         <div class="cnpj">CNPJ ${EMPRESA_CNPJ}</div>
       </div>
-      <div class="numrec">Recibo de honorários<br>${dataFmt}</div>
+      <div class="numrec">Recibo nº <b>${numero}</b><br>${dataFmt}</div>
     </div>
     <div class="titulo">RECIBO</div>
     <div class="valor-box">R$ ${fmtMoney(valor).replace('R$','').trim()}</div>
     <div class="corpo">
-      Recebemos de <strong>${nome}</strong>${docto ? `, inscrito(a) no CPF/CNPJ sob o nº <strong>${docto}</strong>,` : ','}
-      a importância de <strong>${valorPorExtenso(valor)}</strong>, referente a <strong>${referente}</strong>.
+      Recebemos de <strong>${propEsc(nome)}</strong>${docto ? `, inscrito(a) no CPF/CNPJ sob o nº <strong>${propEsc(docto)}</strong>,` : ','}
+      a importância de <strong>${valorPorExtenso(valor)}</strong>, referente a <strong>${propEsc(referente)}</strong>${forma ? `, pago via <strong>${propEsc(forma)}</strong>` : ''}.
       <br><br>
       Para clareza e devidos efeitos, firmamos o presente recibo.
     </div>
@@ -5754,7 +5798,43 @@ function emitirRecibo() {
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 350);
-  closeModal('modal-recibo');
+}
+
+function textoRecibo(r) {
+  return `*RECIBO Nº ${r.numero}*\n${EMPRESA_NOME} · CNPJ ${EMPRESA_CNPJ}\n\nRecebemos de ${r.nome}${r.docto ? ` (CPF/CNPJ ${r.docto})` : ''} a importância de ${fmtMoney(r.valor)} (${valorPorExtenso(r.valor)}), referente a ${r.referente}${r.forma ? `, pago via ${r.forma}` : ''}.\n\n${r.cidade || 'São Paulo'}, ${fmtDate(r.data)}.\n${RESP_NOME} — ${RESP_CRC}`;
+}
+function copiarRecibo(id) {
+  const r = DB.get('recibos').find(x=>x.id===id); if (!r) return;
+  const t = textoRecibo(r);
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('📋 Texto do recibo copiado'), () => { prompt('Copie o texto:', t); });
+}
+function reimprimirRecibo(id) { const r = DB.get('recibos').find(x=>x.id===id); if (r) imprimirRecibo(r); }
+function excluirRecibo(id) {
+  const r = DB.get('recibos').find(x=>x.id===id); if (!r) return;
+  if (!confirm(`Excluir o recibo ${r.numero} de ${r.nome}?`)) return;
+  DB.set('recibos', DB.get('recibos').filter(x=>x.id!==id));
+  renderRecibos();
+}
+function renderRecibos() {
+  const el = document.getElementById('rcb-lista'); if (!el) return;
+  const q = (document.getElementById('rcb-busca').value || '').toLowerCase().trim();
+  let lista = DB.get('recibos').slice().sort((a,b) => (b.data||'').localeCompare(a.data||'') || (b.numero||'').localeCompare(a.numero||''));
+  if (q) lista = lista.filter(r => `${r.numero} ${r.nome} ${r.referente} ${r.docto||''}`.toLowerCase().includes(q));
+  const total = lista.reduce((s,r)=>s+r.valor,0);
+  document.getElementById('rcb-resumo').textContent = `${lista.length} recibo${lista.length!==1?'s':''} · total ${fmtMoney(total)}`;
+  if (!lista.length) { el.innerHTML = `<div class="empty-state" style="padding:28px"><div class="ico">🧾</div><div class="txt">${q ? 'Nenhum recibo encontrado' : 'Nenhum recibo emitido ainda — clique em “Novo recibo”'}</div></div>`; return; }
+  el.innerHTML = lista.map(r => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:var(--surface3);border:1px solid var(--border);margin-bottom:6px;flex-wrap:wrap">
+      <div style="font-family:var(--font-mono);font-size:11.5px;color:var(--gold);min-width:92px">${propEsc(r.numero)}</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:13px;font-weight:600">${propEsc(r.nome)}</div>
+        <div style="font-size:11.5px;color:var(--text3)">${propEsc(r.referente)} · ${fmtDate(r.data)}${r.forma ? ' · ' + propEsc(r.forma) : ''}</div>
+      </div>
+      <div style="font-weight:700;font-size:14px">${fmtMoney(r.valor)}</div>
+      <button class="btn btn-ghost btn-sm" onclick="reimprimirRecibo('${r.id}')" title="Imprimir / salvar PDF">🖨️</button>
+      <button class="btn btn-ghost btn-sm" onclick="copiarRecibo('${r.id}')" title="Copiar texto para WhatsApp/e-mail">📋</button>
+      <button class="btn btn-ghost btn-sm" onclick="excluirRecibo('${r.id}')" title="Excluir">🗑️</button>
+    </div>`).join('');
 }
 
 // Meses em que há evidência real de que o cliente estava ativo (fechamento registrado ou
@@ -7021,7 +7101,7 @@ async function imprimirProposta(id) {
    IMPORTAÇÃO — traz dados do sistema antigo (backup JSON)
    ══════════════════════════════════════════════════════ */
 function exportarBackup() {
-  const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas'];
+  const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos'];
   const dados = { geradoEm: new Date().toISOString(), sistema: 'ThoThe Crescimento', responsavel: RESP_TXT };
   chaves.forEach(k => dados[k] = DB.get(k));
   const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
