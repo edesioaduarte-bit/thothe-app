@@ -4564,7 +4564,7 @@ function renderPrevisaoRecebimento() {
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${l.id}')" title="Marcar como recebido">💰 Marcar recebido</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}
-          ${recL ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')" title="Recibo ${recL.numero} já emitido — imprimir novamente">🧾✓</button>` : l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'honorários contábeis de ${mesLabel(mes)}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
+          ${recL ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')" title="Recibo ${recL.numero} já emitido — imprimir novamente">🧾✓</button>` : l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'Honorários Mensal', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -6137,7 +6137,7 @@ function confirmarBaixaRecebimento() {
   closeModal('modal-baixa-recebimento');
   let rec = null;
   if (document.getElementById('baixa-recibo-auto').checked) {
-    rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? `honorários contábeis de ${mesLabel(competenciaPadrao(data))}` : descricaoBase, competencia: competenciaPadrao(data) });
+    rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? 'Honorários Mensal' : descricaoBase, competencia: competenciaPadrao(data) });
   }
   toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} salvo em Recibos` : `💰 Recebimento de ${nomeExibicao} confirmado`);
   renderAll();
