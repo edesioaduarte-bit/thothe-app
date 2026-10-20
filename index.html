@@ -1334,7 +1334,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" type="date" id="baixa-data">
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="baixa-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="baixa-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa (imprimo depois)</label>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-baixa-recebimento')">Cancelar</button>
@@ -1557,7 +1557,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-recibo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="emitirRecibo()">🖨️ Emitir e imprimir</button>
+      <button class="btn btn-ghost" onclick="emitirRecibo(false)">💾 Só emitir</button>
+      <button class="btn btn-primary" onclick="emitirRecibo(true)">🖨️ Emitir e imprimir</button>
     </div>
   </div>
 </div>
@@ -1716,7 +1717,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <option value="recebido">✅ Já baixado (recebido/pago)</option>
           </select>
         </div>
-        <div class="form-group" id="finc-recibo-box"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="finc-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa</label></div>
+        <div class="form-group" id="finc-recibo-box"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:4px"><input type="checkbox" id="finc-recibo-auto" onchange="reciboAutoSalvar(this.checked)" style="width:15px;height:15px;accent-color:var(--gold)"> 🧾 Gerar o recibo automaticamente ao dar baixa (imprimo depois)</label></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4431,7 +4432,7 @@ function saveFinanceiro() {
   if (item.tipo === 'receita' && item.status === 'recebido' && !(antes && antes.status === 'recebido') && document.getElementById('finc-recibo-auto').checked) {
     rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data, referente: item.desc, competencia: item.data.slice(0,7) });
   }
-  toast(rec ? `💰 Lançamento salvo · 🧾 recibo ${rec.numero} gerado` : '💰 Lançamento salvo');
+  toast(rec ? `💰 Lançamento salvo · 🧾 recibo ${rec.numero} salvo em Recibos` : '💰 Lançamento salvo');
   renderAll();
 }
 
@@ -4452,7 +4453,7 @@ function marcarLancamentoBaixado(id) {
   if (item.tipo === 'receita' && reciboAutoAtivo()) {
     rec = gerarReciboDaBaixa({ financeiroId: item.id, clienteId: item.clienteId, nome: item.desc, valor: item.valor, data: item.data || today(), referente: item.desc, competencia: (item.data || today()).slice(0,7) });
   }
-  toast(rec ? `✅ Lançamento baixado · 🧾 recibo ${rec.numero} gerado` : '✅ Lançamento baixado');
+  toast(rec ? `✅ Lançamento baixado · 🧾 recibo ${rec.numero} salvo em Recibos` : '✅ Lançamento baixado');
   renderAll();
 }
 
@@ -5745,7 +5746,7 @@ function proximoNumeroRecibo(ano) {
   return `R-${ano}-${String(n).padStart(3,'0')}`;
 }
 
-function emitirRecibo() {
+function emitirRecibo(imprimir) {
   const nome = document.getElementById('rec-nome').value.trim();
   const docto = document.getElementById('rec-docto').value.trim();
   const valor = parseFloat(document.getElementById('rec-valor').value);
@@ -5769,7 +5770,7 @@ function emitirRecibo() {
   recibos.push(rec);
   DB.set('recibos', recibos);
   closeModal('modal-recibo');
-  imprimirRecibo(rec);
+  if (imprimir !== false) imprimirRecibo(rec);
   if (document.getElementById('page-recibos').classList.contains('active')) renderRecibos();
   toast(`🧾 Recibo ${rec.numero} emitido`);
 }
@@ -6064,13 +6065,13 @@ function competenciaDeRotulo(rot, dataIso) {
   if (m) { const i = MONTH_NAMES.findIndex(n => n.toLowerCase() === m[1].toLowerCase()); if (i > -1) return `${m[2]}-${String(i+1).padStart(2,'0')}`; }
   return (dataIso || today()).slice(0,7);
 }
-// Cria o recibo (numerado, salvo no histórico) a partir de uma baixa e abre a impressão.
-// Se o lançamento já tem recibo, apenas reabre o existente — nunca duplica.
+// Cria o recibo (numerado, salvo no histórico) a partir de uma baixa, sem abrir impressão.
+// Se o lançamento já tem recibo, reaproveita o existente — nunca duplica.
 function gerarReciboDaBaixa(d) {
   const recibos = DB.get('recibos');
   if (d.financeiroId) {
     const ja = recibos.find(r => r.financeiroId === d.financeiroId);
-    if (ja) { imprimirRecibo(ja); return ja; }
+    if (ja) return ja;
   }
   const c = d.clienteId ? DB.get('clientes').find(x=>x.id===d.clienteId) : null;
   const rec = {
@@ -6081,7 +6082,6 @@ function gerarReciboDaBaixa(d) {
     financeiroId: d.financeiroId || '', automatico: true, criadoEm: new Date().toISOString(),
   };
   recibos.push(rec); DB.set('recibos', recibos);
-  imprimirRecibo(rec);
   return rec;
 }
 
@@ -6125,7 +6125,7 @@ function confirmarBaixaRecebimento() {
   if (document.getElementById('baixa-recibo-auto').checked) {
     rec = gerarReciboDaBaixa({ financeiroId: novoFinId, clienteId, nome: nomeExibicao, valor, data, referente: c ? `honorários contábeis de ${mesRotulo}` : descricaoBase, competencia: competenciaDeRotulo(mesRotulo, data) });
   }
-  toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} gerado` : `💰 Recebimento de ${nomeExibicao} confirmado`);
+  toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} salvo em Recibos` : `💰 Recebimento de ${nomeExibicao} confirmado`);
   renderAll();
 }
 
