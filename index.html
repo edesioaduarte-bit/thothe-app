@@ -498,6 +498,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <div class="nav-item" data-page="financeiro" onclick="showPage('financeiro')" title="Financeiro ThoThe"><span class="ico"><i class="ti ti-currency-dollar"></i></span><span class="nav-text">Financeiro ThoThe</span></div>
       <div class="nav-item" data-page="relatorios" onclick="showPage('relatorios')" title="Relatórios"><span class="ico"><i class="ti ti-report-analytics"></i></span><span class="nav-text">Relatórios</span></div>
       <div class="nav-item" data-page="recibos" onclick="showPage('recibos')" title="Recibos"><span class="ico"><i class="ti ti-receipt"></i></span><span class="nav-text">Recibos</span></div>
+      <div class="nav-item" data-page="contratos" onclick="showPage('contratos')" title="Contratos"><span class="ico"><i class="ti ti-file-description"></i></span><span class="nav-text">Contratos</span></div>
       <div class="nav-item" data-page="propostas" onclick="showPage('propostas')" title="Propostas"><span class="ico"><i class="ti ti-file-text"></i></span><span class="nav-text">Propostas</span></div>
       <div class="nav-item" data-page="rotina" onclick="showPage('rotina')" title="Rotina Pessoal"><span class="ico"><i class="ti ti-heartbeat"></i></span><span class="nav-text">Rotina Pessoal</span></div>
     </div>
@@ -1104,6 +1105,36 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
       </div>
 
+      <div class="page" id="page-contratos">
+        <div class="card hud" style="margin-bottom:14px">
+          <div class="card-body" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:18px 22px">
+            <div style="flex:1;min-width:220px">
+              <div style="font-family:var(--font-brand);font-size:13px;letter-spacing:.12em;color:var(--gold)">NOVO CONTRATO</div>
+              <div style="font-size:12.5px;color:var(--text2);margin-top:4px">Escolha o tipo, selecione as cláusulas que valem para o cliente e edite o texto se precisar.</div>
+            </div>
+            <button class="btn btn-primary" onclick="abrirContratoModal('', 'continuado')">🔁 Recorrente (mensal/anual)</button>
+            <button class="btn btn-primary" onclick="abrirContratoModal('', 'regularizacao')">🧾 Regularização</button>
+            <button class="btn btn-primary" onclick="abrirContratoModal('', 'abertura')">🏢 Abertura</button>
+            <button class="btn btn-primary" onclick="abrirContratoModal('', 'cancelamento')">🛑 Cancelamento</button>
+          </div>
+        </div>
+        <div class="card hud" style="margin-bottom:14px">
+          <div class="card-body" style="padding:12px 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div style="font-size:11px;letter-spacing:.1em;color:var(--text3);width:100%">DADOS DA CONTRATADA (aparecem em todos os contratos)</div>
+            <div style="flex:2;min-width:240px"><label class="form-label">Endereço da sede</label><input class="form-control" id="ctr-cd-end" placeholder="Rua, nº, bairro, cidade/UF, CEP"></div>
+            <div style="flex:1;min-width:200px"><label class="form-label">E-mail / telefone</label><input class="form-control" id="ctr-cd-contato" placeholder="contato@..."></div>
+            <button class="btn btn-ghost btn-sm" onclick="ctrSalvarContratada()">Salvar</button>
+          </div>
+        </div>
+        <div class="card hud">
+          <div style="padding:12px 22px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div id="ctr-resumo" style="font-size:12px;color:var(--text3);flex:1"></div>
+            <input class="form-control" id="ctr-busca" placeholder="Buscar contrato…" oninput="renderContratos()" style="max-width:240px">
+          </div>
+          <div id="ctr-lista" style="padding:12px 16px"></div>
+        </div>
+      </div>
+
       <div class="page" id="page-propostas">
         <div class="card hud" style="margin-bottom:18px">
           <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px 22px">
@@ -1455,6 +1486,83 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="closeModal('modal-prop-msg')">Fechar</button>
       <button class="btn btn-ghost" onclick="propMsgWhats()">WhatsApp</button>
       <button class="btn btn-primary" onclick="propMsgCopiar()">📋 Copiar mensagem</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-contrato">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header"><span class="modal-title" id="ctr-titulo">Novo contrato</span><button class="modal-close" onclick="closeModal('modal-contrato')">×</button></div>
+    <div class="modal-body" style="max-height:74vh;overflow-y:auto">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cliente cadastrado</label><select class="form-control" id="ctr-cliente" onchange="ctrPreencherCliente()"></select></div>
+        <div class="form-group" id="ctr-proposta-wrap"><label class="form-label">Basear em proposta</label><select class="form-control" id="ctr-proposta" onchange="ctrBasearProposta()"></select></div>
+      </div>
+      <div style="font-size:11px;letter-spacing:.1em;color:var(--gold);margin:6px 0">1 · CONTRATANTE</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Nome / Razão social *</label><input class="form-control" id="ctr-nome"></div>
+        <div class="form-group"><label class="form-label">CPF / CNPJ</label><input class="form-control" id="ctr-docto"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Endereço</label><input class="form-control" id="ctr-end" placeholder="Rua, nº, bairro, cidade/UF, CEP"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Representante legal (se empresa)</label><input class="form-control" id="ctr-rep"></div>
+        <div class="form-group"><label class="form-label">CPF do representante</label><input class="form-control" id="ctr-docrep"></div>
+      </div>
+      <div class="form-group"><label class="form-label">E-mail / telefone</label><input class="form-control" id="ctr-contato"></div>
+
+      <div style="font-size:11px;letter-spacing:.1em;color:var(--gold);margin:12px 0 4px">2 · SERVIÇOS CONTRATADOS</div>
+      <div id="ctr-servicos"></div>
+      <div class="form-group" style="margin-top:8px"><label class="form-label">Outros serviços (um por linha)</label><textarea class="form-control" id="ctr-outros" rows="2"></textarea></div>
+
+      <div style="font-size:11px;letter-spacing:.1em;color:var(--gold);margin:12px 0 4px">3 · HONORÁRIOS E CONDIÇÕES</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" id="ctr-lbl-valor">Honorários (R$) *</label><input class="form-control" type="number" step="0.01" id="ctr-valor"></div>
+        <div class="form-group"><label class="form-label">Data do contrato</label><input class="form-control" type="date" id="ctr-data"></div>
+      </div>
+      <div id="ctr-box-continuado">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Vencimento (dia do mês)</label><input class="form-control" type="number" min="1" max="31" id="ctr-vencdia"></div>
+          <div class="form-group"><label class="form-label">Início da prestação</label><input class="form-control" type="date" id="ctr-inicio"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Vigência (meses — 0 = indeterminado)</label><input class="form-control" type="number" min="0" id="ctr-vigmeses"></div>
+          <div class="form-group"><label class="form-label">Reajuste anual pelo índice</label><select class="form-control" id="ctr-indice"><option>IPCA</option><option>IGP-M</option><option>INPC</option><option>salário mínimo</option></select></div>
+        </div>
+        <div class="form-group"><label class="form-label">Cliente entrega documentos até o dia (do mês seguinte)</label><input class="form-control" type="number" min="1" max="31" id="ctr-diadocs" style="max-width:140px"></div>
+      </div>
+      <div id="ctr-box-pontual">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Entrada (R$, opcional)</label><input class="form-control" type="number" step="0.01" id="ctr-entrada"></div>
+          <div class="form-group"><label class="form-label">Nº de parcelas do saldo</label><input class="form-control" type="number" min="1" id="ctr-parcelas"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="ctr-iniciopgto"></div>
+          <div class="form-group"><label class="form-label">Prazo estimado (dias úteis)</label><input class="form-control" type="number" min="0" id="ctr-prazodias"></div>
+        </div>
+      </div>
+      <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div class="form-group"><label class="form-label">Multa por atraso (%)</label><input class="form-control" type="number" step="0.1" id="ctr-multa"></div>
+        <div class="form-group"><label class="form-label">Juros ao mês (%)</label><input class="form-control" type="number" step="0.1" id="ctr-juros"></div>
+        <div class="form-group"><label class="form-label">Aviso prévio (dias)</label><input class="form-control" type="number" id="ctr-aviso"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cidade da assinatura</label><input class="form-control" id="ctr-cidade"></div>
+        <div class="form-group"><label class="form-label">Foro</label><input class="form-control" id="ctr-foro"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0 6px;flex-wrap:wrap">
+        <div style="font-size:11px;letter-spacing:.1em;color:var(--gold)">4 · CLÁUSULAS</div>
+        <div id="ctr-cl-resumo" style="font-size:11.5px;color:var(--text3);flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="ctrClRestaurar()">↺ Restaurar padrão</button>
+        <button class="btn btn-ghost btn-sm" onclick="ctrClAdd()">+ Cláusula própria</button>
+      </div>
+      <div id="ctr-clausulas"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">Os modelos são uma base técnica. Recomenda-se revisão por advogado antes do uso, principalmente nas cláusulas de multa, limitação de responsabilidade e rescisão.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-contrato')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="salvarContrato(false)">💾 Salvar</button>
+      <button class="btn btn-primary" onclick="salvarContrato(true)">🖨️ Salvar e imprimir</button>
     </div>
   </div>
 </div>
@@ -1943,7 +2051,7 @@ const DB = {
 
   pushAll: async () => {
     if (!SUPA_URL || !SUPA_KEY) return false;
-    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos'];
+    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos','contratos'];
     try {
       for (const k of chaves) { await DB._push(k, DB.get(k)); }
       return true;
@@ -2695,6 +2803,7 @@ const PAGE_CONFIG = {
   financeiro:  { title: 'Financeiro ThoThe', sub: 'receita e despesa do próprio escritório' },
   relatorios:  { title: 'Relatórios', sub: 'análises e indicadores do escritório' },
   propostas:   { title: 'Propostas', sub: 'abertura, cancelamento e regularização' },
+  contratos:   { title: 'Contratos', sub: 'modelos com cláusulas selecionáveis' },
   recibos:     { title: 'Recibos', sub: 'emissão e histórico de recibos' },
   rotina:      { title: 'Rotina Pessoal', sub: 'hábitos e acompanhamento do dia a dia' },
 };
@@ -2721,6 +2830,7 @@ function showPage(id) {
   if (id === 'rotina') renderRotina();
   if (id === 'propostas') renderPropostas();
   if (id === 'recibos') renderRecibos();
+  if (id === 'contratos') renderContratos();
 }
 
 function renderAll() {
@@ -6062,6 +6172,410 @@ function renderDevidoAnterior() {
   `).join('');
 }
 
+/* ══════════════════════════════════════════════════════
+   CONTRATOS — modelos por tipo, cláusulas selecionáveis e editáveis
+   ══════════════════════════════════════════════════════ */
+const CTR_TIPOS = {
+  continuado:   { nome: 'Recorrente (mensal e anual)', ico: '🔁', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS CONTÁBEIS CONTINUADOS', pontual: false },
+  regularizacao:{ nome: 'Regularização (pontual)',      ico: '🧾', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE REGULARIZAÇÃO FISCAL E CADASTRAL', pontual: true },
+  abertura:     { nome: 'Abertura de empresa',          ico: '🏢', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ABERTURA DE EMPRESA', pontual: true },
+  cancelamento: { nome: 'Cancelamento (baixa)',         ico: '🛑', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BAIXA (CANCELAMENTO) DE EMPRESA', pontual: true },
+};
+const CTR_STATUS = { rascunho: '✏️ Rascunho', emitido: '📤 Enviado', assinado: '✅ Assinado', encerrado: '🔒 Encerrado' };
+const CTR_ORD = ['PRIMEIRA','SEGUNDA','TERCEIRA','QUARTA','QUINTA','SEXTA','SÉTIMA','OITAVA','NONA','DÉCIMA','DÉCIMA PRIMEIRA','DÉCIMA SEGUNDA','DÉCIMA TERCEIRA','DÉCIMA QUARTA','DÉCIMA QUINTA','DÉCIMA SEXTA','DÉCIMA SÉTIMA','DÉCIMA OITAVA','DÉCIMA NONA','VIGÉSIMA','VIGÉSIMA PRIMEIRA','VIGÉSIMA SEGUNDA','VIGÉSIMA TERCEIRA','VIGÉSIMA QUARTA','VIGÉSIMA QUINTA','VIGÉSIMA SEXTA','VIGÉSIMA SÉTIMA','VIGÉSIMA OITAVA','VIGÉSIMA NONA','TRIGÉSIMA'];
+
+// Serviços que o usuário marca (viram a lista do objeto). grupos → itens; "on" = vem marcado
+const CTR_SERVICOS = {
+  continuado: [
+    { grupo: 'Obrigações mensais', itens: [
+      ['Escrituração contábil e fiscal', 1], ['Apuração mensal de tributos e emissão das guias (Simples Nacional/PGDAS-D, DAS, ISS, ICMS, PIS/COFINS, IRPJ/CSLL — conforme o regime)', 1],
+      ['Entrega das obrigações acessórias mensais (DCTFWeb, EFD-Reinf, EFD Contribuições, DeSTDA/SPED — conforme o caso)', 1],
+      ['Departamento pessoal: folha de pagamento, férias, 13º salário, rescisões e admissões', 0], ['Envio do eSocial e geração das guias de FGTS Digital e INSS', 0],
+      ['Pró-labore e retiradas dos sócios', 1], ['Emissão de certidões negativas e acompanhamento de pendências fiscais', 0],
+      ['Atendimento e orientação contábil/fiscal (e-mail, WhatsApp e reuniões)', 1], ['Emissão de notas fiscais de serviço', 0],
+    ]},
+    { grupo: 'Obrigações anuais', itens: [
+      ['Declaração anual do Simples Nacional (DEFIS) ou DASN-SIMEI', 1], ['Balanço patrimonial e Demonstração do Resultado do Exercício (DRE)', 1],
+      ['ECD e ECF (SPED Contábil e Fiscal) — quando exigidas', 0], ['RAIS/Informe de rendimentos e demais declarações anuais de empregados', 0],
+      ['Renovação de alvarás e licenças', 0], ['Declaração de Imposto de Renda dos sócios (pessoa física)', 0],
+    ]},
+  ],
+  regularizacao: [
+    { grupo: 'Regularização', itens: [
+      ['Levantamento e pesquisa fiscal da situação da empresa em todos os órgãos', 1], ['Análise e diagnóstico das pendências cadastrais, fiscais e administrativas', 1],
+      ['Entrega de declarações e obrigações acessórias em atraso', 1], ['Retificação de declarações e apurações', 0],
+      ['Negociação e formalização de parcelamentos de débitos', 0], ['Defesa/impugnação administrativa de autos, notificações e malhas', 0],
+      ['Regularização de pendências na Prefeitura, Estado, Receita Federal e Procuradoria', 1], ['Emissão de certidões de regularidade fiscal', 1],
+      ['Regularização cadastral e atualização de dados nos órgãos', 0], ['Relatório final com o resultado dos trabalhos', 1],
+    ]},
+  ],
+  abertura: [
+    { grupo: 'Abertura', itens: [
+      ['Consulta de viabilidade e orientação sobre natureza jurídica, atividades e enquadramento', 1], ['Elaboração e registro do contrato social / requerimento de empresário na Junta Comercial', 1],
+      ['Inscrição no CNPJ (Receita Federal)', 1], ['Inscrição municipal e alvará de funcionamento', 1], ['Inscrição estadual (quando aplicável)', 0],
+      ['Enquadramento tributário e opção pelo Simples Nacional', 1], ['Licenças e registros em órgãos competentes (bombeiros, vigilância sanitária, conselhos — quando exigidos)', 0],
+      ['Orientação para emissão de certificado digital', 0], ['Habilitação para emissão de notas fiscais', 0], ['Entrega da documentação final da empresa constituída', 1],
+    ]},
+  ],
+  cancelamento: [
+    { grupo: 'Baixa', itens: [
+      ['Diagnóstico da situação e levantamento das pendências do CNPJ', 1], ['Elaboração do distrato social e baixa na Junta Comercial', 1],
+      ['Baixa do CNPJ na Receita Federal', 1], ['Baixa das inscrições municipal e estadual', 1], ['Baixa de licenças e alvarás', 0],
+      ['Apuração final de tributos e balanço de encerramento', 1], ['Entrega das declarações finais (DEFIS/DASN, DCTFWeb, eSocial, SPED — conforme o caso)', 1],
+      ['Fase de regularização prévia das pendências (quando necessária)', 0], ['Emissão de certidões e comprovantes da baixa', 1],
+    ]},
+  ],
+};
+
+// Biblioteca de cláusulas. Texto: 1ª linha = caput; linhas seguintes = parágrafos; linhas "• " = itens.
+// Variáveis: {{CONTRATADA}} {{CONTRATANTE}} {{SERVICOS}} {{HONORARIOS}} {{VENC}} {{AVISO}} {{MULTA}} {{JUROS}} {{INDICE}} {{VIGENCIA}} {{PRAZO}} {{DIA_DOCS}} {{FORO}} {{RESP}}
+function ctrClausulasPadrao(tipo) {
+  const pont = CTR_TIPOS[tipo].pontual;
+  const C = [];
+  const add = (k, titulo, texto, ativa = true) => C.push({ k, titulo, texto, ativa });
+
+  const objeto = {
+    continuado: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços contábeis, fiscais e de departamento pessoal à CONTRATANTE, de forma continuada, compreendendo:\n{{SERVICOS}}\nOs serviços que não estiverem descritos nesta cláusula não integram os honorários ajustados e poderão ser contratados à parte, mediante proposta ou termo aditivo.\nOs serviços serão executados dentro dos prazos legais, desde que a CONTRATANTE forneça documentos e informações nos prazos previstos neste contrato.`,
+    regularizacao: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de levantamento, análise e regularização das pendências cadastrais, fiscais e/ou administrativas da CONTRATANTE perante os órgãos competentes, compreendendo:\n{{SERVICOS}}\nA CONTRATADA assume obrigação de meio, comprometendo-se a empregar a técnica e a diligência necessárias, sem poder garantir o resultado ou a decisão dos órgãos públicos.\nOs valores de tributos, multas, juros, taxas, emolumentos e parcelamentos não integram os honorários e são de responsabilidade da CONTRATANTE, devidos diretamente aos órgãos credores.`,
+    abertura: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de constituição e registro da empresa da CONTRATANTE, compreendendo:\n{{SERVICOS}}\nTaxas, emolumentos, anuidades e custos de terceiros (Junta Comercial, Prefeitura, conselhos, bombeiros, certificado digital e similares) não integram os honorários e serão custeados pela CONTRATANTE.\nOs prazos de conclusão dependem também da atuação dos órgãos públicos, não estando sob controle da CONTRATADA.`,
+    cancelamento: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de baixa (cancelamento) da empresa da CONTRATANTE perante os órgãos competentes, compreendendo:\n{{SERVICOS}}\nPara que a baixa seja efetivada e aceita pelos órgãos, é necessário que todas as pendências da empresa estejam regularizadas. Havendo pendências, sua regularização prévia será objeto de contratação específica ou das etapas descritas nesta cláusula.\nTributos, multas, juros e taxas apurados até a baixa são de responsabilidade da CONTRATANTE.`,
+  };
+  add('objeto', 'Do Objeto', objeto[tipo]);
+
+  add('honorarios', 'Dos Honorários', pont
+    ? `Pelos serviços descritos neste contrato, a CONTRATANTE pagará à CONTRATADA os honorários de {{HONORARIOS}}.\nOs pagamentos poderão ser realizados por PIX, transferência bancária ou boleto, mediante emissão de recibo ou documento fiscal correspondente.\nOs honorários referem-se exclusivamente aos serviços descritos na Cláusula do Objeto; demandas adicionais serão objeto de nova proposta.`
+    : `Pelos serviços descritos neste contrato, a CONTRATANTE pagará à CONTRATADA honorários mensais de {{HONORARIOS}}, {{VENC}}.\nOs pagamentos poderão ser realizados por PIX, transferência bancária ou boleto, mediante emissão de recibo ou documento fiscal correspondente.\nOs honorários referem-se exclusivamente aos serviços descritos na Cláusula do Objeto; demandas adicionais serão objeto de nova proposta.`);
+  if (!pont) {
+    add('reajuste', 'Do Reajuste', `Os honorários serão reajustados anualmente, a cada 12 (doze) meses, pela variação positiva do {{INDICE}} ou, na sua falta, por índice que o substitua, ou em percentual a ser acordado entre as partes.\nO reajuste será aplicado independentemente de aviso prévio, bastando a comunicação à CONTRATANTE.`);
+    add('decimo', 'Do Honorário Adicional (13º)', `Será devido, no mês de dezembro, honorário adicional equivalente a 1 (um) honorário mensal, em razão do volume de obrigações do encerramento do exercício.`, false);
+    add('variacao', 'Da Alteração do Volume de Serviços', `Os honorários foram ajustados com base no regime tributário, na atividade, no faturamento e no número de funcionários da CONTRATANTE na data de assinatura.\nAlterações relevantes nesses fatores (mudança de regime, aumento de notas fiscais, de funcionários, abertura de filiais) autorizam a revisão dos honorários, mediante comunicação prévia.`);
+  }
+  add('mora', 'Do Atraso no Pagamento', `O atraso no pagamento sujeitará a CONTRATANTE a multa de {{MULTA}}% (por cento) sobre o valor devido, juros de mora de {{JUROS}}% (por cento) ao mês e correção monetária pelo índice pactuado.\nPersistindo a inadimplência por mais de 30 (trinta) dias, a CONTRATADA poderá suspender os serviços, mediante comunicação prévia, sem prejuízo da cobrança dos valores em aberto, ficando a CONTRATANTE responsável por eventuais multas e encargos decorrentes da suspensão.`);
+
+  const obrigContratante = pont
+    ? `São obrigações da CONTRATANTE:\n• fornecer, no prazo solicitado, todos os documentos, informações, senhas, certificados e procurações necessários à execução dos serviços;\n• responder pela veracidade e integridade dos documentos e informações fornecidos;\n• pagar os honorários nas condições ajustadas e os tributos, taxas e custos de terceiros relacionados ao objeto;\n• comunicar imediatamente qualquer notificação, intimação ou comunicado recebido de órgãos públicos relacionado ao objeto.`
+    : `São obrigações da CONTRATANTE:\n• encaminhar à CONTRATADA, até o dia {{DIA_DOCS}} de cada mês, os documentos e informações do mês anterior (notas fiscais, extratos, movimentação de pessoal, folha de ponto, entre outros);\n• responder pela veracidade, integridade e regularidade dos documentos e informações fornecidos;\n• pagar os honorários e os tributos, taxas e encargos nos respectivos vencimentos;\n• comunicar com antecedência qualquer alteração societária, de endereço, de atividade, de regime tributário ou de quadro de funcionários;\n• comunicar imediatamente notificações, intimações ou comunicados recebidos de órgãos públicos.\nA entrega dos documentos fora do prazo poderá implicar atraso no cumprimento das obrigações, ficando a CONTRATANTE responsável por multas e encargos daí decorrentes.`;
+  add('obrig_contratante', 'Das Obrigações da Contratante', obrigContratante);
+  add('obrig_contratada', 'Das Obrigações da Contratada', `São obrigações da CONTRATADA:\n• executar os serviços com zelo, diligência e técnica, observando a legislação vigente e as normas do Conselho Federal de Contabilidade, incluindo o Código de Ética Profissional do Contador;\n• cumprir os prazos legais, desde que cumpridas as obrigações da CONTRATANTE;\n• manter a CONTRATANTE informada sobre o andamento dos serviços e sobre prazos, vencimentos e pendências relevantes;\n• designar profissional habilitado como responsável técnico: {{RESP}}.`);
+  add('procuracao', 'Da Autorização para Atuação junto aos Órgãos', `A CONTRATANTE autoriza a CONTRATADA a atuar em seu nome perante a Receita Federal, Procuradoria, Prefeitura, Secretaria da Fazenda, Junta Comercial, previdência social e demais órgãos, podendo, para isso, utilizar procurações eletrônicas, certificado digital e acessos fornecidos, exclusivamente para os fins deste contrato.\nA CONTRATANTE poderá revogar a autorização a qualquer tempo, ficando a CONTRATADA desonerada das obrigações que dependam dela.`);
+  if (pont && tipo === 'regularizacao') {
+    add('parcelamentos', 'Dos Parcelamentos e Débitos', `Os débitos apurados poderão ser objeto de parcelamento, conforme as regras de cada órgão.\nO pagamento das parcelas, nos respectivos vencimentos, é de responsabilidade exclusiva da CONTRATANTE, podendo o atraso ou a falta de pagamento gerar a rescisão do parcelamento, a perda de benefícios e a cobrança integral do débito.\nOs valores de débitos informados em relatórios, propostas ou pesquisas são estimados e podem sofrer alteração até a data do efetivo pagamento ou consolidação.`);
+  }
+  if (tipo === 'cancelamento') {
+    add('pendencias', 'Da Regularização Prévia', `Constatadas pendências que impeçam a baixa, a CONTRATADA informará a CONTRATANTE, apresentando as medidas e os honorários necessários à regularização.\nA baixa somente será requerida após a regularização das pendências ou a anuência expressa da CONTRATANTE para prosseguir nas condições possíveis, ciente de que o órgão poderá indeferir o pedido ou manter responsabilidades sobre sócios e administradores.`);
+  }
+  if (tipo === 'abertura') {
+    add('custos', 'Dos Custos de Terceiros', `Os custos de terceiros (taxas, emolumentos, certificado digital, licenças e similares) serão informados à CONTRATANTE e recolhidos por ela, ou antecipados pela CONTRATADA e reembolsados mediante comprovação.`, false);
+  }
+  add('naoinclusos', 'Dos Serviços Não Incluídos', pont
+    ? `Não estão incluídos nos honorários: serviços de natureza jurídica, perícias, contratação de terceiros, processos judiciais, regularizações não descritas no objeto e eventuais exigências adicionais dos órgãos surgidas após o início dos trabalhos, que serão orçadas à parte.`
+    : `Não estão incluídos nos honorários mensais: regularizações de períodos anteriores ao início do contrato, parcelamentos e defesas administrativas, alterações contratuais, abertura e baixa de filiais, atendimento a fiscalizações, perícias, declarações de pessoas físicas e quaisquer serviços não descritos no objeto, que serão orçados à parte.`);
+  add('responsabilidade', 'Da Responsabilidade', `A CONTRATADA responde pelos serviços que executar, nos limites da lei.\nA CONTRATADA não se responsabiliza por informações ou documentos inverídicos, incompletos ou entregues fora do prazo, nem por multas, juros e encargos decorrentes de atraso ou omissão da CONTRATANTE.\nA responsabilidade pelo pagamento dos tributos e pelos fatos geradores das obrigações é da CONTRATANTE.`);
+  add('limite', 'Da Limitação de Responsabilidade', `Salvo dolo ou culpa grave, a responsabilidade total da CONTRATADA por eventuais danos decorrentes deste contrato fica limitada ao valor dos honorários efetivamente recebidos nos últimos 12 (doze) meses.`, false);
+  add('sigilo', 'Do Sigilo e da Proteção de Dados', `As partes obrigam-se a manter sigilo sobre as informações a que tiverem acesso em razão deste contrato, salvo exigência legal ou determinação de autoridade.\nOs dados pessoais tratados pela CONTRATADA serão utilizados exclusivamente para a execução deste contrato e cumprimento de obrigações legais e regulatórias, em conformidade com a Lei nº 13.709/2018 (LGPD), adotando-se medidas de segurança adequadas.\nA CONTRATANTE declara estar autorizada a compartilhar com a CONTRATADA os dados pessoais de sócios, empregados e terceiros necessários à execução dos serviços.`);
+  add('guarda', 'Da Guarda de Documentos', pont
+    ? `Concluídos os serviços, a CONTRATADA entregará à CONTRATANTE os documentos e comprovantes produzidos, mantendo cópia pelo prazo legal.`
+    : `Os documentos fiscais, contábeis e trabalhistas serão arquivados pelos prazos legais. Os originais pertencem à CONTRATANTE, que é responsável por sua guarda, mantendo a CONTRATADA cópias digitais dos documentos escriturados.\nEncerrado o contrato, a CONTRATADA devolverá os documentos e entregará os livros e registros contábeis, mediante protocolo, desde que quitados os honorários.`);
+  add('vigencia', 'Da Vigência', pont
+    ? `O presente contrato vigora a partir da data de sua assinatura até a conclusão dos serviços, estimada em {{PRAZO}}, contados do recebimento da documentação e do pagamento da primeira parcela, quando houver.\nEsse prazo é uma estimativa e poderá ser dilatado por atos dependentes de órgãos públicos, de terceiros ou da CONTRATANTE, sem que isso configure inadimplemento da CONTRATADA.`
+    : `O presente contrato vigora {{VIGENCIA}}.\nO contrato será prorrogado automaticamente por iguais períodos, salvo manifestação contrária de qualquer das partes, na forma da cláusula de rescisão.`);
+  add('rescisao', 'Da Rescisão', pont
+    ? `O contrato poderá ser rescindido por qualquer das partes, mediante comunicação por escrito, devendo a CONTRATANTE pagar os honorários proporcionais aos serviços já executados e as despesas incorridas, não havendo devolução de valores relativos a etapas concluídas.\nConstitui motivo de rescisão imediata o descumprimento de qualquer cláusula deste contrato.`
+    : `O contrato poderá ser rescindido por qualquer das partes, sem justa causa, mediante aviso prévio por escrito de {{AVISO}} dias, período em que os serviços e os honorários serão mantidos.\nConstitui motivo de rescisão imediata, sem aviso prévio, o descumprimento de qualquer cláusula deste contrato.\nNa rescisão, a CONTRATADA entregará à CONTRATANTE, ou a novo responsável contábil por ela indicado, os documentos e registros sob sua guarda, mediante protocolo e desde que quitados os honorários.`);
+  add('multa_resc', 'Da Multa Rescisória', pont
+    ? `A rescisão por iniciativa da CONTRATANTE, sem justa causa, após o início dos trabalhos, sujeitará a CONTRATANTE ao pagamento de multa equivalente a 20% (vinte por cento) do saldo dos honorários ainda não pagos, sem prejuízo dos serviços já executados.`
+    : `A rescisão por iniciativa da CONTRATANTE, sem observância do aviso prévio, sujeitará a CONTRATANTE ao pagamento de multa equivalente a 1 (um) honorário mensal, sem prejuízo dos valores devidos até a data da rescisão.`, false);
+  add('aliciamento', 'Da Não Contratação de Pessoal', `Durante a vigência deste contrato e pelos 12 (doze) meses seguintes, nenhuma das partes poderá contratar ou aliciar empregados ou colaboradores da outra que tenham participado da execução do objeto, salvo autorização expressa.`, false);
+  add('comunicacao', 'Das Comunicações', `As comunicações entre as partes poderão ser realizadas por e-mail, aplicativo de mensagens ou outro meio eletrônico, nos contatos informados neste contrato, considerando-se válidas e eficazes.\nQualquer alteração de endereço ou contato deverá ser comunicada por escrito.`);
+  add('gerais', 'Das Disposições Gerais', `Este contrato representa o acordo integral entre as partes, substituindo entendimentos anteriores sobre o mesmo objeto. Qualquer alteração deverá ser feita por escrito, por meio de termo aditivo.\nA tolerância de uma das partes quanto ao descumprimento de qualquer cláusula não implica renúncia nem novação.\nAs partes reconhecem a validade da assinatura eletrônica deste instrumento, nos termos da legislação aplicável, e de suas vias digitais.\nAplicam-se a este contrato, no que couber, as disposições do Código Civil (Lei nº 10.406/2002) relativas à prestação de serviços.`);
+  add('foro', 'Do Foro', `Para dirimir quaisquer controvérsias oriundas deste contrato, as partes elegem o foro da comarca de {{FORO}}, com renúncia a qualquer outro, por mais privilegiado que seja.`);
+  return C;
+}
+
+/* ── Estado e formulário ── */
+let ctrAtual = null;
+
+function ctrContratada() {
+  const c = getConfig().contratada || {};
+  return { endereco: c.endereco || '', contato: c.contato || '' };
+}
+function ctrSalvarContratada() {
+  const cfg = getConfig();
+  cfg.contratada = { endereco: document.getElementById('ctr-cd-end').value.trim(), contato: document.getElementById('ctr-cd-contato').value.trim() };
+  setConfig(cfg); toast('✅ Dados da contratada salvos');
+}
+function ctrNumero(ano) {
+  const maior = DB.get('contratos').filter(c => (c.numero||'').startsWith(`C-${ano}-`)).reduce((m,c) => Math.max(m, parseInt((c.numero||'').split('-')[2],10) || 0), 0);
+  return `C-${ano}-${String(maior+1).padStart(3,'0')}`;
+}
+function ctrNovo(tipo) {
+  const marcados = [];
+  (CTR_SERVICOS[tipo] || []).forEach(g => g.itens.forEach(i => { if (i[1]) marcados.push(i[0]); }));
+  return {
+    id: '', numero: '', tipo, status: 'rascunho', data: today(), cidade: 'São Paulo', foro: 'São Paulo/SP',
+    clienteId: '', propostaId: '', nome: '', docto: '', endereco: '', representante: '', docRep: '', contato: '',
+    servicos: marcados, outrosServicos: '',
+    valor: '', parcelas: 1, entrada: '', vencDia: 10, inicioPgto: today(), prazoDias: tipo === 'abertura' ? 30 : (tipo === 'cancelamento' ? 60 : 45),
+    vigenciaMeses: 0, inicio: today(), aviso: 30, multa: 2, juros: 1, indice: 'IPCA', diaDocs: 5,
+    clausulas: ctrClausulasPadrao(tipo),
+  };
+}
+function abrirContratoModal(id, tipo) {
+  ctrAtual = id ? JSON.parse(JSON.stringify(DB.get('contratos').find(c => c.id === id))) : ctrNovo(tipo);
+  if (!ctrAtual) return;
+  ctrRenderForm();
+  openModal('modal-contrato');
+}
+function ctrRenderForm() {
+  const c = ctrAtual, T = CTR_TIPOS[c.tipo], pont = T.pontual;
+  document.getElementById('ctr-titulo').textContent = `${T.ico} ${c.id ? 'Editar contrato ' + c.numero : 'Novo contrato'} — ${T.nome}`;
+  const set = (i, v) => { document.getElementById(i).value = v == null ? '' : v; };
+  fillClienteSelect(document.getElementById('ctr-cliente'), c.clienteId, { semNovo: true, vazio: '— Selecione ou digite abaixo —' });
+  const props = DB.get('propostas').filter(p => p.tipo === c.tipo).sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
+  document.getElementById('ctr-proposta').innerHTML = '<option value="">— Nenhuma —</option>' + props.map(p => `<option value="${p.id}" ${p.id===c.propostaId?'selected':''}>${propEsc(p.numero)} · ${propEsc(p.nome)} · ${fmtMoney(p.total||0)}</option>`).join('');
+  document.getElementById('ctr-proposta-wrap').style.display = props.length ? '' : 'none';
+  set('ctr-nome', c.nome); set('ctr-docto', c.docto); set('ctr-end', c.endereco); set('ctr-rep', c.representante); set('ctr-docrep', c.docRep); set('ctr-contato', c.contato);
+  set('ctr-valor', c.valor); set('ctr-parcelas', c.parcelas); set('ctr-entrada', c.entrada); set('ctr-vencdia', c.vencDia); set('ctr-iniciopgto', c.inicioPgto);
+  set('ctr-prazodias', c.prazoDias); set('ctr-vigmeses', c.vigenciaMeses); set('ctr-inicio', c.inicio); set('ctr-aviso', c.aviso);
+  set('ctr-multa', c.multa); set('ctr-juros', c.juros); set('ctr-indice', c.indice); set('ctr-diadocs', c.diaDocs);
+  set('ctr-data', c.data); set('ctr-cidade', c.cidade); set('ctr-foro', c.foro); set('ctr-outros', c.outrosServicos);
+  ['ctr-box-continuado'].forEach(i => document.getElementById(i).style.display = pont ? 'none' : '');
+  ['ctr-box-pontual'].forEach(i => document.getElementById(i).style.display = pont ? '' : 'none');
+  document.getElementById('ctr-lbl-valor').textContent = pont ? 'Valor total dos honorários (R$)' : 'Honorário mensal (R$)';
+  // serviços
+  document.getElementById('ctr-servicos').innerHTML = (CTR_SERVICOS[c.tipo] || []).map(g => `
+    <div style="font-size:10.5px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin:10px 0 4px">${g.grupo}</div>
+    ${g.itens.map(i => `<label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:3px 0;cursor:pointer"><input type="checkbox" ${c.servicos.includes(i[0])?'checked':''} onchange="ctrToggleServico(this,${JSON.stringify(i[0]).replace(/"/g,'&quot;')})" style="margin-top:3px;accent-color:var(--gold)"> <span>${propEsc(i[0])}</span></label>`).join('')}`).join('');
+  ctrRenderClausulas();
+}
+function ctrToggleServico(el, nome) {
+  const s = ctrAtual.servicos, i = s.indexOf(nome);
+  if (el.checked && i < 0) s.push(nome); if (!el.checked && i > -1) s.splice(i, 1);
+}
+function ctrRenderClausulas() {
+  const L = ctrAtual.clausulas;
+  document.getElementById('ctr-clausulas').innerHTML = L.map((cl, i) => `
+    <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:${cl.ativa?'var(--surface3)':'transparent'};opacity:${cl.ativa?1:.65}">
+      <div style="display:flex;gap:8px;align-items:center;padding:8px 10px">
+        <input type="checkbox" ${cl.ativa?'checked':''} onchange="ctrClAtiva(${i},this.checked)" style="width:16px;height:16px;accent-color:var(--gold)" title="Incluir no contrato">
+        <input class="form-control" value="${propEsc(cl.titulo)}" oninput="ctrAtual.clausulas[${i}].titulo=this.value" style="flex:1;padding:5px 9px;font-size:12.5px;font-weight:600">
+        <button class="btn btn-ghost btn-sm" onclick="ctrClToggleTexto(${i})" title="Ver / editar texto">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="ctrClMover(${i},-1)" ${i===0?'disabled':''} title="Subir">↑</button>
+        <button class="btn btn-ghost btn-sm" onclick="ctrClMover(${i},1)" ${i===L.length-1?'disabled':''} title="Descer">↓</button>
+        ${cl.custom ? `<button class="btn btn-ghost btn-sm" onclick="ctrClDel(${i})" title="Excluir">🗑️</button>` : ''}
+      </div>
+      <div id="ctr-cl-txt-${i}" style="display:none;padding:0 10px 10px">
+        <textarea class="form-control" rows="7" oninput="ctrAtual.clausulas[${i}].texto=this.value" style="font-size:12px;line-height:1.5">${propEsc(cl.texto)}</textarea>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:4px">1ª linha = texto da cláusula; linhas seguintes = parágrafos (§); linhas iniciadas por “• ” = itens. Variáveis como {{HONORARIOS}} e {{SERVICOS}} são preenchidas sozinhas.</div>
+      </div>
+    </div>`).join('');
+  const n = L.filter(x => x.ativa).length;
+  document.getElementById('ctr-cl-resumo').textContent = `${n} de ${L.length} cláusulas incluídas`;
+}
+function ctrClAtiva(i, v) { ctrAtual.clausulas[i].ativa = v; ctrRenderClausulas(); }
+function ctrClToggleTexto(i) { const el = document.getElementById('ctr-cl-txt-' + i); el.style.display = el.style.display === 'none' ? '' : 'none'; }
+function ctrClMover(i, d) { const L = ctrAtual.clausulas, j = i + d; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; ctrRenderClausulas(); }
+function ctrClDel(i) { ctrAtual.clausulas.splice(i, 1); ctrRenderClausulas(); }
+function ctrClAdd() {
+  ctrAtual.clausulas.splice(ctrAtual.clausulas.length - 1, 0, { k: 'custom' + Date.now(), titulo: 'Nova Cláusula', texto: 'Escreva aqui o texto da cláusula.', ativa: true, custom: true });
+  ctrRenderClausulas(); ctrClToggleTexto(ctrAtual.clausulas.length - 2);
+}
+function ctrClRestaurar() {
+  if (!confirm('Restaurar as cláusulas padrão deste tipo? Suas edições nas cláusulas serão perdidas (as cláusulas personalizadas também).')) return;
+  ctrAtual.clausulas = ctrClausulasPadrao(ctrAtual.tipo); ctrRenderClausulas();
+}
+function ctrLer() {
+  const g = i => document.getElementById(i).value, c = ctrAtual;
+  c.clienteId = g('ctr-cliente'); c.propostaId = g('ctr-proposta');
+  c.nome = g('ctr-nome').trim(); c.docto = g('ctr-docto').trim(); c.endereco = g('ctr-end').trim(); c.representante = g('ctr-rep').trim(); c.docRep = g('ctr-docrep').trim(); c.contato = g('ctr-contato').trim();
+  c.valor = parseFloat(g('ctr-valor')) || 0; c.parcelas = Math.max(1, parseInt(g('ctr-parcelas'), 10) || 1); c.entrada = parseFloat(g('ctr-entrada')) || 0;
+  c.vencDia = Math.min(31, Math.max(1, parseInt(g('ctr-vencdia'), 10) || 10)); c.inicioPgto = g('ctr-iniciopgto');
+  c.prazoDias = parseInt(g('ctr-prazodias'), 10) || 0; c.vigenciaMeses = parseInt(g('ctr-vigmeses'), 10) || 0; c.inicio = g('ctr-inicio');
+  c.aviso = parseInt(g('ctr-aviso'), 10) || 30; c.multa = g('ctr-multa') === '' ? 2 : parseFloat(g('ctr-multa')); c.juros = g('ctr-juros') === '' ? 1 : parseFloat(g('ctr-juros'));
+  c.indice = g('ctr-indice'); c.diaDocs = parseInt(g('ctr-diadocs'), 10) || 5;
+  c.data = g('ctr-data') || today(); c.cidade = g('ctr-cidade').trim() || 'São Paulo'; c.foro = g('ctr-foro').trim() || 'São Paulo/SP'; c.outrosServicos = g('ctr-outros').trim();
+}
+function ctrPreencherCliente() {
+  const cl = DB.get('clientes').find(x => x.id === document.getElementById('ctr-cliente').value); if (!cl) return;
+  document.getElementById('ctr-nome').value = cl.nome; document.getElementById('ctr-docto').value = cl.docto || '';
+  document.getElementById('ctr-contato').value = cl.contato || '';
+  if (!document.getElementById('ctr-valor').value && cl.honorario && !CTR_TIPOS[ctrAtual.tipo].pontual) document.getElementById('ctr-valor').value = cl.honorario;
+}
+function ctrBasearProposta() {
+  const p = DB.get('propostas').find(x => x.id === document.getElementById('ctr-proposta').value); if (!p) return;
+  document.getElementById('ctr-nome').value = p.nome || ''; document.getElementById('ctr-docto').value = p.docto || '';
+  document.getElementById('ctr-valor').value = p.total || '';
+  if (p.clienteId) document.getElementById('ctr-cliente').value = p.clienteId;
+  const desc = (p.itens || []).map(i => i.descricao).filter(Boolean);
+  if (desc.length) {
+    ctrAtual.servicos = []; document.getElementById('ctr-outros').value = desc.join('\n');
+    document.querySelectorAll('#ctr-servicos input[type=checkbox]').forEach(cb => cb.checked = false);
+    toast('📄 Serviços da proposta carregados em “Outros serviços”');
+  }
+}
+
+/* ── Montagem do texto ── */
+function ctrValorExt(v) { try { return valorPorExtenso(v); } catch (e) { return ''; } }
+function ctrHonorariosTxt(c) {
+  const v = c.valor || 0, pont = CTR_TIPOS[c.tipo].pontual;
+  if (!pont) return `${fmtMoney(v)} (${ctrValorExt(v)})`;
+  const ent = c.entrada || 0, n = c.parcelas || 1;
+  if (n <= 1 && !ent) return `${fmtMoney(v)} (${ctrValorExt(v)}), a serem pagos à vista${c.inicioPgto ? `, até ${fmtDate(c.inicioPgto)}` : ''}`;
+  const saldo = Math.max(0, v - ent);
+  const parc = Math.round(saldo / n * 100) / 100;
+  return `${fmtMoney(v)} (${ctrValorExt(v)}), a serem pagos ${ent ? `da seguinte forma: entrada de ${fmtMoney(ent)}${saldo > 0 ? ' e o saldo em ' : ''}` : 'em '}${saldo > 0 ? `${n} parcela${n>1?'s':''} ${n>1?'mensais e consecutivas ':''}de ${fmtMoney(parc)}${c.inicioPgto ? `, vencendo a primeira em ${fmtDate(c.inicioPgto)}` : ''}${n>1 ? ' e as demais nos mesmos dias dos meses subsequentes' : ''}` : ''}`;
+}
+function ctrVars(c) {
+  const cd = ctrContratada();
+  const servicos = c.servicos.concat(c.outrosServicos ? c.outrosServicos.split('\n').map(x => x.trim()).filter(Boolean) : []);
+  const prazo = c.prazoDias ? `${c.prazoDias} (${ctrNumExt(c.prazoDias)}) dias úteis` : 'prazo a ser informado';
+  return {
+    CONTRATADA: EMPRESA_NOME, CONTRATANTE: c.nome || '[CONTRATANTE]', RESP: `${RESP_NOME}, contador, ${RESP_CRC}`,
+    SERVICOS: servicos.length ? servicos.map(s => '• ' + s).join('\n') : '• [descrever os serviços]',
+    HONORARIOS: ctrHonorariosTxt(c), VENC: `com vencimento todo dia ${c.vencDia} de cada mês`,
+    AVISO: `${c.aviso} (${ctrNumExt(c.aviso)})`, MULTA: String(c.multa).replace('.', ','), JUROS: String(c.juros).replace('.', ','),
+    INDICE: c.indice, DIA_DOCS: String(c.diaDocs), FORO: c.foro, PRAZO: prazo,
+    VIGENCIA: c.vigenciaMeses ? `por prazo determinado de ${c.vigenciaMeses} (${ctrNumExt(c.vigenciaMeses)}) meses, a contar de ${fmtDate(c.inicio)}` : `por prazo indeterminado, a contar de ${fmtDate(c.inicio)}`,
+  };
+}
+function ctrNumExt(n) {
+  const u = ['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const d = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  if (n < 20) return u[n]; if (n < 100) return d[Math.floor(n/10)] + (n % 10 ? ' e ' + u[n % 10] : '');
+  if (n === 100) return 'cem'; if (n < 200) return 'cento e ' + ctrNumExt(n - 100); return String(n);
+}
+function ctrSubstituir(txt, vars) { return String(txt).replace(/\{\{(\w+)\}\}/g, (m, k) => vars[k] != null ? vars[k] : m); }
+
+function ctrQualificacao(c) {
+  const doc = (c.docto || '').replace(/\D/g, ''), pj = doc.length > 11 || /ltda|s\.?a|eireli|me\b|epp|mei|sociedade|associa/i.test(c.nome);
+  const rep = c.representante ? `, neste ato representada por ${c.representante}${c.docRep ? `, inscrito(a) no CPF sob o nº ${c.docRep}` : ''}` : '';
+  const end = c.endereco ? `, com ${pj ? 'sede' : 'residência'} em ${c.endereco}` : '';
+  return pj
+    ? `<b>${propEsc(c.nome)}</b>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ${propEsc(c.docto || '—')}${propEsc(end)}${propEsc(rep)}`
+    : `<b>${propEsc(c.nome)}</b>, inscrito(a) no CPF sob o nº ${propEsc(c.docto || '—')}${propEsc(end)}`;
+}
+function ctrCorpoHtml(c) {
+  const vars = ctrVars(c);
+  let n = 0;
+  return c.clausulas.filter(x => x.ativa).map(cl => {
+    const linhas = ctrSubstituir(cl.texto, vars).split('\n').map(l => l.trim()).filter(Boolean);
+    const caput = linhas.shift() || '';
+    const blocos = [];
+    linhas.forEach(l => { if (l.startsWith('• ')) { const u = blocos[blocos.length-1]; if (u && u.lista) u.itens.push(l.slice(2)); else blocos.push({ lista: true, itens: [l.slice(2)] }); } else blocos.push({ txt: l }); });
+    const nPar = blocos.filter(b => !b.lista).length; let k = 0;
+    // itens logo após o caput pertencem ao caput
+    let html = `<div class="cl"><div class="ct">CLÁUSULA ${CTR_ORD[n] || (n+1) + 'ª'} — ${propEsc(cl.titulo).toUpperCase()}</div><p>${propEsc(caput)}</p>`;
+    blocos.forEach(b => {
+      if (b.lista) html += `<ul>${b.itens.map(i => `<li>${propEsc(i)}</li>`).join('')}</ul>`;
+      else { k++; html += `<p class="pg"><b>${nPar === 1 ? 'Parágrafo único.' : `§ ${k}º`}</b> ${propEsc(b.txt)}</p>`; }
+    });
+    n++;
+    return html + '</div>';
+  }).join('');
+}
+
+function imprimirContrato(id) {
+  const c = typeof id === 'string' ? DB.get('contratos').find(x => x.id === id) : id; if (!c) return;
+  const T = CTR_TIPOS[c.tipo], cd = ctrContratada();
+  const logo = getComputedStyle(document.documentElement).getPropertyValue('--logo').trim();
+  const [y, m, d] = c.data.split('-');
+  const dataExt = `${c.cidade}, ${parseInt(d,10)} de ${MONTH_NAMES[parseInt(m,10)-1]} de ${y}`;
+  const win = window.open('', '_blank');
+  if (!win) { toast('⚠️ O navegador bloqueou a janela — permita pop-ups para este site.'); return; }
+  const contratada = `<b>${propEsc(EMPRESA_NOME)}</b>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ${propEsc(EMPRESA_CNPJ)}${cd.endereco ? ', com sede em ' + propEsc(cd.endereco) : ''}, neste ato representada por seu responsável técnico, <b>${propEsc(RESP_NOME)}</b>, contador, ${propEsc(RESP_CRC)}`;
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contrato ${propEsc(c.numero)} — ${propEsc(c.nome)}</title>
+<style>
+  @page { size:A4; margin:14mm 16mm 12mm; }
+  * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family:'Segoe UI',Arial,sans-serif; color:#15171c; margin:0; font-size:11.5px; line-height:1.6; }
+  .topo { display:flex; align-items:center; gap:14px; background:#0d0d0f; color:#f4ead2; padding:14px 18px; margin-bottom:16px; }
+  .logo { width:54px; height:54px; border-radius:50%; background:${logo} center/cover no-repeat; box-shadow:0 0 0 1.5px #c9a24b; flex-shrink:0; }
+  .topo h1 { margin:0; font-size:16px; letter-spacing:.14em; color:#d9b45a; } .topo .s { font-size:8.5px; letter-spacing:.3em; color:#bba66e; }
+  .topo .dir { margin-left:auto; text-align:right; font-size:10px; color:#d8cfb6; } .topo .dir b { font-size:14px; color:#d9b45a; display:block; }
+  h2 { text-align:center; font-size:13.5px; letter-spacing:.05em; margin:6px 0 4px; }
+  .sub { text-align:center; font-size:10.5px; color:#666; margin-bottom:16px; }
+  p { margin:0 0 7px; text-align:justify; } .pg { padding-left:14px; }
+  .partes p { margin-bottom:9px; }
+  .cl { margin-top:12px; page-break-inside:auto; } .ct { font-weight:700; font-size:11.5px; letter-spacing:.04em; color:#3b3010; border-bottom:1px solid #d9cfae; padding-bottom:2px; margin-bottom:6px; break-after:avoid; }
+  ul { margin:3px 0 8px; padding-left:34px; } li { margin-bottom:3px; text-align:justify; }
+  .fecho { margin-top:18px; } .local { text-align:right; margin:14px 0 4px; }
+  .ass { display:grid; grid-template-columns:1fr 1fr; gap:34px; margin-top:46px; text-align:center; break-inside:avoid; }
+  .ass .li { border-top:1px solid #222; padding-top:5px; font-size:10.5px; }
+  .test { display:grid; grid-template-columns:1fr 1fr; gap:34px; margin-top:38px; text-align:center; break-inside:avoid; font-size:10px; } .test .li { border-top:1px solid #444; padding-top:4px; text-align:left; }
+  .paginado { width:100%; border-collapse:collapse; } .paginado td { padding:0; } .esp { height:11mm; }
+  .rod { position:fixed; bottom:0; left:0; right:0; background:#fff; font-size:8.5px; color:#777; border-top:1px solid #ddd; padding-top:4px; text-align:center; }
+</style></head><body><table class="paginado"><tbody><tr><td>
+<div class="topo"><div class="logo"></div><div><h1>THOTHE</h1><div class="s">GESTÃO CORPORATIVA</div></div><div class="dir"><b>CONTRATO Nº ${propEsc(c.numero)}</b>${fmtDate(c.data)}</div></div>
+<h2>${propEsc(T.titulo)}</h2>
+<div class="sub">Instrumento particular de prestação de serviços profissionais</div>
+<div class="partes">
+  <p>Pelo presente instrumento particular, de um lado, como <b>CONTRATADA</b>, ${contratada}; e, de outro lado, como <b>CONTRATANTE</b>, ${ctrQualificacao(c)}${c.contato ? `, contato: ${propEsc(c.contato)}` : ''}.</p>
+  <p>As partes, doravante denominadas simplesmente CONTRATADA e CONTRATANTE, têm entre si justo e contratado o que segue, mediante as cláusulas e condições abaixo.</p>
+</div>
+${ctrCorpoHtml(c)}
+<div class="fecho"><p>E, por estarem assim justas e contratadas, as partes assinam este instrumento em 2 (duas) vias de igual teor e forma, ou eletronicamente, na presença das testemunhas abaixo.</p></div>
+<div class="local">${propEsc(dataExt)}</div>
+<div class="ass">
+  <div><div class="li"><b>${propEsc(EMPRESA_NOME)}</b><br>CNPJ ${propEsc(EMPRESA_CNPJ)}<br>${propEsc(RESP_NOME)} — ${propEsc(RESP_CRC)}<br>CONTRATADA</div></div>
+  <div><div class="li"><b>${propEsc(c.nome)}</b><br>${c.docto ? ((c.docto.replace(/\D/g,'').length > 11 ? 'CNPJ ' : 'CPF ') + propEsc(c.docto)) : ''}<br>${c.representante ? propEsc(c.representante) + '<br>' : ''}CONTRATANTE</div></div>
+</div>
+<div class="test"><div class="li">Testemunha 1<br>Nome:<br>CPF:</div><div class="li">Testemunha 2<br>Nome:<br>CPF:</div></div>
+</td></tr></tbody><tfoot><tr><td><div class="esp"></div></td></tr></tfoot></table>
+<div class="rod">${propEsc(EMPRESA_NOME)} · CNPJ ${propEsc(EMPRESA_CNPJ)} · ${propEsc(RESP_TXT)} · Contrato ${propEsc(c.numero)}</div>
+</body></html>`);
+  win.document.close(); win.focus(); setTimeout(() => win.print(), 450);
+}
+
+/* ── Salvar / listar ── */
+function salvarContrato(imprimir) {
+  ctrLer(); const c = ctrAtual;
+  if (!c.nome) { toast('⚠️ Informe o nome do contratante'); return; }
+  if (!c.valor || c.valor <= 0) { toast('⚠️ Informe o valor dos honorários'); return; }
+  if (!c.clausulas.some(x => x.ativa)) { toast('⚠️ Selecione ao menos uma cláusula'); return; }
+  const lista = DB.get('contratos');
+  if (!c.id) { c.id = DB.id(); c.numero = ctrNumero(c.data.slice(0,4)); c.criadoEm = new Date().toISOString(); lista.push(c); }
+  else { const i = lista.findIndex(x => x.id === c.id); if (i > -1) lista[i] = c; }
+  DB.set('contratos', lista);
+  closeModal('modal-contrato');
+  toast(`📑 Contrato ${c.numero} salvo`);
+  renderContratos();
+  if (imprimir) imprimirContrato(c.id);
+}
+function renderContratos() {
+  const el = document.getElementById('ctr-lista'); if (!el) return;
+  const cd = ctrContratada();
+  document.getElementById('ctr-cd-end').value = cd.endereco; document.getElementById('ctr-cd-contato').value = cd.contato;
+  const q = (document.getElementById('ctr-busca').value || '').toLowerCase().trim();
+  let lista = DB.get('contratos').slice().sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
+  if (q) lista = lista.filter(c => `${c.numero} ${c.nome} ${c.docto}`.toLowerCase().includes(q));
+  document.getElementById('ctr-resumo').textContent = `${lista.length} contrato${lista.length!==1?'s':''} · ativos (assinados): ${lista.filter(c=>c.status==='assinado').length}`;
+  if (!lista.length) { el.innerHTML = `<div class="empty-state" style="padding:28px"><div class="ico">📑</div><div class="txt">${q ? 'Nenhum contrato encontrado' : 'Nenhum contrato ainda — escolha o tipo acima'}</div></div>`; return; }
+  el.innerHTML = lista.map(c => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:var(--surface3);border:1px solid var(--border);margin-bottom:6px;flex-wrap:wrap;cursor:pointer" onclick="abrirContratoModal('${c.id}')">
+      <div style="font-family:var(--font-mono);font-size:11.5px;color:var(--gold);min-width:92px">${propEsc(c.numero)}</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:13px;font-weight:600">${propEsc(c.nome)}</div>
+        <div style="font-size:11.5px;color:var(--text3)">${CTR_TIPOS[c.tipo].ico} ${CTR_TIPOS[c.tipo].nome} · ${fmtDate(c.data)} · ${fmtMoney(c.valor)}${CTR_TIPOS[c.tipo].pontual ? '' : '/mês'}</div>
+      </div>
+      <div onclick="event.stopPropagation()"><select class="form-control" style="padding:4px 8px;font-size:11.5px;width:auto" onchange="ctrMudarStatus('${c.id}',this.value)">${Object.keys(CTR_STATUS).map(k=>`<option value="${k}" ${c.status===k?'selected':''}>${CTR_STATUS[k]}</option>`).join('')}</select></div>
+      <div onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="imprimirContrato('${c.id}')" title="Imprimir / salvar PDF">🖨️</button>
+        <button class="btn btn-ghost btn-sm" onclick="ctrDuplicar('${c.id}')" title="Duplicar">📄</button>
+        <button class="btn btn-ghost btn-sm" onclick="ctrExcluir('${c.id}')" title="Excluir">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+function ctrMudarStatus(id, st) { const l = DB.get('contratos'), c = l.find(x => x.id === id); if (c) { c.status = st; DB.set('contratos', l); renderContratos(); } }
+function ctrDuplicar(id) {
+  const l = DB.get('contratos'), o = l.find(x => x.id === id); if (!o) return;
+  const c = JSON.parse(JSON.stringify(o)); c.id = DB.id(); c.data = today(); c.numero = ctrNumero(c.data.slice(0,4)); c.status = 'rascunho'; c.criadoEm = new Date().toISOString();
+  l.push(c); DB.set('contratos', l); toast(`📄 Duplicado como ${c.numero}`); renderContratos();
+}
+function ctrExcluir(id) {
+  const c = DB.get('contratos').find(x => x.id === id); if (!c || !confirm(`Excluir o contrato ${c.numero} de ${c.nome}?`)) return;
+  DB.set('contratos', DB.get('contratos').filter(x => x.id !== id)); renderContratos();
+}
+
 /* ── Recibo automático ao dar baixa ── */
 function reciboAutoAtivo() { try { return localStorage.getItem('thothe_recibo_auto') !== '0'; } catch (e) { return true; } }
 function reciboAutoSalvar(v) {
@@ -7245,7 +7759,7 @@ async function imprimirProposta(id) {
    IMPORTAÇÃO — traz dados do sistema antigo (backup JSON)
    ══════════════════════════════════════════════════════ */
 function exportarBackup() {
-  const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos'];
+  const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos','contratos'];
   const dados = { geradoEm: new Date().toISOString(), sistema: 'ThoThe Crescimento', responsavel: RESP_TXT };
   chaves.forEach(k => dados[k] = DB.get(k));
   const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
