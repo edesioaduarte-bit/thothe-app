@@ -1221,6 +1221,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <input class="form-control" id="cli-contato" placeholder="Telefone ou e-mail">
       </div>
       <div class="form-group">
+        <label class="form-label">Endereço</label>
+        <input class="form-control" id="cli-end" placeholder="Preenchido automaticamente ao digitar o CNPJ">
+      </div>
+      <div class="form-group">
         <label class="form-label">CPF/CNPJ (opcional, usado para emitir recibos)</label>
         <input class="form-control" id="cli-docto" placeholder="000.000.000-00 ou 00.000.000/0000-00">
       </div>
@@ -1399,6 +1403,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div class="form-group"><label class="form-label">Nome / Razão social *</label><input class="form-control" id="prop-nome"></div>
         <div class="form-group"><label class="form-label">CPF / CNPJ</label><input class="form-control" id="prop-docto"></div>
       </div>
+      <div class="form-group"><label class="form-label">Endereço</label><input class="form-control" id="prop-end" placeholder="Preenchido automaticamente ao digitar o CNPJ" oninput="propDadosEmpresa.endereco=this.value"></div>
 
       <div class="form-group" id="prop-bloco-regul" style="display:none">
         <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gold);border-radius:10px;background:var(--gold-dim, rgba(201,162,75,.08));cursor:pointer;font-size:13.5px">
@@ -2865,12 +2870,13 @@ function openClienteModal(id) {
       document.getElementById('cli-honorario').value = c.honorario || '';
       document.getElementById('cli-contato').value = c.contato || '';
       document.getElementById('cli-docto').value = c.docto || '';
+      document.getElementById('cli-end').value = c.endereco || '';
       document.getElementById('cli-status').value = c.status || 'ativo';
       document.getElementById('cli-tem-fechamento').checked = c.temFechamento === true;
       document.getElementById('cli-obs').value = c.obs || '';
     }
   } else {
-    ['cli-codigo','cli-nome','cli-honorario','cli-contato','cli-docto','cli-obs'].forEach(i=>document.getElementById(i).value='');
+    ['cli-codigo','cli-nome','cli-honorario','cli-contato','cli-docto','cli-end','cli-obs'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('cli-codigo').value = proximoCodigoCliente();
     document.getElementById('cli-tipo').value = 'contabil';
     document.getElementById('cli-upsell').value = 'nao_aplica';
@@ -2894,6 +2900,7 @@ function saveCliente() {
     honorario: parseFloat(document.getElementById('cli-honorario').value) || 0,
     contato: document.getElementById('cli-contato').value.trim(),
     docto: document.getElementById('cli-docto').value.trim(),
+    endereco: document.getElementById('cli-end').value.trim(),
     status: document.getElementById('cli-status').value,
     temFechamento: document.getElementById('cli-tem-fechamento').checked,
     obs: document.getElementById('cli-obs').value.trim(),
@@ -5839,6 +5846,7 @@ function abrirReciboModal(clienteId, valor, referente, data) {
   document.getElementById('rec-comp').value = competenciaPadrao(data || today());
   document.getElementById('rec-contato').value = c ? (c.contato || '') : '';
   ['rec-end','rec-detalhe','rec-desc','rec-acres','rec-obs'].forEach(i => document.getElementById(i).value = '');
+  if (c && c.endereco) document.getElementById('rec-end').value = c.endereco;
   document.getElementById('rec-nome').dataset.auto = '0'; cnpjStatus(document.getElementById('rec-docto'), '');
   document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
   openModal('modal-recibo');
@@ -5857,6 +5865,7 @@ function recPreencherPorCliente() {
   document.getElementById('rec-docto').value = c.docto || '';
   if (!document.getElementById('rec-valor').value && c.honorario) document.getElementById('rec-valor').value = c.honorario.toFixed(2);
   document.getElementById('rec-contato').value = c.contato || document.getElementById('rec-contato').value;
+  if (c.endereco) document.getElementById('rec-end').value = c.endereco;
 }
 
 function proximoNumeroRecibo(ano) {
@@ -6401,6 +6410,7 @@ function ctrPreencherCliente() {
   const cl = DB.get('clientes').find(x => x.id === document.getElementById('ctr-cliente').value); if (!cl) return;
   document.getElementById('ctr-nome').value = cl.nome; document.getElementById('ctr-docto').value = cl.docto || '';
   document.getElementById('ctr-contato').value = cl.contato || '';
+  if (cl.endereco) document.getElementById('ctr-end').value = cl.endereco;
   if (!document.getElementById('ctr-valor').value && cl.honorario && !CTR_TIPOS[ctrAtual.tipo].pontual) document.getElementById('ctr-valor').value = cl.honorario;
 }
 function ctrBasearProposta() {
@@ -6637,8 +6647,8 @@ function cnpjPreencherCampo(id, valor) {
 const CNPJ_FORMS = {
   'ctr-docto':  (r) => { cnpjPreencherCampo('ctr-nome', r.nome); cnpjPreencherCampo('ctr-end', r.endereco); cnpjPreencherCampo('ctr-contato', [r.email, r.telefone].filter(Boolean).join(' · ')); cnpjPreencherCampo('ctr-rep', r.administrador); },
   'rec-docto':  (r) => { cnpjPreencherCampo('rec-nome', r.nome); cnpjPreencherCampo('rec-end', r.endereco); cnpjPreencherCampo('rec-contato', [r.email, r.telefone].filter(Boolean).join(' · ')); },
-  'cli-docto':  (r) => { cnpjPreencherCampo('cli-nome', r.nome); cnpjPreencherCampo('cli-contato', r.telefone || r.email); },
-  'prop-docto': (r) => { cnpjPreencherCampo('prop-nome', r.nome); try { if (r.endereco && !propDadosEmpresa.endereco) propDadosEmpresa.endereco = r.endereco; } catch (e) {} },
+  'cli-docto':  (r) => { cnpjPreencherCampo('cli-nome', r.nome); cnpjPreencherCampo('cli-end', r.endereco); cnpjPreencherCampo('cli-contato', r.telefone || r.email); },
+  'prop-docto': (r) => { cnpjPreencherCampo('prop-nome', r.nome); cnpjPreencherCampo('prop-end', r.endereco); propDadosEmpresa.endereco = document.getElementById('prop-end').value; },
 };
 function cnpjStatus(el, txt, cor) {
   let st = el.parentNode.querySelector('.cnpj-st');
@@ -6666,7 +6676,7 @@ function cnpjAutoLigarTudo() {
     el.addEventListener('input', () => cnpjAoDigitar(id));
   });
   // campos preenchidos à mão deixam de ser sobrescritos por novas buscas
-  ['ctr-nome','ctr-end','ctr-contato','ctr-rep','rec-nome','rec-end','rec-contato','cli-nome','cli-contato','prop-nome'].forEach(id => {
+  ['ctr-nome','ctr-end','ctr-contato','ctr-rep','rec-nome','rec-end','rec-contato','cli-nome','cli-end','cli-contato','prop-nome','prop-end'].forEach(id => {
     const el = document.getElementById(id); if (el) el.addEventListener('input', (e) => { if (e.isTrusted) el.dataset.auto = '0'; });
   });
 }
@@ -6702,7 +6712,7 @@ function gerarReciboDaBaixa(d) {
     id: DB.id(), numero: proximoNumeroRecibo(d.data.slice(0,4)), clienteId: d.clienteId || '',
     nome: (c && c.nome) || d.nome || 'Pagador', docto: (c && c.docto) || '', valor: d.valor, data: d.data,
     referente: d.referente, cidade: 'São Paulo', forma: d.forma || '', competencia: d.competencia || competenciaPadrao(d.data),
-    contato: (c && c.contato) || '', endereco: '', detalhe: '', desconto: 0, acrescimos: 0, obs: '',
+    contato: (c && c.contato) || '', endereco: (c && c.endereco) || '', detalhe: '', desconto: 0, acrescimos: 0, obs: '',
     financeiroId: d.financeiroId || '', automatico: true, criadoEm: new Date().toISOString(),
   };
   recibos.push(rec); DB.set('recibos', recibos);
@@ -6993,6 +7003,7 @@ function abrirPropostaModal(id, tipoNovo) {
   propItens = x ? JSON.parse(JSON.stringify(x.itens || [])) : [];
   propPendencias = x ? JSON.parse(JSON.stringify(x.pendencias || [])) : [];
   propDadosEmpresa = x ? { ...(x.dadosEmpresa || {}) } : {};
+  document.getElementById('prop-end').value = propDadosEmpresa.endereco || ''; document.getElementById('prop-end').dataset.auto = '0';
   propAnexos = x ? JSON.parse(JSON.stringify(x.anexos || [])) : [];
   propAnexosNovos = []; propAnexosRemovidos = [];
   document.getElementById('prop-incluir-anexos').checked = x ? x.incluirAnexos !== false : true;
@@ -7056,7 +7067,7 @@ function propCarregarPadrao(confirmar) {
 function propClienteMudou() {
   const id = document.getElementById('prop-cliente').value;
   const c = id ? DB.get('clientes').find(x=>x.id===id) : null;
-  if (c) { document.getElementById('prop-nome').value = c.nome; document.getElementById('prop-docto').value = c.docto || ''; }
+  if (c) { document.getElementById('prop-nome').value = c.nome; document.getElementById('prop-docto').value = c.docto || ''; if (c.endereco) { document.getElementById('prop-end').value = c.endereco; propDadosEmpresa.endereco = c.endereco; } }
 }
 function propAddItem() { propItens.push({ id: DB.id(), descricao: '', detalhe: '', valor: '' }); renderPropItens(); }
 function propRemoverItem(id) { propItens = propItens.filter(i => i.id !== id); propPendencias.forEach(pd => { if (pd.etapaId === id) pd.etapaId = ''; }); renderPropItens(); renderPropPendencias(); }
@@ -7336,6 +7347,7 @@ function propAplicarDados(d) {
   const nome = document.getElementById('prop-nome'), doc = document.getElementById('prop-docto');
   if (d.nome && !nome.value.trim()) nome.value = d.nome.replace(/\b(\w)(\w*)/g, (m, a, b) => (b.length < 2 && /^(DE|DA|DO|E)$/i.test(m)) ? m.toLowerCase() : a + b.toLowerCase());
   if (!doc.value.trim() && (d.cnpj || d.cpf)) doc.value = d.cnpj || d.cpf;
+  const pe = document.getElementById('prop-end'); if (pe && !pe.value.trim() && propDadosEmpresa.endereco) pe.value = propDadosEmpresa.endereco;
 }
 function propAnalisarPesquisa() {
   const texto = document.getElementById('prop-pesquisa').value;
