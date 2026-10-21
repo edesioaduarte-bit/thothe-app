@@ -5839,6 +5839,7 @@ function abrirReciboModal(clienteId, valor, referente, data) {
   document.getElementById('rec-comp').value = competenciaPadrao(data || today());
   document.getElementById('rec-contato').value = c ? (c.contato || '') : '';
   ['rec-end','rec-detalhe','rec-desc','rec-acres','rec-obs'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('rec-nome').dataset.auto = '0'; cnpjStatus(document.getElementById('rec-docto'), '');
   document.getElementById('rec-cidade').value = document.getElementById('rec-cidade').value || 'São Paulo';
   openModal('modal-recibo');
 }
@@ -6334,6 +6335,7 @@ function ctrRenderForm() {
   const props = DB.get('propostas').filter(p => p.tipo === c.tipo).sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
   document.getElementById('ctr-proposta').innerHTML = '<option value="">— Nenhuma —</option>' + props.map(p => `<option value="${p.id}" ${p.id===c.propostaId?'selected':''}>${propEsc(p.numero)} · ${propEsc(p.nome)} · ${fmtMoney(p.total||0)}</option>`).join('');
   document.getElementById('ctr-proposta-wrap').style.display = props.length ? '' : 'none';
+  ['ctr-nome','ctr-end','ctr-contato','ctr-rep'].forEach(i => document.getElementById(i).dataset.auto = '0'); cnpjStatus(document.getElementById('ctr-docto'), '');
   set('ctr-nome', c.nome); set('ctr-docto', c.docto); set('ctr-end', c.endereco); set('ctr-rep', c.representante); set('ctr-docrep', c.docRep); set('ctr-contato', c.contato);
   set('ctr-valor', c.valor); set('ctr-parcelas', c.parcelas); set('ctr-entrada', c.entrada); set('ctr-vencdia', c.vencDia); set('ctr-iniciopgto', c.inicioPgto);
   set('ctr-prazodias', c.prazoDias); set('ctr-vigmeses', c.vigenciaMeses); set('ctr-inicio', c.inicio); set('ctr-aviso', c.aviso);
@@ -6575,6 +6577,100 @@ function ctrExcluir(id) {
   const c = DB.get('contratos').find(x => x.id === id); if (!c || !confirm(`Excluir o contrato ${c.numero} de ${c.nome}?`)) return;
   DB.set('contratos', DB.get('contratos').filter(x => x.id !== id)); renderContratos();
 }
+
+/* ══════════════════════════════════════════════════════
+   BUSCA AUTOMÁTICA DE CNPJ (BrasilAPI → fallback CNPJ.ws) — preenche razão social, endereço e contato
+   ══════════════════════════════════════════════════════ */
+const cnpjCache = {};
+function cnpjSoDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+function cnpjValido(c) {
+  c = cnpjSoDigitos(c); if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+  const calc = (n) => { let soma = 0, pos = n - 7; for (let i = n; i >= 1; i--) { soma += c[n - i] * pos--; if (pos < 2) pos = 9; } const r = soma % 11; return r < 2 ? 0 : 11 - r; };
+  return calc(12) === +c[12] && calc(13) === +c[13];
+}
+function docMascara(v) {
+  const d = cnpjSoDigitos(v).slice(0, 14);
+  if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  return d.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
+}
+function cnpjTitulo(t) { return String(t || '').toLowerCase().replace(/(^|\s|\/|-)([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase()); }
+function cnpjMontaEndereco(o) {
+  const p = [[o.tipo, o.logradouro].filter(Boolean).join(' '), o.numero && o.numero !== 'S/N' ? o.numero : (o.numero || ''), o.complemento, o.bairro].map(x => String(x || '').trim()).filter(Boolean);
+  const cidade = [o.municipio, o.uf].filter(Boolean).join('/');
+  const cep = o.cep ? 'CEP ' + String(o.cep).replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2') : '';
+  return [cnpjTitulo(p.join(', ')), cnpjTitulo(o.municipio) + (o.uf ? '/' + o.uf : ''), cep].filter(x => x && x !== '/').join(', ');
+}
+async function cnpjConsultar(cnpj) {
+  cnpj = cnpjSoDigitos(cnpj);
+  if (cnpjCache[cnpj]) return cnpjCache[cnpj];
+  let r = null;
+  try {
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+    if (resp.ok) {
+      const d = await resp.json();
+      const adm = (d.qsa || []).find(q => /administrador/i.test(q.qualificacao_socio || '')) || (d.qsa || [])[0];
+      r = { nome: d.razao_social, fantasia: d.nome_fantasia, situacao: d.descricao_situacao_cadastral,
+        endereco: cnpjMontaEndereco({ tipo: d.descricao_tipo_de_logradouro, logradouro: d.logradouro, numero: d.numero, complemento: d.complemento, bairro: d.bairro, municipio: d.municipio, uf: d.uf, cep: d.cep }),
+        email: (d.email || '').toLowerCase(), telefone: d.ddd_telefone_1 ? d.ddd_telefone_1.replace(/^(\d{2})(\d+)$/, '($1) $2') : '', administrador: adm ? cnpjTitulo(adm.nome_socio) : '' };
+    } else if (resp.status === 404) { return { erro: 'CNPJ não encontrado na Receita' }; }
+  } catch (e) {}
+  if (!r) {
+    try {
+      const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`);
+      if (resp.ok) {
+        const d = await resp.json(), e = d.estabelecimento || {};
+        const adm = (d.socios || []).find(q => /administrador/i.test((q.qualificacao_socio || {}).descricao || '')) || (d.socios || [])[0];
+        r = { nome: d.razao_social, fantasia: e.nome_fantasia, situacao: e.situacao_cadastral,
+          endereco: cnpjMontaEndereco({ tipo: e.tipo_logradouro, logradouro: e.logradouro, numero: e.numero, complemento: e.complemento, bairro: e.bairro, municipio: (e.cidade || {}).nome, uf: (e.estado || {}).sigla, cep: e.cep }),
+          email: (e.email || '').toLowerCase(), telefone: e.ddd1 && e.telefone1 ? `(${e.ddd1}) ${e.telefone1}` : '', administrador: adm ? cnpjTitulo(adm.nome) : '' };
+      }
+    } catch (e) {}
+  }
+  if (!r) return { erro: 'Não foi possível consultar agora (sem internet ou serviço indisponível)' };
+  cnpjCache[cnpj] = r; return r;
+}
+// Preenche um campo se estiver vazio ou se foi preenchido por uma busca anterior (não sobrescreve o que você digitou)
+function cnpjPreencherCampo(id, valor) {
+  const el = document.getElementById(id); if (!el || !valor) return;
+  if (!el.value.trim() || el.dataset.auto === '1') { el.value = valor; el.dataset.auto = '1'; }
+}
+const CNPJ_FORMS = {
+  'ctr-docto':  (r) => { cnpjPreencherCampo('ctr-nome', r.nome); cnpjPreencherCampo('ctr-end', r.endereco); cnpjPreencherCampo('ctr-contato', [r.email, r.telefone].filter(Boolean).join(' · ')); cnpjPreencherCampo('ctr-rep', r.administrador); },
+  'rec-docto':  (r) => { cnpjPreencherCampo('rec-nome', r.nome); cnpjPreencherCampo('rec-end', r.endereco); cnpjPreencherCampo('rec-contato', [r.email, r.telefone].filter(Boolean).join(' · ')); },
+  'cli-docto':  (r) => { cnpjPreencherCampo('cli-nome', r.nome); cnpjPreencherCampo('cli-contato', r.telefone || r.email); },
+  'prop-docto': (r) => { cnpjPreencherCampo('prop-nome', r.nome); try { if (r.endereco && !propDadosEmpresa.endereco) propDadosEmpresa.endereco = r.endereco; } catch (e) {} },
+};
+function cnpjStatus(el, txt, cor) {
+  let st = el.parentNode.querySelector('.cnpj-st');
+  if (!st) { st = document.createElement('div'); st.className = 'cnpj-st'; st.style.cssText = 'font-size:11px;margin-top:4px'; el.parentNode.appendChild(st); }
+  st.textContent = txt || ''; st.style.color = cor || 'var(--text3)';
+}
+async function cnpjAoDigitar(id) {
+  const el = document.getElementById(id), pos = el.value.length === el.selectionStart;
+  el.value = docMascara(el.value);
+  const dig = cnpjSoDigitos(el.value);
+  if (dig.length !== 14) { cnpjStatus(el, dig.length > 11 ? 'CNPJ incompleto…' : ''); return; }
+  if (!cnpjValido(dig)) { cnpjStatus(el, '⚠️ CNPJ inválido — confira os dígitos', 'var(--red)'); return; }
+  cnpjStatus(el, '🔎 Buscando dados na Receita…');
+  const r = await cnpjConsultar(dig);
+  if (cnpjSoDigitos(el.value) !== dig) return; // usuário mudou o número durante a busca
+  if (r.erro) { cnpjStatus(el, '⚠️ ' + r.erro, 'var(--amber)'); return; }
+  CNPJ_FORMS[id](r);
+  const ativa = /ativa/i.test(String(r.situacao || ''));
+  cnpjStatus(el, `✅ ${r.nome}${r.situacao ? ' · situação: ' + String(r.situacao).toLowerCase() : ''}`, ativa || !r.situacao ? 'var(--green)' : 'var(--amber)');
+}
+function cnpjAutoLigarTudo() {
+  Object.keys(CNPJ_FORMS).forEach(id => {
+    const el = document.getElementById(id); if (!el || el.dataset.cnpjLigado) return;
+    el.dataset.cnpjLigado = '1'; el.setAttribute('inputmode', 'numeric'); el.setAttribute('maxlength', '18');
+    el.addEventListener('input', () => cnpjAoDigitar(id));
+  });
+  // campos preenchidos à mão deixam de ser sobrescritos por novas buscas
+  ['ctr-nome','ctr-end','ctr-contato','ctr-rep','rec-nome','rec-end','rec-contato','cli-nome','cli-contato','prop-nome'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.addEventListener('input', (e) => { if (e.isTrusted) el.dataset.auto = '0'; });
+  });
+}
+window.addEventListener('load', cnpjAutoLigarTudo);
 
 /* ── Recibo automático ao dar baixa ── */
 function reciboAutoAtivo() { try { return localStorage.getItem('thothe_recibo_auto') !== '0'; } catch (e) { return true; } }
