@@ -828,7 +828,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <span class="card-title" id="agfoco-titulo">AGENDA</span>
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
             </div>
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail enviado</button>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail</button>
             <button class="btn btn-primary btn-sm" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
           <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
@@ -1580,14 +1580,16 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
 <div class="modal-overlay" id="modal-email">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><span class="modal-title">📧 Registrar e-mail enviado</span><button class="modal-close" onclick="closeModal('modal-email')">×</button></div>
+    <div class="modal-header"><span class="modal-title">📧 E-mail — registrar e cronometrar</span><button class="modal-close" onclick="closeModal('modal-email')">×</button></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">Cliente (opcional)</label><select class="form-control" id="em-cliente" onchange="emailClienteMudou()"></select></div>
       <div class="form-group"><label class="form-label">Assunto *</label><input class="form-control" id="em-assunto" placeholder="Ex: Envio de documentos para abertura"></div>
       <div class="form-group"><label class="form-label">Enviado para</label><input class="form-control" id="em-dest" placeholder="Nome ou e-mail do destinatário"></div>
-      <div class="form-row">
+      <div style="font-size:12px;color:var(--text3);margin:2px 0 8px;line-height:1.5">▶ <b>Iniciar cronômetro</b>: o tempo corre enquanto você escreve; ao parar, o e-mail é dado como enviado e o lembrete de retorno é criado.<br>💾 <b>Já enviei</b>: registra agora, informando o tempo gasto.</div>
+      <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
         <div class="form-group"><label class="form-label">Data do envio</label><input class="form-control" type="date" id="em-data" onchange="emailPrazoMudou()"></div>
         <div class="form-group"><label class="form-label">Hora</label><input class="form-control" type="time" id="em-hora"></div>
+        <div class="form-group"><label class="form-label">Tempo gasto (min)</label><input class="form-control" type="number" min="0" id="em-min" placeholder="só em “Já enviei”"></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:6px 0 10px"><input type="checkbox" id="em-acomp" checked onchange="emailAcompToggle()" style="width:16px;height:16px;accent-color:var(--gold)"> 🔔 Acompanhar o retorno (criar lembrete na agenda)</label>
       <div id="em-acomp-box">
@@ -1599,7 +1601,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
       <div class="form-group"><label class="form-label">Observações</label><input class="form-control" id="em-obs" placeholder="O que você precisa receber de volta?"></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-email')">Cancelar</button><button class="btn btn-primary" onclick="emailSalvar()">✅ Registrar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-email')">Cancelar</button><button class="btn btn-ghost" onclick="emailSalvar('enviado')">💾 Já enviei</button><button class="btn btn-primary" onclick="emailSalvar('iniciar')">▶ Iniciar cronômetro</button></div>
   </div>
 </div>
 
@@ -3224,6 +3226,7 @@ function pararTimer(id) {
       tarefa.status = 'concluida';
       const agora = new Date();
       tarefa.horaConclusao = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+      emailPosConclusao(tarefas, tarefa);
       DB.set('tarefas', tarefas);
       tarefaConcluida = true;
     }
@@ -3247,7 +3250,7 @@ function concluirTarefaComTimer(tarefaId) {
   if (t) { pararTimer(t.id); return; } // pararTimer já marca a tarefa como concluída e avisa
   const tarefas = DB.get('tarefas');
   const tarefa = tarefas.find(x=>x.id===tarefaId);
-  if (tarefa) { tarefa.status = 'concluida'; DB.set('tarefas', tarefas); }
+  if (tarefa) { tarefa.status = 'concluida'; emailPosConclusao(tarefas, tarefa); DB.set('tarefas', tarefas); }
   toast('✅ Tarefa concluída');
   renderAll();
 }
@@ -4325,6 +4328,7 @@ function toggleTarefa(id) {
       // Data em que foi de fato concluída (hoje) — usada pra uma tarefa vencida aparecer
       // como concluída no dia de hoje, em vez de sumir presa à data original vencida.
       t.dataConclusao = today();
+      emailPosConclusao(tarefas, t);
     } else {
       t.horaConclusao = '';
       t.dataConclusao = '';
@@ -6743,7 +6747,7 @@ function addDiasUteis(str, n) {
 }
 function abrirEmailModal(clienteId) {
   fillClienteSelect(document.getElementById('em-cliente'), clienteId || '', { semNovo: true, vazio: '— Sem cliente —' });
-  ['em-assunto','em-dest','em-obs'].forEach(i => document.getElementById(i).value = '');
+  ['em-assunto','em-dest','em-obs','em-min'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('em-data').value = today(); document.getElementById('em-hora').value = horaAgora();
   document.getElementById('em-acomp').checked = true; document.getElementById('em-prazo').value = '2';
   emailAcompToggle(); emailPrazoMudou();
@@ -6759,26 +6763,60 @@ function emailPrazoMudou() {
   const n = parseInt(document.getElementById('em-prazo').value, 10);
   if (n > 0) document.getElementById('em-retorno').value = addDiasUteis(document.getElementById('em-data').value || today(), n);
 }
-function emailSalvar() {
+function emailRetornoTarefa(base, dataEnvio, retorno) {
+  return { id: DB.id(), tipo: 'profissional', titulo: `📧 Aguardando retorno: ${base.emailAssunto}`, clienteId: base.clienteId, data: retorno, hora: '', status: 'pendente', horaCriacao: horaAgora(),
+    comentarios: [`E-mail enviado em ${fmtDate(dataEnvio)}${base.hora ? ' às ' + base.hora : ''}${base.emailDest ? ' para ' + base.emailDest : ''}.`, base.emailObs ? 'Aguardando: ' + base.emailObs : ''].filter(Boolean).join('\n'),
+    emailKind: 'retorno', emailId: base.emailId, emailAssunto: base.emailAssunto, emailDest: base.emailDest, emailEnviadoEm: dataEnvio, tentativas: 1, prioridade: 'normal', recorrencia: '' };
+}
+function emailSalvar(modo) {
   const assunto = document.getElementById('em-assunto').value.trim();
   if (!assunto) { toast('⚠️ Informe o assunto do e-mail'); return; }
   const data = document.getElementById('em-data').value || today(), hora = document.getElementById('em-hora').value || horaAgora();
   const dest = document.getElementById('em-dest').value.trim(), obs = document.getElementById('em-obs').value.trim();
   const clienteId = document.getElementById('em-cliente').value;
   const acomp = document.getElementById('em-acomp').checked, retorno = document.getElementById('em-retorno').value;
+  const prazo = parseInt(document.getElementById('em-prazo').value, 10) || 0;
   if (acomp && !retorno) { toast('⚠️ Informe a data do lembrete'); return; }
   const emailId = DB.id(), tarefas = DB.get('tarefas');
-  tarefas.push({ id: DB.id(), tipo: 'profissional', titulo: `📧 E-mail enviado: ${assunto}`, clienteId, data, hora, status: 'concluida', dataConclusao: data, horaConclusao: hora,
-    comentarios: [dest ? `Para: ${dest}` : '', obs].filter(Boolean).join('\n'), emailKind: 'enviado', emailId, prioridade: 'normal', recorrencia: '' });
-  if (acomp) {
-    tarefas.push({ id: DB.id(), tipo: 'profissional', titulo: `📧 Aguardando retorno: ${assunto}`, clienteId, data: retorno, hora: '', status: 'pendente', horaCriacao: horaAgora(),
-      comentarios: [`E-mail enviado em ${fmtDate(data)} às ${hora}${dest ? ' para ' + dest : ''}.`, obs ? 'Aguardando: ' + obs : ''].filter(Boolean).join('\n'),
-      emailKind: 'retorno', emailId, emailAssunto: assunto, emailDest: dest, emailEnviadoEm: data, tentativas: 1, prioridade: 'normal', recorrencia: '' });
+  const coment = [dest ? `Para: ${dest}` : '', obs].filter(Boolean).join('\n');
+  const base = { clienteId, hora, emailAssunto: assunto, emailDest: dest, emailObs: obs, emailId };
+
+  if (modo === 'iniciar') {
+    // tarefa normal da agenda: ao parar o cronômetro (ou marcar como feita) vira "enviado" e cria o lembrete
+    const t = { id: DB.id(), tipo: 'profissional', titulo: `📧 E-mail: ${assunto}`, clienteId, data: today(), hora: '', status: 'pendente', horaCriacao: horaAgora(), comentarios: coment,
+      emailKind: 'redigir', emailId, emailAssunto: assunto, emailDest: dest, emailObs: obs, emailAcomp: acomp, emailPrazo: prazo, emailRetornoData: prazo ? '' : retorno, prioridade: 'normal', recorrencia: '' };
+    tarefas.push(t); DB.set('tarefas', tarefas);
+    closeModal('modal-email'); renderAll();
+    iniciarTarefaComoTimer(clienteId, t.titulo, t.id);
+    return;
   }
+
+  tarefas.push({ id: DB.id(), tipo: 'profissional', titulo: `📧 E-mail enviado: ${assunto}`, clienteId, data, hora, status: 'concluida', dataConclusao: data, horaConclusao: hora,
+    comentarios: coment, emailKind: 'enviado', emailId, prioridade: 'normal', recorrencia: '' });
+  if (acomp) tarefas.push(emailRetornoTarefa(base, data, retorno));
   DB.set('tarefas', tarefas);
+  const min = parseInt(document.getElementById('em-min').value, 10) || 0;
+  if (min > 0) {
+    const fim = new Date(`${data}T${hora}:00`), ini = new Date(fim.getTime() - min * 60000), hm = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const regs = DB.get('horas');
+    regs.push({ id: DB.id(), clienteId, data, horaInicio: hm(ini), horaFim: hm(fim), segundos: min * 60, descricao: `E-mail: ${assunto}`, comentarios: '', tipo: 'manual', criadoEm: new Date().toISOString() });
+    DB.set('horas', regs);
+  }
   closeModal('modal-email');
-  toast(acomp ? `📧 E-mail registrado · lembrete em ${fmtDate(retorno)}` : '📧 E-mail registrado');
+  toast(`📧 E-mail registrado${min ? ' · ' + min + ' min' : ''}${acomp ? ' · lembrete em ' + fmtDate(retorno) : ''}`);
   renderAll();
+}
+// Chamado quando uma tarefa-e-mail em redação é concluída (cronômetro parado ou marcada como feita)
+function emailPosConclusao(tarefas, t) {
+  if (!t || t.emailKind !== 'redigir') return;
+  t.emailKind = 'enviado'; t.titulo = `📧 E-mail enviado: ${t.emailAssunto}`; t.emailEnviadoEm = today();
+  let msg = '📧 E-mail enviado';
+  if (t.emailAcomp) {
+    const retorno = t.emailPrazo ? addDiasUteis(today(), t.emailPrazo) : (t.emailRetornoData || addDiasUteis(today(), 2));
+    tarefas.push(emailRetornoTarefa({ clienteId: t.clienteId, hora: horaAgora(), emailAssunto: t.emailAssunto, emailDest: t.emailDest, emailObs: t.emailObs, emailId: t.emailId }, today(), retorno));
+    msg += ` · lembrete de retorno em ${fmtDate(retorno)}`;
+  }
+  setTimeout(() => toast(msg), 1600);
 }
 function emailRespondeu(id) {
   const tarefas = DB.get('tarefas'), t = tarefas.find(x => x.id === id); if (!t) return;
