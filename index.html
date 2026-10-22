@@ -828,7 +828,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <span class="card-title" id="agfoco-titulo">AGENDA</span>
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
             </div>
-            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openTarefaModal()">+ Nova tarefa</button>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail enviado</button>
+            <button class="btn btn-primary btn-sm" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
           <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
             <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px">
@@ -857,6 +858,11 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <div style="margin-left:auto;font-size:11px;color:var(--text3)" id="agfoco-resumo"></div>
           </div>
           <div id="agfoco-lista" style="padding:14px 20px"></div>
+        </div>
+
+        <div class="card hud" id="agenda-emails-card" style="display:none;margin-bottom:14px">
+          <div class="card-header"><span class="card-title">📧 Aguardando retorno de e-mail</span><span id="agenda-emails-qtd" style="font-size:11px;color:var(--text3)"></span></div>
+          <div id="agenda-emails-lista" style="padding:4px 16px 12px"></div>
         </div>
 
         <!-- ══════════ Calendário completo, feriados, obrigações e horas (secundário, recolhido) ══════════ -->
@@ -1569,6 +1575,48 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="salvarContrato(false)">💾 Salvar</button>
       <button class="btn btn-primary" onclick="salvarContrato(true)">🖨️ Salvar e imprimir</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-email">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><span class="modal-title">📧 Registrar e-mail enviado</span><button class="modal-close" onclick="closeModal('modal-email')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Cliente (opcional)</label><select class="form-control" id="em-cliente" onchange="emailClienteMudou()"></select></div>
+      <div class="form-group"><label class="form-label">Assunto *</label><input class="form-control" id="em-assunto" placeholder="Ex: Envio de documentos para abertura"></div>
+      <div class="form-group"><label class="form-label">Enviado para</label><input class="form-control" id="em-dest" placeholder="Nome ou e-mail do destinatário"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Data do envio</label><input class="form-control" type="date" id="em-data" onchange="emailPrazoMudou()"></div>
+        <div class="form-group"><label class="form-label">Hora</label><input class="form-control" type="time" id="em-hora"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:6px 0 10px"><input type="checkbox" id="em-acomp" checked onchange="emailAcompToggle()" style="width:16px;height:16px;accent-color:var(--gold)"> 🔔 Acompanhar o retorno (criar lembrete na agenda)</label>
+      <div id="em-acomp-box">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Cobrar retorno em</label>
+            <select class="form-control" id="em-prazo" onchange="emailPrazoMudou()"><option value="1">1 dia útil</option><option value="2" selected>2 dias úteis</option><option value="3">3 dias úteis</option><option value="5">5 dias úteis</option><option value="7">7 dias úteis</option><option value="10">10 dias úteis</option><option value="0">Outra data…</option></select></div>
+          <div class="form-group"><label class="form-label">Data do lembrete</label><input class="form-control" type="date" id="em-retorno" onchange="document.getElementById('em-prazo').value='0'"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Observações</label><input class="form-control" id="em-obs" placeholder="O que você precisa receber de volta?"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-email')">Cancelar</button><button class="btn btn-primary" onclick="emailSalvar()">✅ Registrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-email-cobrar">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><span class="modal-title">↻ Cobrar o retorno novamente</span><button class="modal-close" onclick="closeModal('modal-email-cobrar')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="emc-id">
+      <div id="emc-titulo" style="font-size:13px;font-weight:600;margin-bottom:12px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:10px"><input type="checkbox" id="emc-reenviei" checked style="width:16px;height:16px;accent-color:var(--gold)"> Reenviei / cobrei hoje</label>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Novo prazo</label>
+          <select class="form-control" id="emc-prazo" onchange="emailCobrarPrazo()"><option value="1">1 dia útil</option><option value="2" selected>2 dias úteis</option><option value="3">3 dias úteis</option><option value="5">5 dias úteis</option><option value="0">Outra data…</option></select></div>
+        <div class="form-group"><label class="form-label">Lembrar em</label><input class="form-control" type="date" id="emc-data" onchange="document.getElementById('emc-prazo').value='0'"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-email-cobrar')">Cancelar</button><button class="btn btn-primary" onclick="emailCobrarSalvar()">↻ Reagendar</button></div>
   </div>
 </div>
 
@@ -2630,6 +2678,7 @@ function linhaAgendaComAcoes(item, ehTarefa) {
     }
   }
   if (!ehTarefa) acoesHtml = acaoTimerObrig(item);
+  if (ehTarefa) acoesHtml = emailAcoesHtml(item) + acoesHtml;
   acoesHtml += `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();${deleteFn}" title="Excluir">🗑️</button>`;
 
   return `
@@ -3850,7 +3899,7 @@ function linhaAgendaFocoItem(t, vencida) {
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaqueVencida?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}${tipoIcone} ${(t.titulo||'').replace(/</g,'&lt;')}${t.recorrencia?' 🔁':''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
     </div>
-    ${timerHtml}
+    ${emailAcoesHtml(t)}${timerHtml}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirTarefaComOpcoes('${t.id}')" title="Excluir">🗑️</button>
   </div>`;
 }
@@ -4000,6 +4049,7 @@ function renderAgendaFoco() {
 }
 
 function renderAgendaUnificada() {
+  try { renderEmailsAguardando(); } catch (e) {}
   popularFiltroClienteCalendario();
   renderCalendarioGrid();
   renderAgendaLista();
@@ -4135,6 +4185,7 @@ function saveTarefa(iniciar) {
   const existente = editId ? tarefas.find(x=>x.id===editId) : null;
   const horaInformada = document.getElementById('tar-hora').value;
   const item = {
+    ...(existente || {}),
     id: editId || DB.id(),
     tipo: document.getElementById('tar-tipo').value || 'profissional',
     titulo,
@@ -6681,6 +6732,113 @@ function cnpjAutoLigarTudo() {
   });
 }
 window.addEventListener('load', cnpjAutoLigarTudo);
+
+/* ══════════════════════════════════════════════════════
+   E-MAILS ENVIADOS — registro + acompanhamento do retorno na Agenda
+   ══════════════════════════════════════════════════════ */
+function addDiasUteis(str, n) {
+  const d = new Date(str + 'T12:00:00'); let falta = n;
+  while (falta > 0) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) falta--; }
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function abrirEmailModal(clienteId) {
+  fillClienteSelect(document.getElementById('em-cliente'), clienteId || '', { semNovo: true, vazio: '— Sem cliente —' });
+  ['em-assunto','em-dest','em-obs'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('em-data').value = today(); document.getElementById('em-hora').value = horaAgora();
+  document.getElementById('em-acomp').checked = true; document.getElementById('em-prazo').value = '2';
+  emailAcompToggle(); emailPrazoMudou();
+  openModal('modal-email');
+  setTimeout(() => document.getElementById('em-assunto').focus(), 80);
+}
+function emailClienteMudou() {
+  const c = DB.get('clientes').find(x => x.id === document.getElementById('em-cliente').value);
+  if (c && !document.getElementById('em-dest').value) document.getElementById('em-dest').value = (c.contato && c.contato.includes('@')) ? c.contato : c.nome;
+}
+function emailAcompToggle() { document.getElementById('em-acomp-box').style.display = document.getElementById('em-acomp').checked ? '' : 'none'; }
+function emailPrazoMudou() {
+  const n = parseInt(document.getElementById('em-prazo').value, 10);
+  if (n > 0) document.getElementById('em-retorno').value = addDiasUteis(document.getElementById('em-data').value || today(), n);
+}
+function emailSalvar() {
+  const assunto = document.getElementById('em-assunto').value.trim();
+  if (!assunto) { toast('⚠️ Informe o assunto do e-mail'); return; }
+  const data = document.getElementById('em-data').value || today(), hora = document.getElementById('em-hora').value || horaAgora();
+  const dest = document.getElementById('em-dest').value.trim(), obs = document.getElementById('em-obs').value.trim();
+  const clienteId = document.getElementById('em-cliente').value;
+  const acomp = document.getElementById('em-acomp').checked, retorno = document.getElementById('em-retorno').value;
+  if (acomp && !retorno) { toast('⚠️ Informe a data do lembrete'); return; }
+  const emailId = DB.id(), tarefas = DB.get('tarefas');
+  tarefas.push({ id: DB.id(), tipo: 'profissional', titulo: `📧 E-mail enviado: ${assunto}`, clienteId, data, hora, status: 'concluida', dataConclusao: data, horaConclusao: hora,
+    comentarios: [dest ? `Para: ${dest}` : '', obs].filter(Boolean).join('\n'), emailKind: 'enviado', emailId, prioridade: 'normal', recorrencia: '' });
+  if (acomp) {
+    tarefas.push({ id: DB.id(), tipo: 'profissional', titulo: `📧 Aguardando retorno: ${assunto}`, clienteId, data: retorno, hora: '', status: 'pendente', horaCriacao: horaAgora(),
+      comentarios: [`E-mail enviado em ${fmtDate(data)} às ${hora}${dest ? ' para ' + dest : ''}.`, obs ? 'Aguardando: ' + obs : ''].filter(Boolean).join('\n'),
+      emailKind: 'retorno', emailId, emailAssunto: assunto, emailDest: dest, emailEnviadoEm: data, tentativas: 1, prioridade: 'normal', recorrencia: '' });
+  }
+  DB.set('tarefas', tarefas);
+  closeModal('modal-email');
+  toast(acomp ? `📧 E-mail registrado · lembrete em ${fmtDate(retorno)}` : '📧 E-mail registrado');
+  renderAll();
+}
+function emailRespondeu(id) {
+  const tarefas = DB.get('tarefas'), t = tarefas.find(x => x.id === id); if (!t) return;
+  t.status = 'concluida'; t.dataConclusao = today(); t.horaConclusao = horaAgora();
+  t.comentarios = (t.comentarios ? t.comentarios + '\n' : '') + `✅ Retorno recebido em ${fmtDate(today())}.`;
+  DB.set('tarefas', tarefas); toast('✅ Retorno registrado — acompanhamento encerrado'); renderAll();
+}
+function emailCobrarAbrir(id) {
+  const t = DB.get('tarefas').find(x => x.id === id); if (!t) return;
+  document.getElementById('emc-id').value = id;
+  document.getElementById('emc-titulo').textContent = t.emailAssunto || t.titulo;
+  document.getElementById('emc-reenviei').checked = true; document.getElementById('emc-prazo').value = '2';
+  emailCobrarPrazo(); openModal('modal-email-cobrar');
+}
+function emailCobrarPrazo() {
+  const n = parseInt(document.getElementById('emc-prazo').value, 10);
+  if (n > 0) document.getElementById('emc-data').value = addDiasUteis(today(), n);
+}
+function emailCobrarSalvar() {
+  const id = document.getElementById('emc-id').value, nova = document.getElementById('emc-data').value;
+  if (!nova) { toast('⚠️ Informe a nova data'); return; }
+  const tarefas = DB.get('tarefas'), t = tarefas.find(x => x.id === id); if (!t) return;
+  const reenviei = document.getElementById('emc-reenviei').checked;
+  if (reenviei) { t.tentativas = (t.tentativas || 1) + 1; t.comentarios = (t.comentarios ? t.comentarios + '\n' : '') + `↻ Cobrança ${t.tentativas - 1} enviada em ${fmtDate(today())} às ${horaAgora()}.`; }
+  t.data = nova; t.hora = ''; t.status = 'pendente';
+  DB.set('tarefas', tarefas); closeModal('modal-email-cobrar');
+  toast(`↻ Novo lembrete em ${fmtDate(nova)}`); renderAll();
+}
+function emailAcoesHtml(t) {
+  if (t.emailKind !== 'retorno' || t.status === 'concluida') return '';
+  return `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();emailRespondeu('${t.id}')" title="O cliente respondeu">✅ Respondeu</button>
+    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();emailCobrarAbrir('${t.id}')" title="Cobrar novamente e reagendar">↻ Cobrar</button>`;
+}
+function emailInfo(t) {
+  if (t.emailKind !== 'retorno') return '';
+  const dias = t.emailEnviadoEm ? Math.max(0, Math.round((new Date(today() + 'T12:00:00') - new Date(t.emailEnviadoEm + 'T12:00:00')) / 86400000)) : null;
+  return `<span style="font-size:10.5px;color:var(--text3)">enviado ${dias === 0 ? 'hoje' : dias != null ? 'há ' + dias + ' dia' + (dias > 1 ? 's' : '') : ''}${(t.tentativas || 1) > 1 ? ' · ' + (t.tentativas - 1) + ' cobrança' + (t.tentativas > 2 ? 's' : '') : ''}</span>`;
+}
+function renderEmailsAguardando() {
+  const card = document.getElementById('agenda-emails-card'); if (!card) return;
+  const hoje = today();
+  const lista = DB.get('tarefas').filter(t => t.emailKind === 'retorno' && t.status !== 'concluida').sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+  card.style.display = lista.length ? '' : 'none';
+  if (!lista.length) return;
+  const atrasados = lista.filter(t => t.data && t.data <= hoje).length;
+  document.getElementById('agenda-emails-qtd').textContent = `${lista.length} em aberto${atrasados ? ' · ' + atrasados + ' para cobrar' : ''}`;
+  const clientes = DB.get('clientes');
+  document.getElementById('agenda-emails-lista').innerHTML = lista.map(t => {
+    const cl = clientes.find(c => c.id === t.clienteId), vence = t.data && t.data <= hoje, dif = t.data ? Math.round((new Date(t.data + 'T12:00:00') - new Date(hoje + 'T12:00:00')) / 86400000) : 0;
+    const quando = !t.data ? '' : dif === 0 ? 'cobrar hoje' : dif < 0 ? `atrasado ${-dif} dia${dif < -1 ? 's' : ''}` : `cobrar em ${fmtDate(t.data)}`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${vence ? 'var(--red-l)' : 'var(--surface3)'};border:1px solid var(--border);margin-top:6px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px;cursor:pointer" onclick="abrirDetalhesTarefa('${t.id}')">
+        <div style="font-size:13px;font-weight:600">${propEsc(t.emailAssunto || t.titulo)}</div>
+        <div style="font-size:11px;color:var(--text3)">${cl ? propEsc(cl.nome) + ' · ' : ''}${t.emailDest ? 'para ' + propEsc(t.emailDest) + ' · ' : ''}${emailInfo(t)}</div>
+      </div>
+      <span class="chip ${vence ? 'chip-red' : 'chip-gray'}" style="font-size:10.5px">${quando}</span>
+      ${emailAcoesHtml(t)}
+    </div>`;
+  }).join('');
+}
 
 /* ── Recibo automático ao dar baixa ── */
 function reciboAutoAtivo() { try { return localStorage.getItem('thothe_recibo_auto') !== '0'; } catch (e) { return true; } }
