@@ -7135,15 +7135,36 @@ function propMudarStatus(id, v) {
   x.status = v;
   if (v === 'enviada' && antes !== 'enviada') x.enviadaEm = today();
   DB.set('propostas', props);
-  if (v === 'aprovada' && antes !== 'aprovada') propCriarTarefaExecucao(x);
+  let prevData = null;
+  if (v === 'aprovada' && antes !== 'aprovada') { propCriarTarefaExecucao(x); prevData = propCriarPrevisaoRecebimento(x); }
+  if (antes === 'aprovada' && v !== 'aprovada') propRemoverPrevisaoRecebimento(x);
   propSincronizarAcompanhamento();
   if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
-  else if (v === 'aprovada' && antes !== 'aprovada') toast('✅ Proposta aprovada — tarefa criada na Agenda');
+  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias)` : '✅ Proposta aprovada — tarefa criada na Agenda');
   renderPropostas();
 }
 const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
 function propTarefaBase(x, extra) {
   return { id: DB.id() + Math.random().toString(36).slice(2, 5), tipo: 'profissional', clienteId: x.clienteId || '', hora: '', prioridade: 'normal', recorrencia: '', status: 'pendente', horaCriacao: horaAgora(), propostaId: x.id, ...extra };
+}
+const PROP_DIAS_RECEBIMENTO = 20;   // prazo projetado para receber após a aprovação
+// Ao aprovar: lança o valor da proposta como "a receber" projetado para daqui a 20 dias (uma só por proposta)
+function propCriarPrevisaoRecebimento(x) {
+  const valor = parseFloat(x.total) || 0;
+  if (valor <= 0) return null;
+  const lista = DB.get('previsoesAvulsas');
+  if (lista.some(a => a.propostaId === x.id)) return null;
+  const venc = addDiasStr(today(), PROP_DIAS_RECEBIMENTO);
+  lista.push({ id: DB.id(), clienteId: x.clienteId || '', propostaId: x.id, vencimento: venc, descricao: `Proposta ${x.numero} — ${x.nome} (prev. ${fmtDate(venc)})`,
+    valor, mes: venc.slice(0, 7), status: 'pendente', criadoEm: new Date().toISOString() });
+  DB.set('previsoesAvulsas', lista);
+  return venc;
+}
+// Se a aprovação for desfeita, a projeção ainda não recebida sai da previsão
+function propRemoverPrevisaoRecebimento(x) {
+  const lista = DB.get('previsoesAvulsas');
+  const resto = lista.filter(a => !(a.propostaId === x.id && a.status !== 'recebido'));
+  if (resto.length !== lista.length) DB.set('previsoesAvulsas', resto);
 }
 // Tarefa de execução criada ao aprovar a proposta (uma só por proposta)
 function propCriarTarefaExecucao(x) {
