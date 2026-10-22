@@ -164,7 +164,7 @@ html, body {
 .sf-name { font-size: 12.5px; font-weight: 600; flex: 1; white-space: nowrap; }
 
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.topbar { height: 58px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(247,244,236,.88); backdrop-filter: blur(10px); flex-shrink: 0; }
+.topbar { height: 58px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(247,244,236,.88);  flex-shrink: 0; }
 .page-title { font-family: var(--font-brand); font-size: 15px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
 .page-sub { font-size: 11.5px; color: var(--text3); }
 .content { flex: 1; overflow-y: auto; padding: 28px 32px 48px; }
@@ -238,7 +238,7 @@ html, body {
 select.form-control { color-scheme: dark; }
 textarea.form-control { resize: vertical; font-family: inherit; }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 .modal { background: var(--surface2b); border: 1px solid var(--border2); border-radius: 16px; box-shadow: var(--shadow-lg); width: 100%; max-width: 480px; transform: scale(.97) translateY(8px); transition: transform .2s cubic-bezier(.34,1.2,.64,1); }
 .modal-overlay.open .modal { transform: scale(1) translateY(0); }
@@ -293,22 +293,22 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
 
 /* ═══ Visual moderno: vidro, brilho dourado, animações ═══ */
-:root { --surface-rgb: 255,255,255; --glass-bg: rgba(255,255,255,.8); --glass-bg2: rgba(251,249,243,.7); }
-:root[data-theme="dark"] { --surface-rgb: 21,18,12; --glass-bg: rgba(24,20,13,.74); --glass-bg2: rgba(18,15,10,.66); }
+:root { --surface-rgb: 255,255,255; --glass-bg: rgba(255,255,255,.8); --glass-bg2: rgba(251,249,243,.94); }
+:root[data-theme="dark"] { --surface-rgb: 21,18,12; --glass-bg: rgba(24,20,13,.74); --glass-bg2: rgba(18,15,10,.94); }
 .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.bg-orbs i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; animation: orbDrift 26s ease-in-out infinite alternate; }
+.bg-orbs i { position: absolute; border-radius: 50%; opacity: .55; }  /* estático e sem blur: camadas animadas/blur gigantes travam a renderização em alguns Macs */
 .bg-orbs i:nth-child(1) { width: 520px; height: 520px; left: -120px; top: -140px; background: radial-gradient(circle, rgba(217,178,95,.38), transparent 70%); }
-.bg-orbs i:nth-child(2) { width: 460px; height: 460px; right: -100px; top: 22%; background: radial-gradient(circle, rgba(96,165,250,.20), transparent 70%); animation-duration: 32s; animation-delay: -8s; }
-.bg-orbs i:nth-child(3) { width: 560px; height: 560px; left: 30%; bottom: -260px; background: radial-gradient(circle, rgba(240,177,58,.22), transparent 70%); animation-duration: 38s; animation-delay: -14s; }
+.bg-orbs i:nth-child(2) { width: 460px; height: 460px; right: -100px; top: 22%; background: radial-gradient(circle, rgba(96,165,250,.20), transparent 70%); }
+.bg-orbs i:nth-child(3) { width: 560px; height: 560px; left: 30%; bottom: -260px; background: radial-gradient(circle, rgba(240,177,58,.22), transparent 70%); }
 @keyframes orbDrift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(70px,50px,0) scale(1.18); } }
 .app { position: relative; z-index: 1; }
-.sidebar { background: var(--glass-bg2); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
-.topbar { background: var(--glass-bg2) !important; backdrop-filter: blur(18px) saturate(1.2); }
+.sidebar { background: var(--glass-bg2); }
+.topbar { background: var(--glass-bg2) !important; }
 .card, .metric-card { background: var(--glass-bg); border-color: var(--border); box-shadow: 0 8px 28px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.05); transition: border-color .25s, box-shadow .25s, transform .25s; }
 .card:hover, .metric-card:hover { border-color: var(--border2); }
 .metric-card[onclick]:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(0,0,0,.22), 0 0 0 1px var(--border2); }
-.modal { background: var(--glass-bg2); backdrop-filter: blur(22px) saturate(1.2); -webkit-backdrop-filter: blur(22px) saturate(1.2); }
-.modal-overlay { background: rgba(0,0,0,.5); backdrop-filter: blur(6px); }
+.modal { background: var(--glass-bg2); }
+.modal-overlay { background: rgba(0,0,0,.55); }
 
 /* botões modernos */
 .btn { border-radius: 12px; padding: 9px 17px; font-weight: 600; letter-spacing: .01em; position: relative; overflow: hidden; isolation: isolate;
@@ -356,7 +356,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 .hero-sky .nuvem::before, .hero-sky .nuvem::after { content: ''; position: absolute; background: inherit; border-radius: 50%; }
 .hero-sky .nuvem::before { width: 38px; height: 38px; left: 14px; top: -18px; } .hero-sky .nuvem::after { width: 30px; height: 30px; left: 44px; top: -12px; }
 .hero-sky.noite .nuvem { background: rgba(160,170,230,.14); }
-.hero-sky .n1 { top: 22%; animation-duration: 60s; } .hero-sky .n2 { top: 58%; transform: scale(.7); animation-duration: 85s; animation-delay: -30s; } .hero-sky .n3 { top: 40%; transform: scale(1.2); animation-duration: 110s; animation-delay: -60s; opacity: .7; }
+.hero-sky .n1 { top: 22%; animation-duration: 60s; } .hero-sky .n2 { top: 58%; transform: scale(.7); } .hero-sky .n3 { top: 40%; transform: scale(1.2); opacity: .7; }
 @keyframes nuvemAnda { from { left: -140px; } to { left: 105%; } }
 .hero-sky .estrela { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; display: none; animation: pisca 3s ease-in-out infinite; }
 .hero-sky.noite .estrela { display: block; }
@@ -389,7 +389,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 .clima-cena .nuv::before, .clima-cena .nuv::after { content: ''; position: absolute; background: inherit; border-radius: 50%; }
 .clima-cena .nuv::before { width: 50px; height: 50px; left: 18px; top: -24px; } .clima-cena .nuv::after { width: 38px; height: 38px; left: 60px; top: -16px; }
 .clima-cena.escuro .nuv { background: rgba(120,128,150,.45); }
-.clima-cena .nv1 { top: 14%; animation-duration: 38s; } .clima-cena .nv2 { top: 46%; animation-duration: 56s; animation-delay: -20s; transform: scale(.75); } .clima-cena .nv3 { top: 70%; animation-duration: 70s; animation-delay: -40s; transform: scale(1.2); opacity: .8; }
+.clima-cena .nv1 { top: 14%; animation-duration: 38s; } .clima-cena .nv2 { top: 46%; transform: scale(.75); } .clima-cena .nv3 { top: 70%; transform: scale(1.2); opacity: .8; }
 .clima-cena .gota { position: absolute; top: -20px; width: 2px; height: 16px; border-radius: 2px; background: linear-gradient(to bottom, transparent, rgba(110,175,255,.9)); animation: chove linear infinite; }
 @keyframes chove { to { transform: translateY(380px); } }
 .clima-cena .floco { position: absolute; top: -12px; width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .9; animation: neva linear infinite; }
@@ -425,7 +425,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 .bv-sky.noite .astro { background: radial-gradient(circle at 35% 35%, #fff, #E5E7F5 65%, #B9BEDD); box-shadow: 0 0 30px 8px rgba(190,200,255,.35); }
 .bv-sky .nuvem { position: absolute; height: 18px; width: 72px; border-radius: 30px; background: rgba(255,255,255,.12); animation: nuvemAnda linear infinite; }
 .bv-sky .nuvem::before { content: ''; position: absolute; width: 30px; height: 30px; left: 12px; top: -14px; border-radius: 50%; background: inherit; }
-.bv-sky .n1 { top: 30%; animation-duration: 40s; } .bv-sky .n2 { top: 62%; animation-duration: 64s; animation-delay: -22s; }
+.bv-sky .n1 { top: 30%; animation-duration: 40s; } .bv-sky .n2 { top: 62%; }
 .bv-topo > *:not(.bv-sky) { position: relative; z-index: 1; }
 .bv-saud { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; animation: riseIn .7s both; }
 .bv-data { font-size: 14px; color: var(--text2); margin-top: 6px; animation: riseIn .7s .1s both; }
@@ -2876,19 +2876,30 @@ function showPage(id) {
   document.getElementById('page-sub').textContent = PAGE_CONFIG[id].sub;
   document.getElementById('sidebar').classList.remove('open');
 
-  if (id === 'dashboard')  renderDashboard();
-  if (id === 'clientes')   { gerarCodigosClientes(true); renderClientes(); }
-  if (id === 'gestao')     renderGestao();
-  if (id === 'fechamento') renderFechamento();
-  if (id === 'obrigacoes') renderObrigacoes();
-  if (id === 'agenda')     { gerarOcorrenciasRecorrentesFuturas(); renderAgendaUnificada(); }
-  if (id === 'financeiro') renderFinanceiro();
-  if (id === 'relatorios') renderRelatorioAtual();
-  if (id === 'rotina') renderRotina();
-  if (id === 'propostas') renderPropostas();
-  if (id === 'recibos') renderRecibos();
-  if (id === 'contratos') renderContratos();
+  const r = {
+    dashboard: () => renderDashboard(), clientes: () => { gerarCodigosClientes(true); renderClientes(); }, gestao: () => renderGestao(),
+    fechamento: () => renderFechamento(), obrigacoes: () => renderObrigacoes(), agenda: () => { gerarOcorrenciasRecorrentesFuturas(); renderAgendaUnificada(); },
+    financeiro: () => renderFinanceiro(), relatorios: () => renderRelatorioAtual(), rotina: () => renderRotina(), propostas: () => renderPropostas(),
+    recibos: () => renderRecibos(), contratos: () => renderContratos(),
+  }[id];
+  const aviso = document.getElementById('page-' + id).querySelector(':scope > .erro-tela'); if (aviso) aviso.remove();
+  try { if (r) r(); } catch (e) {
+    console.error('Erro ao montar a tela ' + id, e); registrarErroTela(id, e);
+  }
 }
+function registrarErroTela(id, e) {
+  try {
+    const lista = JSON.parse(localStorage.getItem('thothe_erros') || '[]');
+    lista.push({ quando: new Date().toISOString(), tela: id, msg: String(e && e.message || e), pilha: String(e && e.stack || '').split('\n').slice(0, 3).join(' | ') });
+    localStorage.setItem('thothe_erros', JSON.stringify(lista.slice(-20)));
+  } catch (x) {}
+  const pg = document.getElementById('page-' + id); if (!pg) return;
+  const d = document.createElement('div'); d.className = 'erro-tela';
+  d.style.cssText = 'margin:0 0 14px;padding:12px 16px;border-radius:10px;border:1px solid var(--red);background:var(--red-l);color:var(--text);font-size:12.5px;line-height:1.5';
+  d.innerHTML = `<b>⚠️ Parte desta tela não carregou.</b> Detalhe técnico: <code>${propEsc(String(e && e.message || e))}</code><br><span style="color:var(--text3)">Tire um print desta mensagem e envie para correção.</span>`;
+  pg.insertBefore(d, pg.firstChild);
+}
+window.addEventListener('error', (ev) => { try { const l = JSON.parse(localStorage.getItem('thothe_erros') || '[]'); l.push({ quando: new Date().toISOString(), tela: 'global', msg: ev.message, onde: (ev.filename || '').split('/').pop() + ':' + ev.lineno }); localStorage.setItem('thothe_erros', JSON.stringify(l.slice(-20))); } catch (x) {} });
 
 function renderAll() {
   const active = document.querySelector('.page.active');
