@@ -444,6 +444,18 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 .bv-verso { margin: 14px 0 10px; padding: 10px 14px; border-left: 3px solid var(--gold); font-family: var(--font-display); font-style: italic; font-size: 15.5px; line-height: 1.4; color: var(--text2); }
 .bv-verso small { display: block; font-family: var(--font-brand); font-style: normal; font-size: 10px; letter-spacing: .16em; color: var(--gold); margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; } }
+
+/* ── Remodelagem: menu por áreas, filtro de cliente, tabelas e cabeçalhos ── */
+.nav-label { margin-top: 14px; padding: 0 12px 6px; letter-spacing: .12em; }
+.nav-item { padding: 9px 12px; }
+.cli-foco { width: 230px; height: 34px; padding: 0 10px; font-size: 12.5px; border-radius: 99px; background: var(--surface2); }
+.cli-foco.foco-ativo { border-color: var(--gold); color: var(--gold); font-weight: 600; box-shadow: 0 0 0 3px var(--accent-l); }
+.topbar { gap: 16px; }
+.content { max-width: 1500px; width: 100%; margin: 0 auto; }
+.card { border-radius: 14px; }
+.btn-sm { border-radius: 8px; }
+.faixa-foco { display:flex; align-items:center; gap:10px; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--gold); background: var(--accent-l); font-size: 13px; }
+@media (max-width: 900px) { .cli-foco { width: 150px; } }
 </style>
 </head>
 <body>
@@ -491,16 +503,20 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
     <div class="nav-group">
       <div class="nav-item" data-page="dashboard" onclick="showPage('dashboard')" title="Início"><span class="ico"><i class="ti ti-layout-dashboard"></i></span><span class="nav-text">Início</span></div>
+      <div class="nav-label">Relacionamento</div>
       <div class="nav-item" data-page="clientes" onclick="showPage('clientes')" title="Clientes"><span class="ico"><i class="ti ti-users"></i></span><span class="nav-text">Clientes</span></div>
-      <div class="nav-item" data-page="gestao" onclick="showPage('gestao')" title="Gestão Financeira"><span class="ico"><i class="ti ti-chart-infographic"></i></span><span class="nav-text">Gestão Financeira</span></div>
-      <div class="nav-item" data-page="fechamento" onclick="showPage('fechamento')" title="Fechamento Mensal"><span class="ico"><i class="ti ti-clipboard-check"></i></span><span class="nav-text">Fechamento Mensal</span></div>
-      <div class="nav-item" data-page="obrigacoes" onclick="showPage('obrigacoes')" title="Obrigações"><span class="ico"><i class="ti ti-calendar-due"></i></span><span class="nav-text">Obrigações</span></div>
-      <div class="nav-item" data-page="agenda" onclick="showPage('agenda')" title="Agenda"><span class="ico"><i class="ti ti-checklist"></i></span><span class="nav-text">Agenda</span></div>
-      <div class="nav-item" data-page="financeiro" onclick="showPage('financeiro')" title="Financeiro ThoThe"><span class="ico"><i class="ti ti-currency-dollar"></i></span><span class="nav-text">Financeiro ThoThe</span></div>
-      <div class="nav-item" data-page="relatorios" onclick="showPage('relatorios')" title="Relatórios"><span class="ico"><i class="ti ti-report-analytics"></i></span><span class="nav-text">Relatórios</span></div>
-      <div class="nav-item" data-page="recibos" onclick="showPage('recibos')" title="Recibos"><span class="ico"><i class="ti ti-receipt"></i></span><span class="nav-text">Recibos</span></div>
-      <div class="nav-item" data-page="contratos" onclick="showPage('contratos')" title="Contratos"><span class="ico"><i class="ti ti-file-description"></i></span><span class="nav-text">Contratos</span></div>
       <div class="nav-item" data-page="propostas" onclick="showPage('propostas')" title="Propostas"><span class="ico"><i class="ti ti-file-text"></i></span><span class="nav-text">Propostas</span></div>
+      <div class="nav-item" data-page="contratos" onclick="showPage('contratos')" title="Contratos"><span class="ico"><i class="ti ti-file-description"></i></span><span class="nav-text">Contratos</span></div>
+      <div class="nav-label">Rotina de trabalho</div>
+      <div class="nav-item" data-page="agenda" onclick="showPage('agenda')" title="Agenda"><span class="ico"><i class="ti ti-checklist"></i></span><span class="nav-text">Agenda</span></div>
+      <div class="nav-item" data-page="obrigacoes" onclick="showPage('obrigacoes')" title="Obrigações"><span class="ico"><i class="ti ti-calendar-due"></i></span><span class="nav-text">Obrigações</span></div>
+      <div class="nav-item" data-page="fechamento" onclick="showPage('fechamento')" title="Fechamento Mensal"><span class="ico"><i class="ti ti-clipboard-check"></i></span><span class="nav-text">Fechamento Mensal</span></div>
+      <div class="nav-label">Dinheiro</div>
+      <div class="nav-item" data-page="financeiro" onclick="showPage('financeiro')" title="Financeiro ThoThe"><span class="ico"><i class="ti ti-currency-dollar"></i></span><span class="nav-text">Financeiro ThoThe</span></div>
+      <div class="nav-item" data-page="recibos" onclick="showPage('recibos')" title="Recibos"><span class="ico"><i class="ti ti-receipt"></i></span><span class="nav-text">Recibos</span></div>
+      <div class="nav-item" data-page="gestao" onclick="showPage('gestao')" title="Gestão Financeira"><span class="ico"><i class="ti ti-chart-infographic"></i></span><span class="nav-text">Gestão Financeira</span></div>
+      <div class="nav-item" data-page="relatorios" onclick="showPage('relatorios')" title="Relatórios"><span class="ico"><i class="ti ti-report-analytics"></i></span><span class="nav-text">Relatórios</span></div>
+      <div class="nav-label">Pessoal</div>
       <div class="nav-item" data-page="rotina" onclick="showPage('rotina')" title="Rotina Pessoal"><span class="ico"><i class="ti ti-heartbeat"></i></span><span class="nav-text">Rotina Pessoal</span></div>
     </div>
 
@@ -520,6 +536,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div class="page-sub" id="page-sub">visão geral do crescimento</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <select id="cli-foco" class="form-control cli-foco" onchange="setClienteFoco(this.value)" title="Filtrar todo o sistema por cliente"><option value="">👥 Todos os clientes</option></select>
+        <button class="btn btn-ghost btn-sm" id="cli-foco-limpar" style="display:none" onclick="setClienteFoco('')" title="Limpar filtro de cliente">✖</button>
         <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
         <button onclick="document.getElementById('import-file-input').click()" class="btn btn-ghost btn-sm" title="Importar dados do sistema antigo"><i class="ti ti-upload"></i></button>
         <button onclick="exportarBackup()" class="btn btn-ghost btn-sm" title="Baixar backup dos seus dados (JSON)"><i class="ti ti-download"></i></button>
@@ -531,6 +549,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     </div>
 
     <div class="content">
+      <div class="faixa-foco" id="faixa-foco" style="display:none"></div>
 
       <!-- ══════════ DASHBOARD ══════════ -->
       <div class="page" id="page-dashboard">
@@ -2515,7 +2534,7 @@ function calFiltros() {
     feriados: document.getElementById('cal-filtro-feriados')?.checked !== false,
     tarefas: document.getElementById('cal-filtro-tarefas')?.checked !== false,
     obrigacoes: document.getElementById('cal-filtro-obrigacoes')?.checked !== false,
-    clienteId: document.getElementById('cal-filtro-cliente')?.value || '',
+    clienteId: clienteFoco || document.getElementById('cal-filtro-cliente')?.value || '',
     tipoTarefa: document.getElementById('cal-filtro-tipo-tarefa')?.value || '',
   };
 }
@@ -2777,6 +2796,30 @@ function honInfo(c, mes, semAjuste) {
   return { valor, vencDia, venc, ajustado: o.valor !== undefined || !!o.venc };
 }
 function honV(c, mes) { return honInfo(c, mes).valor; }
+// ── Filtro global por cliente (topo do sistema) ──
+let clienteFoco = '';
+try { clienteFoco = localStorage.getItem('thothe_cli_foco') || ''; } catch (e) {}
+function focoOk(id) { return !clienteFoco || id === clienteFoco; }
+function focoPorNome(o) { if (!clienteFoco) return true; if (o.clienteId) return o.clienteId === clienteFoco; const c = DB.get('clientes').find(x => x.id === clienteFoco); return !!c && (o.nome || '').trim().toLowerCase() === c.nome.trim().toLowerCase(); }
+function popularClienteFoco() {
+  const sel = document.getElementById('cli-foco'); if (!sel) return;
+  const clientes = DB.get('clientes').slice().sort(ordenarPorCodigo);
+  if (clienteFoco && !clientes.some(c => c.id === clienteFoco)) clienteFoco = '';
+  sel.innerHTML = '<option value="">👥 Todos os clientes</option>' + clientes.map(c => `<option value="${c.id}">${(c.codigo ? c.codigo + ' — ' : '') + String(c.nome).replace(/</g, '&lt;')}${c.status !== 'ativo' ? ' (inativo)' : ''}</option>`).join('');
+  sel.value = clienteFoco;
+  sel.classList.toggle('foco-ativo', !!clienteFoco);
+  const fx = document.getElementById('faixa-foco');
+  if (fx) { const cc = clientes.find(c => c.id === clienteFoco); fx.style.display = cc ? '' : 'none'; if (cc) fx.innerHTML = `🎯 <span>Mostrando somente <b>${String(cc.nome).replace(/</g,'&lt;')}</b> em Clientes, Propostas, Contratos, Recibos, Agenda, Obrigações, Fechamento e Financeiro.</span><button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="setClienteFoco('')">✖ Ver todos</button>`; }
+  const lim = document.getElementById('cli-foco-limpar'); if (lim) lim.style.display = clienteFoco ? '' : 'none';
+}
+function setClienteFoco(id) {
+  clienteFoco = id || '';
+  try { localStorage.setItem('thothe_cli_foco', clienteFoco); } catch (e) {}
+  const cal = document.getElementById('cal-filtro-cliente'); if (cal) { cal.value = ''; if (cal._busca) cal._busca.value = ''; }
+  popularClienteFoco();
+  if (typeof toast === 'function' && clienteFoco) { const c = DB.get('clientes').find(x => x.id === clienteFoco); if (c) toast('🎯 Filtrando por ' + c.nome); }
+  renderAll();
+}
 function financeiroRealizado() { return DB.get('financeiro').filter(f => (f.status || 'recebido') !== 'pendente'); }
 
 /* ══════════════════════════════════════════════════════
@@ -2931,6 +2974,7 @@ function showPage(id) {
   document.getElementById('page-title').textContent = PAGE_CONFIG[id].title;
   document.getElementById('page-sub').textContent = PAGE_CONFIG[id].sub;
   document.getElementById('sidebar').classList.remove('open');
+  try { popularClienteFoco(); } catch (e) {}
 
   const r = {
     dashboard: () => renderDashboard(), clientes: () => { gerarCodigosClientes(true); renderClientes(); }, gestao: () => renderGestao(),
@@ -3056,7 +3100,7 @@ function deleteCliente(id) {
 }
 
 function renderClientes() {
-  let clientes = DB.get('clientes');
+  let clientes = DB.get('clientes').filter(c => focoOk(c.id));
   if (clienteSearch) {
     const q = clienteSearch.toLowerCase();
     clientes = clientes.filter(c => c.nome.toLowerCase().includes(q) || (c.codigo||'').toLowerCase().includes(q));
@@ -3097,7 +3141,7 @@ function renderClientes() {
       <td>${upsellLabel[c.upsell]}</td>
       <td>${fmtMoney(honV(c))}</td>
       <td><span class="chip ${c.status==='ativo'?'chip-green':'chip-gray'}" style="cursor:pointer" onclick="event.stopPropagation();toggleClienteStatus('${c.id}')" title="Clique para ${c.status==='ativo'?'inativar':'ativar'}">${c.status}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openClienteModal('${c.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCliente('${c.id}')">🗑️</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();setClienteFoco('${c.id}')" title="Filtrar todo o sistema por este cliente">🎯</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openClienteModal('${c.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCliente('${c.id}')">🗑️</button></td>
     </tr>`).join('');
 }
 
@@ -4735,7 +4779,7 @@ function renderPrevisaoRecebimento() {
   if (previsaoMesLabelEl) previsaoMesLabelEl.textContent = mes === mesAtual() ? `${mesLabel(mes)} (mês atual)` : mesLabel(mes);
   const financeiroReal = financeiroRealizado();
   // Recorrentes: só clientes com fechamento mensal marcado (honorário previsível todo mês)
-  const clientesRecorrentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario > 0).sort(ordenarPorCodigo);
+  const clientesRecorrentes = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo' && c.temFechamento===true && c.honorario > 0).sort(ordenarPorCodigo);
 
   let linhas = clientesRecorrentes.map(c => {
     const recebido = financeiroReal
@@ -4750,7 +4794,7 @@ function renderPrevisaoRecebimento() {
   });
 
   // Avulsos: cadastrados manualmente para o mês atual
-  const avulsos = DB.get('previsoesAvulsas').filter(a => a.mes === mes);
+  const avulsos = DB.get('previsoesAvulsas').filter(a => a.mes === mes && focoOk(a.clienteId));
   const linhasAvulsas = avulsos.map(a => {
     const cliente = a.clienteId ? DB.get('clientes').find(c=>c.id===a.clienteId) : null;
     const status = a.status === 'recebido' ? 'recebido' : 'pendente';
@@ -4761,7 +4805,7 @@ function renderPrevisaoRecebimento() {
   });
 
   // Lançamentos manuais de receita (criados via "+ Novo lançamento") — podem estar "em aberto" ou já baixados
-  const manuais = DB.get('financeiro').filter(f => f.tipo==='receita' && f.data && f.data.slice(0,7)===mes && !f.origem);
+  const manuais = DB.get('financeiro').filter(f => f.tipo==='receita' && f.data && f.data.slice(0,7)===mes && !f.origem && focoOk(f.clienteId));
   const linhasManuais = manuais.map(f => {
     const cliente = f.clienteId ? DB.get('clientes').find(c=>c.id===f.clienteId) : null;
     const status = (f.status || 'recebido') === 'recebido' ? 'recebido' : 'pendente';
@@ -5816,7 +5860,7 @@ function agendarObrigacoesSelecionadas() {
 
 function renderObrigacoes() {
   sincronizarTodasObrigacoesDosFechamentos();
-  let obrigacoes = DB.get('obrigacoes');
+  let obrigacoes = DB.get('obrigacoes').filter(o => focoOk(o.clienteId));
   if (obrigFiltro === 'pendentes') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida');
   if (obrigFiltro === 'atrasadas') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida' && o.venc && o.venc<today());
   obrigacoes.sort((a,b)=>(a.venc||'9999').localeCompare(b.venc||'9999'));
@@ -6267,7 +6311,7 @@ function excluirRecibo(id) {
 function renderRecibos() {
   const el = document.getElementById('rcb-lista'); if (!el) return;
   const q = (document.getElementById('rcb-busca').value || '').toLowerCase().trim();
-  let lista = DB.get('recibos').slice().sort((a,b) => (b.data||'').localeCompare(a.data||'') || (b.numero||'').localeCompare(a.numero||''));
+  let lista = DB.get('recibos').filter(focoPorNome).slice().sort((a,b) => (b.data||'').localeCompare(a.data||'') || (b.numero||'').localeCompare(a.numero||''));
   if (q) lista = lista.filter(r => `${r.numero} ${r.nome} ${r.referente} ${r.docto||''}`.toLowerCase().includes(q));
   const total = lista.reduce((s,r)=>s+totalRecibo(r),0);
   document.getElementById('rcb-resumo').textContent = `${lista.length} recibo${lista.length!==1?'s':''} · total ${fmtMoney(total)}`;
@@ -6785,7 +6829,7 @@ function renderContratos() {
   const cd = ctrContratada();
   document.getElementById('ctr-cd-end').value = cd.endereco; document.getElementById('ctr-cd-contato').value = cd.contato;
   const q = (document.getElementById('ctr-busca').value || '').toLowerCase().trim();
-  let lista = DB.get('contratos').slice().sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
+  let lista = DB.get('contratos').filter(focoPorNome).slice().sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
   if (q) lista = lista.filter(c => `${c.numero} ${c.nome} ${c.docto}`.toLowerCase().includes(q));
   document.getElementById('ctr-resumo').textContent = `${lista.length} contrato${lista.length!==1?'s':''} · ativos (assinados): ${lista.filter(c=>c.status==='assinado').length}`;
   if (!lista.length) { el.innerHTML = `<div class="empty-state" style="padding:28px"><div class="ico">📑</div><div class="txt">${q ? 'Nenhum contrato encontrado' : 'Nenhum contrato ainda — escolha o tipo acima'}</div></div>`; return; }
@@ -7134,7 +7178,7 @@ function confirmarBaixaRecebimento() {
 function renderFechamento() {
   document.getElementById('fech-mes-label').textContent = mesLabel(fechMesAtual);
   const manual = !!getConfig().fechamentoManual;   // depois de "Excluir todos", só aparece quem for adicionado
-  const clientes = DB.get('clientes').filter(c=>c.status==='ativo' && (manual ? !!getFechamento(c.id, fechMesAtual) : c.temFechamento===true)).sort(ordenarPorCodigo);
+  const clientes = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo' && (manual ? !!getFechamento(c.id, fechMesAtual) : c.temFechamento===true)).sort(ordenarPorCodigo);
   const selAdd = document.getElementById('fech-add-cliente');
   if (selAdd) fillClienteSelect(selAdd, selAdd.value || '', { semNovo: true, vazio: '— Adicionar cliente ao fechamento —' });
   const grid = document.getElementById('fechamento-grid');
@@ -7261,7 +7305,7 @@ function propProximoNumero() {
 }
 
 function renderPropostas() {
-  const props = DB.get('propostas').slice().sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
+  const props = DB.get('propostas').filter(focoPorNome).slice().sort((a,b) => (b.numero||'').localeCompare(a.numero||''));
   const tbody = document.getElementById('propostas-tbody');
   const resumo = document.getElementById('prop-resumo');
   if (resumo) {
