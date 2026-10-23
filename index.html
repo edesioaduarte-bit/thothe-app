@@ -1301,22 +1301,22 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-prop-parcelas">
+<div class="modal-overlay" id="modal-parcelar">
   <div class="modal" style="max-width:440px">
-    <div class="modal-header"><span class="modal-title">💰 Como o cliente vai pagar?</span><button class="modal-close" onclick="closeModal('modal-prop-parcelas')">×</button></div>
+    <div class="modal-header"><span class="modal-title">✂️ Parcelar lançamento</span><button class="modal-close" onclick="closeModal('modal-parcelar')">×</button></div>
     <div class="modal-body">
-      <input type="hidden" id="pp-id">
-      <div id="pp-titulo" style="font-size:13px;font-weight:600;margin-bottom:4px"></div>
-      <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px;line-height:1.5">Já projetei o valor total para 20 dias. Se o cliente vai parcelar, ajuste aqui — as parcelas entram na previsão de cada mês.</div>
-      <input type="hidden" id="pp-total">
+      <input type="hidden" id="pl-tipo"><input type="hidden" id="pl-id"><input type="hidden" id="pl-total">
+      <div id="pl-titulo" style="font-size:13px;font-weight:600;margin-bottom:4px"></div>
+      <div id="pl-valor" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
       <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-        <div class="form-group"><label class="form-label">Entrada (R$)</label><input class="form-control" type="number" step="0.01" id="pp-entrada" placeholder="0,00" oninput="parcPreview('pp')"></div>
-        <div class="form-group"><label class="form-label">Nº de parcelas</label><input class="form-control" type="number" min="1" max="36" id="pp-n" value="1" oninput="parcPreview('pp')"></div>
-        <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="pp-venc" onchange="parcPreview('pp')"></div>
+        <div class="form-group"><label class="form-label">Entrada (R$)</label><input class="form-control" type="number" step="0.01" id="pl-entrada" placeholder="0,00" oninput="parcPreview('pl')"></div>
+        <div class="form-group"><label class="form-label">Nº de parcelas</label><input class="form-control" type="number" min="1" max="36" id="pl-n" value="1" oninput="parcPreview('pl')"></div>
+        <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="pl-venc" onchange="parcPreview('pl')"></div>
       </div>
-      <div id="pp-preview" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface3);border-radius:8px;padding:8px 12px"></div>
+      <div id="pl-preview" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface3);border-radius:8px;padding:8px 12px"></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.5">O lançamento atual é substituído pelas parcelas (entrada opcional + parcelas mensais). Cada parcela entra na previsão do mês do seu vencimento e é baixada separadamente.</div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-prop-parcelas')">Manter à vista (20 dias)</button><button class="btn btn-primary" onclick="propParcelasSalvar()">✅ Aplicar parcelamento</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-parcelar')">Cancelar</button><button class="btn btn-primary" onclick="parcelarSalvar()">✅ Parcelar</button></div>
   </div>
 </div>
 
@@ -1337,16 +1337,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" id="prevav-desc" placeholder="Ex: Regularização de eSocial">
         </div>
         <div class="form-group">
-          <label class="form-label">Valor total (R$) *</label>
-          <input class="form-control" type="number" step="0.01" id="prevav-valor" placeholder="0,00" oninput="parcPreview('prevav')">
+          <label class="form-label">Valor (R$) *</label>
+          <input class="form-control" type="number" step="0.01" id="prevav-valor" placeholder="0,00" >
         </div>
       </div>
-      <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-        <div class="form-group"><label class="form-label">Entrada (R$)</label><input class="form-control" type="number" step="0.01" id="prevav-entrada" placeholder="0,00" oninput="parcPreview('prevav')"></div>
-        <div class="form-group"><label class="form-label">Nº de parcelas</label><input class="form-control" type="number" min="1" max="36" id="prevav-n" value="1" oninput="parcPreview('prevav')"></div>
-        <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="prevav-venc" onchange="parcPreview('prevav')"></div>
-      </div>
-      <div id="prevav-preview" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface3);border-radius:8px;padding:8px 12px"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-previsao-avulsa')">Cancelar</button>
@@ -4770,6 +4764,8 @@ function renderPrevisaoRecebimento() {
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('avulso','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
+          ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('fin','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
           ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();marcarLancamentoBaixado('${l.id}')" title="Marcar como recebido">💰 Marcar recebido</button>` : ''}
           ${l.origem==='manual' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFinanceiroModal('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${l.id}')">🗑️</button>` : ''}
@@ -4788,7 +4784,7 @@ function renderPrevisaoRecebimento() {
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1"><div style="font-size:12.5px">${f.desc} ${pago?'':'<span class=\"chip chip-red\" style=\"font-size:10px;margin-left:4px\">⏳ Em aberto</span>'}</div><div style="font-size:10.5px;color:var(--text3)">${fmtDate(f.data)}</div></div>
         <div style="font-weight:600;color:var(--red);font-family:var(--font-mono)">-${fmtMoney(f.valor)}</div>
-        ${pago ? '' : `<button class="btn btn-primary btn-sm" onclick="marcarLancamentoBaixado('${f.id}')" title="Marcar como pago">✅ Marcar pago</button>`}
+        ${pago ? '' : `<button class="btn btn-ghost btn-sm" onclick="parcelarAbrir('fin','${f.id}')" title="Parcelar">✂️ Parcelar</button><button class="btn btn-primary btn-sm" onclick="marcarLancamentoBaixado('${f.id}')" title="Marcar como pago">✅ Marcar pago</button>`}
         <button class="btn btn-ghost btn-sm" onclick="openFinanceiroModal('${f.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteFinanceiro('${f.id}')">🗑️</button>
       </div>`;
@@ -4800,9 +4796,37 @@ function abrirPrevisaoAvulsaModal() {
   fillClienteSelect(document.getElementById('prevav-cliente'));
   document.getElementById('prevav-desc').value = '';
   document.getElementById('prevav-valor').value = '';
-  document.getElementById('prevav-entrada').value = ''; document.getElementById('prevav-n').value = 1; document.getElementById('prevav-venc').value = ultimoDiaOuHoje();
-  parcPreview('prevav');
   openModal('modal-previsao-avulsa');
+}
+
+function parcelarAbrir(tipo, id) {
+  const item = tipo === 'avulso' ? DB.get('previsoesAvulsas').find(x => x.id === id) : DB.get('financeiro').find(x => x.id === id);
+  if (!item) return;
+  const venc = tipo === 'avulso' ? (item.vencimento || (item.mes && item.mes !== mesAtual() ? ultimoDiaDoMes(item.mes) : today())) : (item.data || today());
+  document.getElementById('pl-tipo').value = tipo; document.getElementById('pl-id').value = id; document.getElementById('pl-total').value = item.valor;
+  document.getElementById('pl-titulo').textContent = tipo === 'avulso' ? item.descricao : item.desc;
+  document.getElementById('pl-valor').textContent = `Valor atual: ${fmtMoney(item.valor)}`;
+  document.getElementById('pl-entrada').value = ''; document.getElementById('pl-n').value = 2; document.getElementById('pl-venc').value = venc;
+  parcPreview('pl'); openModal('modal-parcelar');
+}
+function parcelarSalvar() {
+  const tipo = document.getElementById('pl-tipo').value, id = document.getElementById('pl-id').value;
+  const venc = document.getElementById('pl-venc').value; if (!venc) { toast('⚠️ Informe o 1º vencimento'); return; }
+  const plano = planoParcelas(document.getElementById('pl-total').value, document.getElementById('pl-entrada').value, document.getElementById('pl-n').value, venc);
+  const grupo = DB.id();
+  if (tipo === 'avulso') {
+    const lista = DB.get('previsoesAvulsas'), o = lista.find(x => x.id === id); if (!o) return;
+    DB.set('previsoesAvulsas', lista.filter(x => x.id !== id));
+    criarPrevisoesDoPlano({ clienteId: o.clienteId, propostaId: o.propostaId, descricao: o.descricao.replace(/ \(prev\. [^)]*\)$/, '') }, plano, grupo);
+  } else {
+    const lista = DB.get('financeiro'), o = lista.find(x => x.id === id); if (!o) return;
+    const resto = lista.filter(x => x.id !== id);
+    plano.forEach((it, idx) => resto.push({ id: DB.id() + idx, tipo: o.tipo, servico: o.servico, desc: it.rotulo ? `${o.desc} — ${it.rotulo}` : o.desc, valor: it.valor, clienteId: o.clienteId, data: it.venc, status: 'pendente', grupoId: grupo }));
+    DB.set('financeiro', resto);
+  }
+  closeModal('modal-parcelar');
+  toast(plano.length > 1 ? `✂️ Lançamento dividido em ${plano.length} parcelas` : '✂️ Vencimento atualizado');
+  renderAll();
 }
 
 function savePrevisaoAvulsa() {
@@ -4810,11 +4834,11 @@ function savePrevisaoAvulsa() {
   const valor = parseFloat(document.getElementById('prevav-valor').value);
   if (!desc) { toast('⚠️ Informe a descrição'); return; }
   if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
-  const venc = document.getElementById('prevav-venc').value || today();
-  const plano = planoParcelas(valor, document.getElementById('prevav-entrada').value, document.getElementById('prevav-n').value, venc);
-  criarPrevisoesDoPlano({ clienteId: document.getElementById('prevav-cliente').value, descricao: desc }, plano, DB.id());
+  const lista = DB.get('previsoesAvulsas');
+  lista.push({ id: DB.id(), clienteId: document.getElementById('prevav-cliente').value, descricao: desc, valor, mes: finMesAtual, status: 'pendente', criadoEm: new Date().toISOString() });
+  DB.set('previsoesAvulsas', lista);
   closeModal('modal-previsao-avulsa');
-  toast(plano.length > 1 ? `🎯 ${plano.length} recebimentos avulsos projetados` : '🎯 Valor avulso adicionado');
+  toast('🎯 Valor avulso adicionado');
   renderAll();
 }
 
@@ -7169,7 +7193,7 @@ function planoParcelas(total, entrada, n, primeiroVenc) {
 }
 function parcPreview(pf) {
   const el = document.getElementById(pf + '-preview'); if (!el) return;
-  const total = pf === 'pp' ? document.getElementById('pp-total').value : document.getElementById('prevav-valor').value;
+  const total = document.getElementById(pf + '-total').value;
   const venc = document.getElementById(pf + '-venc').value || today();
   const plano = planoParcelas(total, document.getElementById(pf + '-entrada').value, document.getElementById(pf + '-n').value, venc);
   if (!(parseFloat(total) > 0)) { el.textContent = 'Informe o valor para ver as parcelas.'; return; }
@@ -7181,21 +7205,6 @@ function criarPrevisoesDoPlano(base, plano, grupoId) {
     descricao: it.rotulo ? `${base.descricao} — ${it.rotulo}` : base.descricao, valor: it.valor, mes: it.venc.slice(0, 7), status: 'pendente', criadoEm: new Date().toISOString() }));
   DB.set('previsoesAvulsas', lista);
 }
-function propParcelasAbrir(x) {
-  document.getElementById('pp-id').value = x.id; document.getElementById('pp-total').value = x.total || 0;
-  document.getElementById('pp-titulo').textContent = `${x.numero} — ${x.nome} · ${fmtMoney(x.total || 0)}`;
-  document.getElementById('pp-entrada').value = ''; document.getElementById('pp-n').value = 1; document.getElementById('pp-venc').value = addDiasStr(today(), PROP_DIAS_RECEBIMENTO);
-  parcPreview('pp'); openModal('modal-prop-parcelas');
-}
-function propParcelasSalvar() {
-  const x = DB.get('propostas').find(p => p.id === document.getElementById('pp-id').value); if (!x) return;
-  const venc = document.getElementById('pp-venc').value; if (!venc) { toast('⚠️ Informe o 1º vencimento'); return; }
-  const plano = planoParcelas(x.total, document.getElementById('pp-entrada').value, document.getElementById('pp-n').value, venc);
-  propRemoverPrevisaoRecebimento(x);
-  criarPrevisoesDoPlano({ clienteId: x.clienteId, propostaId: x.id, descricao: `Proposta ${x.numero} — ${x.nome}` }, plano, DB.id());
-  closeModal('modal-prop-parcelas'); toast(`💰 ${plano.length} recebimento${plano.length > 1 ? 's' : ''} projetado${plano.length > 1 ? 's' : ''}`); renderAll();
-}
-
 function propMudarStatus(id, v) {
   const props = DB.get('propostas'); const x = props.find(p=>p.id===id);
   if (!x) return;
@@ -7208,9 +7217,8 @@ function propMudarStatus(id, v) {
   if (antes === 'aprovada' && v !== 'aprovada') propRemoverPrevisaoRecebimento(x);
   propSincronizarAcompanhamento();
   if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
-  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias)` : '✅ Proposta aprovada — tarefa criada na Agenda');
+  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias) — use ✂️ Parcelar no Financeiro se for parcelado` : '✅ Proposta aprovada — tarefa criada na Agenda');
   renderPropostas();
-  if (v === 'aprovada' && antes !== 'aprovada' && (x.total || 0) > 0) propParcelasAbrir(x);
 }
 const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
 function propTarefaBase(x, extra) {
