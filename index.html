@@ -1564,6 +1564,18 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-prop-etapas">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header"><span class="modal-title" id="prop-etapas-titulo">🧩 Etapas da proposta</span><button class="modal-close" onclick="closeModal('modal-prop-etapas')">×</button></div>
+    <div class="modal-body">
+      <div id="prop-etapas-resumo" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+      <div id="prop-etapas-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">Cada etapa vira uma tarefa na Agenda quando você a inicia. Pré-datar agenda a tarefa para a data escolhida. Ao concluir uma etapa na Agenda, esta tela abre para você iniciar ou pré-datar a próxima.</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-prop-etapas')">Fechar</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-contrato">
   <div class="modal" style="max-width:900px">
     <div class="modal-header"><span class="modal-title" id="ctr-titulo">Novo contrato</span><button class="modal-close" onclick="closeModal('modal-contrato')">×</button></div>
@@ -7024,6 +7036,7 @@ function emailSalvar(modo) {
 }
 // Chamado quando uma tarefa-e-mail em redação é concluída (cronômetro parado ou marcada como feita)
 function emailPosConclusao(tarefas, t) {
+  if (t && t.propKind === 'etapa') { const pid = t.propostaId, ix = t.etapaIdx; setTimeout(() => { try { propEtapaConcluida(pid, ix); } catch (e) {} }, 350); }
   if (!t || t.emailKind !== 'redigir') return;
   t.emailKind = 'enviado'; t.titulo = `📧 E-mail enviado: ${t.emailAssunto}`; t.emailEnviadoEm = today();
   let msg = '📧 E-mail enviado';
@@ -7328,7 +7341,7 @@ function renderPropostas() {
           ${Object.keys(PROP_STATUS).map(k=>`<option value="${k}" ${x.status===k?'selected':''}>${PROP_STATUS[k]}</option>`).join('')}
         </select>
       </td>
-      <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propMsgAbrir('${x.id}')" title="Mensagem para o cliente">💬</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();imprimirProposta('${x.id}')" title="Gerar / imprimir">🖨️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirProposta('${x.id}')" title="Excluir">🗑️</button></td>
+      <td style="white-space:nowrap">${x.status === 'aprovada' && (x.itens || []).length ? (() => { const pg = propEtapasProgresso(x); return `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propEtapasAbrir('${x.id}')" title="Etapas de execução">🧩 ${pg.feitas}/${pg.n}</button>`; })() : ''}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propMsgAbrir('${x.id}')" title="Mensagem para o cliente">💬</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();imprimirProposta('${x.id}')" title="Gerar / imprimir">🖨️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirProposta('${x.id}')" title="Excluir">🗑️</button></td>
     </tr>`).join('');
 }
 
@@ -7374,12 +7387,116 @@ function propMudarStatus(id, v) {
   if (v === 'enviada' && antes !== 'enviada') x.enviadaEm = today();
   DB.set('propostas', props);
   let prevData = null;
-  if (v === 'aprovada' && antes !== 'aprovada') { propCriarTarefaExecucao(x); prevData = propCriarPrevisaoRecebimento(x); }
+  if (v === 'aprovada' && antes !== 'aprovada') { prevData = propCriarPrevisaoRecebimento(x); }
+  if (antes === 'aprovada' && v !== 'aprovada') propCancelarEtapasFuturas(x);
   if (antes === 'aprovada' && v !== 'aprovada') propRemoverPrevisaoRecebimento(x);
   propSincronizarAcompanhamento();
   if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
-  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias) — use ✂️ Parcelar no Financeiro se for parcelado` : '✅ Proposta aprovada — tarefa criada na Agenda');
+  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias) — use ✂️ Parcelar no Financeiro se for parcelado` : '✅ Proposta aprovada');
   renderPropostas();
+  if (v === 'aprovada' && antes !== 'aprovada' && (x.itens || []).length) setTimeout(() => propEtapasAbrir(x.id), 400);
+}
+// ── Execução por etapas: cada item da proposta aprovada vira uma tarefa, iniciada (ou pré-datada) uma de cada vez ──
+function propEtapaTarefa(propId, idx, tarefas) {
+  return (tarefas || DB.get('tarefas')).find(t => t.propKind === 'etapa' && t.propostaId === propId && t.etapaIdx === idx);
+}
+function propEtapaSituacao(t) {
+  if (!t) return 'aguardando';
+  if (t.status === 'concluida') return 'concluida';
+  return t.data && t.data > today() ? 'predatada' : 'andamento';
+}
+function propEtapasProgresso(x) {
+  const tarefas = DB.get('tarefas'); const n = (x.itens || []).length;
+  const feitas = (x.itens || []).filter((_, i) => propEtapaSituacao(propEtapaTarefa(x.id, i, tarefas)) === 'concluida').length;
+  return { n, feitas };
+}
+function propEtapasAbrir(propId) {
+  const x = DB.get('propostas').find(p => p.id === propId);
+  if (!x) return;
+  document.getElementById('prop-etapas-titulo').textContent = `🧩 Etapas — ${x.numero} · ${x.nome}`;
+  const tarefas = DB.get('tarefas');
+  const itens = x.itens || [];
+  const pg = propEtapasProgresso(x);
+  document.getElementById('prop-etapas-resumo').textContent = `${PROP_TIPOS[x.tipo] || ''} · ${fmtMoney(x.total || 0)} · ${pg.feitas} de ${pg.n} etapa${pg.n !== 1 ? 's' : ''} concluída${pg.feitas !== 1 ? 's' : ''}`;
+  const amanha = addDiasStr(today(), 1);
+  const chips = { aguardando: '<span class="chip chip-gray">Aguardando início</span>', predatada: '<span class="chip chip-purple">📅 Pré-datada</span>', andamento: '<span class="chip chip-blue">▶ Em andamento</span>', concluida: '<span class="chip chip-green">✓ Concluída</span>' };
+  document.getElementById('prop-etapas-lista').innerHTML = itens.length ? itens.map((it, i) => {
+    const t = propEtapaTarefa(x.id, i, tarefas); const sit = propEtapaSituacao(t);
+    let info = '', acoes = '';
+    const datePick = (val, label, fn) => `<input type="date" class="form-control" id="prop-etapa-data-${i}" value="${val}" min="${amanha}" style="width:auto;padding:4px 8px;font-size:12px"><button class="btn btn-ghost btn-sm" onclick="${fn}('${x.id}',${i})">${label}</button>`;
+    if (sit === 'aguardando') acoes = `<button class="btn btn-primary btn-sm" onclick="propEtapaIniciar('${x.id}',${i},today())">▶ Iniciar hoje</button>${datePick(amanha, '📅 Pré-datar', 'propEtapaPredatar')}`;
+    if (sit === 'predatada') { info = `Agendada para ${fmtDate(t.data)}`; acoes = `<button class="btn btn-primary btn-sm" onclick="propEtapaIniciar('${x.id}',${i},today())">▶ Antecipar para hoje</button>${datePick(t.data, '🔁 Reagendar', 'propEtapaPredatar')}<button class="btn btn-danger btn-sm" onclick="propEtapaCancelar('${x.id}',${i})" title="Cancelar agendamento">✖</button>`; }
+    if (sit === 'andamento') { info = `Iniciada em ${fmtDate(t.data)}`; acoes = `<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-prop-etapas');abrirDetalhesTarefa('${t.id}')">Abrir tarefa</button>`; }
+    if (sit === 'concluida') info = `Concluída em ${fmtDate(t.dataConclusao || t.data)}`;
+    return `<div class="card" style="padding:10px 12px;display:flex;flex-direction:column;gap:6px;${sit === 'concluida' ? 'opacity:.65' : ''}">
+      <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between">
+        <div style="font-size:13px"><b>${i + 1}.</b> ${propEsc(it.descricao || '')}${it.valor ? ` <span style="color:var(--text3)">· ${fmtMoney(it.valor)}</span>` : ''}</div>
+        <div style="flex-shrink:0">${chips[sit]}</div>
+      </div>
+      ${info ? `<div style="font-size:11.5px;color:var(--text3)">${info}</div>` : ''}
+      ${acoes ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${acoes}</div>` : ''}
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text3)">Esta proposta não tem etapas cadastradas.</div>';
+  openModal('modal-prop-etapas');
+}
+function propEtapaGravar(propId, idx, data) {
+  const x = DB.get('propostas').find(p => p.id === propId);
+  if (!x || !(x.itens || [])[idx]) return false;
+  const tarefas = DB.get('tarefas');
+  const t = propEtapaTarefa(propId, idx, tarefas);
+  if (t) { if (t.status === 'concluida') return false; t.data = data; }
+  else {
+    const it = x.itens[idx]; const n = x.itens.length;
+    tarefas.push(propTarefaBase(x, {
+      propKind: 'etapa', etapaIdx: idx,
+      titulo: `🧩 Etapa ${idx + 1}/${n} — ${x.numero} · ${x.nome}: ${it.descricao}`,
+      data,
+      comentarios: `Proposta ${x.numero} (${PROP_TIPOS[x.tipo] || ''}) — etapa ${idx + 1} de ${n}.${it.valor ? '\nValor da etapa: ' + fmtMoney(it.valor) + '.' : ''}${it.detalhe ? '\n' + it.detalhe : ''}\nAo concluir esta tarefa, você poderá iniciar ou pré-datar a próxima etapa.`,
+    }));
+  }
+  DB.set('tarefas', tarefas);
+  return true;
+}
+function propEtapaIniciar(propId, idx, data) {
+  const x = DB.get('propostas').find(p => p.id === propId);
+  if (!x) return;
+  const tarefas = DB.get('tarefas');
+  const anteriorAberta = (x.itens || []).slice(0, idx).some((_, i) => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) !== 'concluida');
+  if (anteriorAberta && !confirm('Há etapa anterior ainda não concluída. Iniciar esta etapa mesmo assim?')) return;
+  if (propEtapaGravar(propId, idx, data)) toast(`▶ Etapa ${idx + 1} iniciada — tarefa na Agenda de hoje`);
+  renderAll(); propEtapasAbrir(propId);
+}
+function propEtapaPredatar(propId, idx) {
+  const el = document.getElementById('prop-etapa-data-' + idx);
+  const data = el && el.value;
+  if (!data) { toast('⚠️ Escolha a data'); return; }
+  if (data <= today()) { toast('⚠️ Para hoje, use "Iniciar hoje"'); return; }
+  if (propEtapaGravar(propId, idx, data)) toast(`📅 Etapa ${idx + 1} pré-datada para ${fmtDate(data)}`);
+  renderAll(); propEtapasAbrir(propId);
+}
+function propEtapaCancelar(propId, idx) {
+  const t = propEtapaTarefa(propId, idx);
+  if (!t || t.status === 'concluida') return;
+  if (!confirm(`Cancelar o agendamento da etapa ${idx + 1}? A tarefa sai da Agenda e a etapa volta para "Aguardando início".`)) return;
+  DB.set('tarefas', DB.get('tarefas').filter(x => x.id !== t.id));
+  toast('✖ Agendamento cancelado'); renderAll(); propEtapasAbrir(propId);
+}
+// Se a aprovação for desfeita, saem da Agenda as etapas ainda não iniciadas (pré-datadas); as em andamento ficam
+function propCancelarEtapasFuturas(x) {
+  const tarefas = DB.get('tarefas');
+  const resto = tarefas.filter(t => !(t.propKind === 'etapa' && t.propostaId === x.id && t.status !== 'concluida' && t.data > today()));
+  if (resto.length !== tarefas.length) DB.set('tarefas', resto);
+}
+// Chamada quando uma tarefa de etapa é concluída (por qualquer caminho)
+function propEtapaConcluida(propId, idx) {
+  const x = DB.get('propostas').find(p => p.id === propId);
+  if (!x) return;
+  const tarefas = DB.get('tarefas'); const n = (x.itens || []).length;
+  const pendentes = (x.itens || []).map((_, i) => i).filter(i => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) !== 'concluida');
+  if (!pendentes.length) { toast(`🏁 Todas as ${n} etapas da proposta ${x.numero} foram concluídas`); return; }
+  const prox = pendentes.find(i => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) === 'aguardando');
+  toast(`✅ Etapa ${idx + 1} de ${n} concluída${prox !== undefined ? ' — inicie ou pré-date a próxima' : ''}`);
+  if (prox !== undefined) propEtapasAbrir(propId);
 }
 const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
 function propTarefaBase(x, extra) {
