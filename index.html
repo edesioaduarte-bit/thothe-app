@@ -1308,7 +1308,15 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <input type="hidden" id="vc-tipo"><input type="hidden" id="vc-id">
       <div id="vc-titulo" style="font-size:13px;font-weight:600;margin-bottom:2px"></div>
       <div id="vc-info" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
+      <input type="hidden" id="vc-mes">
       <div class="form-group"><label class="form-label">Novo vencimento</label><input class="form-control" type="date" id="vc-data"></div>
+      <div id="vc-rec-wrap" style="display:none">
+        <div class="form-group"><label class="form-label">Valor do honorário (R$)</label><input class="form-control" type="number" step="0.01" id="vc-valor"></div>
+        <div class="form-group"><label class="form-label">Aplicar a</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin-bottom:4px"><input type="radio" name="vc-escopo" value="mes" checked> Somente este mês</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="radio" name="vc-escopo" value="prox"> Este mês e os próximos (o dia do vencimento e o valor passam a valer daqui para frente)</label>
+        </div>
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="vencAtalho(7)">+7 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(15)">+15 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(30)">+30 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(0)">Hoje</button>
       </div>
@@ -2756,6 +2764,19 @@ function mesAtual() { const d = new Date(); return `${d.getFullYear()}-${String(
 function mesLabel(m) { const [y,mm] = m.split('-'); return `${MONTH_NAMES[parseInt(mm,10)-1]} ${y}`; }
 // Lançamentos financeiros realizados (de fato recebidos/pagos) — entradas sem status (dados antigos) contam como realizadas;
 // entradas com status:'pendente' (lançadas como "em aberto") ficam de fora até serem baixadas.
+// ── Honorário recorrente por mês (histórico + ajuste de um mês só) ──
+function honInfo(c, mes, semAjuste) {
+  mes = mes || mesAtual();
+  let valor = c.honorario || 0, vencDia = c.vencDia || 0;
+  (c.honHist || []).forEach(h => { if (h.de <= mes) { valor = h.valor; vencDia = h.vencDia || 0; } });
+  const o = semAjuste ? {} : ((c.honMes || {})[mes] || {});
+  if (o.valor !== undefined && o.valor !== null) valor = o.valor;
+  let venc = '';
+  if (o.venc) venc = o.venc;
+  else if (vencDia) { const d = Math.min(vencDia, parseInt(ultimoDiaDoMes(mes).slice(8, 10), 10)); venc = mes + '-' + String(d).padStart(2, '0'); }
+  return { valor, vencDia, venc, ajustado: o.valor !== undefined || !!o.venc };
+}
+function honV(c, mes) { return honInfo(c, mes).valor; }
 function financeiroRealizado() { return DB.get('financeiro').filter(f => (f.status || 'recebido') !== 'pendente'); }
 
 /* ══════════════════════════════════════════════════════
@@ -2965,7 +2986,7 @@ function openClienteModal(id) {
       document.getElementById('cli-nome').value = c.nome || '';
       document.getElementById('cli-tipo').value = c.tipo || 'contabil';
       document.getElementById('cli-upsell').value = c.upsell || 'nao_aplica';
-      document.getElementById('cli-honorario').value = c.honorario || '';
+      document.getElementById('cli-honorario').value = honInfo(c, mesAtual(), true).valor || '';
       document.getElementById('cli-contato').value = c.contato || '';
       document.getElementById('cli-docto').value = c.docto || '';
       document.getElementById('cli-end').value = c.endereco || '';
@@ -3003,8 +3024,18 @@ function saveCliente() {
     temFechamento: document.getElementById('cli-tem-fechamento').checked,
     obs: document.getElementById('cli-obs').value.trim(),
   };
-  if (editId) { const i = clientes.findIndex(x=>x.id===editId); if (i>-1) clientes[i]=item; }
-  else clientes.push(item);
+  if (editId) {
+    const i = clientes.findIndex(x=>x.id===editId);
+    if (i>-1) {
+      const old = clientes[i];
+      const novoHon = item.honorario;
+      const merged = { ...old, ...item };
+      if (old.honHist && old.honHist.length && Math.abs(honInfo(old, mesAtual(), true).valor - novoHon) > 0.001) {
+        merged.honHist = old.honHist.filter(h => h.de !== mesAtual()).concat([{ de: mesAtual(), valor: novoHon, vencDia: honInfo(old, mesAtual(), true).vencDia }]).sort((a,b)=>a.de.localeCompare(b.de));
+      } else if (old.honHist && old.honHist.length) { merged.honorario = old.honorario; }
+      clientes[i] = merged;
+    }
+  } else clientes.push(item);
   DB.set('clientes', clientes);
   closeModal('modal-cliente');
   toast('👥 Cliente salvo');
@@ -3064,7 +3095,7 @@ function renderClientes() {
       <td><strong>${c.nome}</strong>${c.contato?`<div style="font-size:11px;color:var(--text3)">${c.contato}</div>`:''}</td>
       <td>${tipoLabel[c.tipo]}</td>
       <td>${upsellLabel[c.upsell]}</td>
-      <td>${fmtMoney(c.honorario)}</td>
+      <td>${fmtMoney(honV(c))}</td>
       <td><span class="chip ${c.status==='ativo'?'chip-green':'chip-gray'}" style="cursor:pointer" onclick="event.stopPropagation();toggleClienteStatus('${c.id}')" title="Clique para ${c.status==='ativo'?'inativar':'ativar'}">${c.status}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openClienteModal('${c.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCliente('${c.id}')">🗑️</button></td>
     </tr>`).join('');
@@ -4711,10 +4742,11 @@ function renderPrevisaoRecebimento() {
       .filter(f => f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes)
       .reduce((s,f)=>s+f.valor,0);
     let status, statusChip;
-    if (recebido >= c.honorario) { status='recebido'; statusChip = '<span class="chip chip-green">✅ Recebido</span>'; }
+    const hi = honInfo(c, mes);
+    if (recebido >= hi.valor) { status='recebido'; statusChip = '<span class="chip chip-green">✅ Recebido</span>'; }
     else if (recebido > 0) { status='parcial'; statusChip = '<span class="chip chip-amber">🟡 Parcial</span>'; }
     else { status='pendente'; statusChip = '<span class="chip chip-red">⏳ Pendente</span>'; }
-    return { origem:'recorrente', clienteId:c.id, nome:c.nome, previsto:c.honorario, recebido, status, statusChip };
+    return { origem:'recorrente', clienteId:c.id, nome:c.nome, venc:hi.venc, ajustado:hi.ajustado, previsto:hi.valor, recebido, status, statusChip };
   });
 
   // Avulsos: cadastrados manualmente para o mês atual
@@ -4743,10 +4775,10 @@ function renderPrevisaoRecebimento() {
   const todasLinhas = linhas;
   if (previsaoFiltro === 'pendentes') linhas = linhas.filter(l => l.status !== 'recebido');
 
-  const totalPrevisto = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0) + avulsos.reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
+  const totalPrevisto = clientesRecorrentes.reduce((s,c)=>s+honV(c,mes),0) + avulsos.reduce((s,a)=>s+a.valor,0) + manuais.reduce((s,f)=>s+f.valor,0);
   const totalRecebido = clientesRecorrentes.reduce((s,c)=>{
     const rec = financeiroReal.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((ss,f)=>ss+f.valor,0);
-    return s + Math.min(rec, c.honorario);
+    return s + Math.min(rec, honV(c,mes));
   }, 0) + avulsos.filter(a=>a.status==='recebido').reduce((s,a)=>s+a.valor,0) + linhasManuais.filter(l=>l.status==='recebido').reduce((s,l)=>s+l.recebido,0);
   document.getElementById('fin-previsto').textContent = fmtMoney(totalPrevisto);
   document.getElementById('fin-recebido-pct').textContent = totalPrevisto > 0 ? `${Math.round(totalRecebido/totalPrevisto*100)}% do previsto` : '—';
@@ -4772,13 +4804,14 @@ function renderPrevisaoRecebimento() {
       const rowClick = l.clienteId ? `onclick="openClienteModal('${l.clienteId}')"` : '';
       return `
       <tr ${rowClick} style="${rowClick?'cursor:pointer':''}">
-        <td><strong>${l.nome}</strong>${l.desc?`<div style="font-size:11px;color:var(--text3)">${l.desc}</div>`:''}${l.venc && (l.origem==='avulso'||l.origem==='manual') ? `<div style="font-size:11px;color:${l.status!=='recebido' && l.venc < today() ? 'var(--red)' : 'var(--text3)'}">📅 ${l.status==='recebido' ? 'recebido em' : 'vence'} ${fmtDate(l.venc)}${l.status!=='recebido' && l.venc < today() ? ' · vencido' : ''}</div>`:''}</td>
+        <td><strong>${l.nome}</strong>${l.desc?`<div style="font-size:11px;color:var(--text3)">${l.desc}</div>`:''}${l.venc && (l.origem==='avulso'||l.origem==='manual'||l.origem==='recorrente') ? `<div style="font-size:11px;color:${l.status!=='recebido' && l.venc < today() ? 'var(--red)' : 'var(--text3)'}">📅 ${l.status==='recebido' ? (l.origem==='recorrente' ? 'vencimento' : 'recebido em') : 'vence'} ${fmtDate(l.venc)}${l.status!=='recebido' && l.venc < today() ? ' · vencido' : ''}</div>`:''}</td>
         <td><span class="chip ${origemChip[l.origem]}">${origemLabel[l.origem]}</span></td>
         <td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(l.previsto)}</td>
         <td style="text-align:right;font-family:var(--font-mono);color:${l.recebido>0?'var(--green)':'var(--text3)'}">${fmtMoney(l.recebido)}</td>
         <td>${l.statusChip}${recL ? `<div><span class="chip chip-green" style="font-size:10px;margin-top:4px;cursor:pointer" title="Recibo emitido — clique para imprimir" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')">🧾 Recibo ${propEsc(recL.numero)} ✓</span></div>` : ''}</td>
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${l.origem==='recorrente' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();vencAbrirRec('${l.clienteId}','${mes}')" title="Alterar vencimento/valor deste mês ou deste e dos próximos">📅 Vencimento</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${(l.origem==='avulso'||l.origem==='manual') && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();vencAbrir('${l.origem==='avulso'?'avulso':'fin'}','${l.id}')" title="Alterar o vencimento">📅 Vencimento</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('avulso','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
@@ -4819,7 +4852,20 @@ function abrirPrevisaoAvulsaModal() {
 function vencAtual(tipo, item) {
   return tipo === 'avulso' ? (item.vencimento || (item.mes && item.mes !== mesAtual() ? ultimoDiaDoMes(item.mes) : today())) : (item.data || today());
 }
+function vencAbrirRec(clienteId, mes) {
+  const c = DB.get('clientes').find(x => x.id === clienteId); if (!c) return;
+  const hi = honInfo(c, mes);
+  document.getElementById('vc-tipo').value = 'rec'; document.getElementById('vc-id').value = clienteId; document.getElementById('vc-mes').value = mes;
+  document.getElementById('vc-titulo').textContent = c.nome + ' — Honorário mensal (' + mesLabel(mes) + ')';
+  document.getElementById('vc-info').textContent = `${fmtMoney(hi.valor)} · vencimento atual: ${hi.venc ? fmtDate(hi.venc) : 'não definido'}`;
+  document.getElementById('vc-data').value = hi.venc || (mes === mesAtual() ? today() : ultimoDiaDoMes(mes));
+  document.getElementById('vc-valor').value = hi.valor;
+  document.getElementById('vc-rec-wrap').style.display = '';
+  document.querySelector('input[name="vc-escopo"][value="mes"]').checked = true;
+  openModal('modal-venc');
+}
 function vencAbrir(tipo, id) {
+  document.getElementById('vc-rec-wrap').style.display = 'none';
   const item = tipo === 'avulso' ? DB.get('previsoesAvulsas').find(x => x.id === id) : DB.get('financeiro').find(x => x.id === id);
   if (!item) return;
   document.getElementById('vc-tipo').value = tipo; document.getElementById('vc-id').value = id;
@@ -4832,6 +4878,29 @@ function vencAtalho(dias) { document.getElementById('vc-data').value = addDiasSt
 function vencSalvar() {
   const tipo = document.getElementById('vc-tipo').value, id = document.getElementById('vc-id').value, nova = document.getElementById('vc-data').value;
   if (!nova) { toast('⚠️ Informe a data'); return; }
+  if (tipo === 'rec') {
+    const mes = document.getElementById('vc-mes').value;
+    const valor = parseFloat(document.getElementById('vc-valor').value);
+    if (!(valor > 0)) { toast('⚠️ Informe o valor'); return; }
+    const escopo = document.querySelector('input[name="vc-escopo"]:checked').value;
+    const lista = DB.get('clientes'), c = lista.find(x => x.id === id); if (!c) return;
+    if (escopo === 'mes') {
+      c.honMes = c.honMes || {};
+      c.honMes[mes] = { valor, venc: nova };
+    } else {
+      if (!c.honHist || !c.honHist.length) c.honHist = [{ de: '0000-00', valor: c.honorario || 0, vencDia: c.vencDia || 0 }];
+      c.honHist = c.honHist.filter(h => h.de !== mes);
+      c.honHist.push({ de: mes, valor, vencDia: parseInt(nova.slice(8, 10), 10) });
+      c.honHist.sort((a, b) => a.de.localeCompare(b.de));
+      if (c.honMes) Object.keys(c.honMes).forEach(k => { if (k >= mes) delete c.honMes[k]; });
+    }
+    c.honorario = honInfo(c, mesAtual(), true).valor;
+    DB.set('clientes', lista);
+    closeModal('modal-venc');
+    toast(escopo === 'mes' ? `📅 Alterado somente em ${mesLabel(mes)}` : `📅 Alterado de ${mesLabel(mes)} em diante`);
+    renderAll();
+    return;
+  }
   if (tipo === 'avulso') {
     const lista = DB.get('previsoesAvulsas'), a = lista.find(x => x.id === id); if (!a) return;
     a.vencimento = nova; a.mes = nova.slice(0, 7);
@@ -5112,7 +5181,7 @@ function renderRelatorioPrevisaoRealizado() {
   const avulsos = DB.get('previsoesAvulsas');
 
   const linhas = periodos.map(p => {
-    const previstoRecorrente = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0);
+    const previstoRecorrente = clientesRecorrentes.reduce((s,c)=>s+honV(c,p.mes),0);
     const previstoAvulso = avulsos.filter(a=>a.mes===p.mes).reduce((s,a)=>s+a.valor,0);
     const previsto = previstoRecorrente + previstoAvulso;
     const realizado = financeiro.filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===p.mes).reduce((s,f)=>s+f.valor,0);
@@ -5255,7 +5324,7 @@ function renderRelatorioInadimplencia() {
 
   const pendentesRecorrentes = clientesRecorrentes.map(c => {
     const recebido = financeiro.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((s,f)=>s+f.valor,0);
-    return { nome:c.nome, clienteId:c.id, previsto:c.honorario, recebido, aberto: Math.max(0, c.honorario-recebido) };
+    return { nome:c.nome, clienteId:c.id, previsto:honV(c,mes), recebido, aberto: Math.max(0, honV(c,mes)-recebido) };
   }).filter(l => l.aberto > 0);
 
   const avulsosPendentes = DB.get('previsoesAvulsas').filter(a=>a.status!=='recebido').map(a => {
@@ -5370,7 +5439,7 @@ function renderRelatorioResumo() {
   const totalSegundos = horas.reduce((s,r)=>s+r.segundos,0);
 
   const clientesRecorrentes = DB.get('clientes').filter(c=>c.temFechamento===true && c.honorario>0);
-  const previstoMes = clientesRecorrentes.reduce((s,c)=>s+c.honorario,0) + DB.get('previsoesAvulsas').filter(a=>a.mes===mesAtual()).reduce((s,a)=>s+a.valor,0);
+  const previstoMes = clientesRecorrentes.reduce((s,c)=>s+honV(c,mesAtual()),0) + DB.get('previsoesAvulsas').filter(a=>a.mes===mesAtual()).reduce((s,a)=>s+a.valor,0);
   const realizadoMes = financeiroRealizado().filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===mesAtual()).reduce((s,f)=>s+f.valor,0);
   const pctPrevisto = previstoMes>0 ? Math.round(realizadoMes/previstoMes*100) : 0;
 
@@ -5972,7 +6041,7 @@ function abrirBaixaRecebimentoModal(clienteId, valorSugerido, mesRotulo, avulsoI
   document.getElementById('baixa-cliente-id').value = clienteId || '';
   document.getElementById('baixa-avulso-id').value = avulsoId || '';
   document.getElementById('baixa-cliente-nome').textContent = c ? c.nome : (descricaoAvulso || 'Valor avulso');
-  document.getElementById('baixa-valor').value = (valorSugerido !== undefined && valorSugerido !== null) ? valorSugerido : (c ? (c.honorario || '') : '');
+  document.getElementById('baixa-valor').value = (valorSugerido !== undefined && valorSugerido !== null) ? valorSugerido : (c ? (honV(c, mesAtual()) || '') : '');
   document.getElementById('baixa-data').value = dataSugerida || today();
   document.getElementById('baixa-mes-rotulo').value = mesRotulo || mesLabel(fechMesAtual);
   document.getElementById('baixa-recibo-auto').checked = reciboAutoAtivo();
@@ -6021,7 +6090,7 @@ function recPreencherPorCliente() {
   if (!c) return;
   document.getElementById('rec-nome').value = c.nome;
   document.getElementById('rec-docto').value = c.docto || '';
-  if (!document.getElementById('rec-valor').value && c.honorario) document.getElementById('rec-valor').value = c.honorario.toFixed(2);
+  if (!document.getElementById('rec-valor').value && honV(c, mesAtual())) document.getElementById('rec-valor').value = honV(c, mesAtual()).toFixed(2);
   document.getElementById('rec-contato').value = c.contato || document.getElementById('rec-contato').value;
   if (c.endereco) document.getElementById('rec-end').value = c.endereco;
 }
@@ -6239,7 +6308,7 @@ function calcularDevidoMesesAnteriores() {
     const meses = Array.from(mesesComEvidenciaCliente(c.id)).filter(m => m < hoje).sort();
     meses.forEach(mes => {
       const recebidoMes = financeiro.filter(f=>f.tipo==='receita' && f.clienteId===c.id && f.data && f.data.slice(0,7)===mes).reduce((s,f)=>s+f.valor,0);
-      const falta = Math.round((c.honorario - recebidoMes) * 100) / 100;
+      const falta = Math.round((honV(c, mes) - recebidoMes) * 100) / 100;
       if (falta > 0.01) {
         if (!porChave[c.id]) porChave[c.id] = { clienteId: c.id, nome: c.nome, total: 0, itens: [] };
         porChave[c.id].total += falta;
@@ -6569,7 +6638,7 @@ function ctrPreencherCliente() {
   document.getElementById('ctr-nome').value = cl.nome; document.getElementById('ctr-docto').value = cl.docto || '';
   document.getElementById('ctr-contato').value = cl.contato || '';
   if (cl.endereco) document.getElementById('ctr-end').value = cl.endereco;
-  if (!document.getElementById('ctr-valor').value && cl.honorario && !CTR_TIPOS[ctrAtual.tipo].pontual) document.getElementById('ctr-valor').value = cl.honorario;
+  if (!document.getElementById('ctr-valor').value && honV(cl) && !CTR_TIPOS[ctrAtual.tipo].pontual) document.getElementById('ctr-valor').value = honV(cl);
 }
 function ctrBasearProposta() {
   const p = DB.get('propostas').find(x => x.id === document.getElementById('ctr-proposta').value); if (!p) return;
@@ -7082,7 +7151,7 @@ function renderFechamento() {
     const pct = etapas.length ? Math.round(done/etapas.length*100) : 0;
     const historico = historicoFechamento(c.id);
     const recebidoMes = financeiroRealizado().filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
-    const jaRecebido = c.honorario > 0 && recebidoMes >= c.honorario;
+    const jaRecebido = honV(c, fechMesAtual) > 0 && recebidoMes >= honV(c, fechMesAtual);
     return `
     <div class="card hud">
       <div class="card-body" style="cursor:pointer" onclick="openFechamentoModal('${c.id}')">
@@ -7097,9 +7166,9 @@ function renderFechamento() {
         <span style="font-size:10px;color:var(--text3);margin-right:2px">Histórico:</span>
         ${historico.map(h => `<span title="${mesLabel(h.mes)} — ${h.pct}%" style="width:9px;height:9px;border-radius:2px;background:${h.pct===100?'var(--green)':h.pct>0?'var(--amber)':'var(--border2)'}"></span>`).join('')}
       </div>` : ''}
-      ${c.honorario > 0 ? `
+      ${honV(c, fechMesAtual) > 0 ? `
       <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:11px;color:var(--text3)">Honorário: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(c.honorario)}</strong></div>
+        <div style="font-size:11px;color:var(--text3)">Honorário: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, fechMesAtual))}</strong></div>
         ${jaRecebido
           ? `<span class="chip chip-green">✅ Recebido</span>`
           : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${c.id}')">💰 Dar baixa</button>`}
@@ -8888,7 +8957,7 @@ function renderGuia() {
   const financeiro = financeiroRealizado();
   const recorrentesPendentes = DB.get('clientes').filter(c=>c.status==='ativo' && c.temFechamento===true && c.honorario>0).filter(c => {
     const recebido = financeiro.filter(f=>f.tipo==='receita'&&f.clienteId===c.id&&f.data&&f.data.slice(0,7)===mesAtualStr).reduce((s,f)=>s+f.valor,0);
-    return recebido < c.honorario;
+    return recebido < honV(c, mesAtualStr);
   });
   if (recorrentesPendentes.length) {
     itens.push({ icone:'💰', cor:'var(--amber)', texto:`${recorrentesPendentes.length} cliente${recorrentesPendentes.length!==1?'s':''} com recebimento pendente este mês`, acao:"showPage('financeiro')" });
@@ -9092,7 +9161,7 @@ function itensBoasVindas() {
   try {
     const mes = mesAtual(), fin = financeiroRealizado();
     const pend = DB.get('clientes').filter(c => c.status === 'ativo' && c.temFechamento === true && c.honorario > 0)
-      .filter(c => fin.filter(f => f.tipo === 'receita' && f.clienteId === c.id && f.data && f.data.slice(0, 7) === mes).reduce((t, f) => t + f.valor, 0) < c.honorario);
+      .filter(c => fin.filter(f => f.tipo === 'receita' && f.clienteId === c.id && f.data && f.data.slice(0, 7) === mes).reduce((t, f) => t + f.valor, 0) < honV(c, mes));
     if (pend.length) itens.push({ ic: '💰', tx: `${plural(pend.length, 'cliente com honorário', 'clientes com honorário')} ainda em aberto este mês`, sub: 'Confira o financeiro', ir: "showPage('financeiro')" });
   } catch (e) {}
   return itens;
