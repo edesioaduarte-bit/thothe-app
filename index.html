@@ -1301,6 +1301,25 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-prop-parcelas">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><span class="modal-title">💰 Como o cliente vai pagar?</span><button class="modal-close" onclick="closeModal('modal-prop-parcelas')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pp-id">
+      <div id="pp-titulo" style="font-size:13px;font-weight:600;margin-bottom:4px"></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px;line-height:1.5">Já projetei o valor total para 20 dias. Se o cliente vai parcelar, ajuste aqui — as parcelas entram na previsão de cada mês.</div>
+      <input type="hidden" id="pp-total">
+      <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div class="form-group"><label class="form-label">Entrada (R$)</label><input class="form-control" type="number" step="0.01" id="pp-entrada" placeholder="0,00" oninput="parcPreview('pp')"></div>
+        <div class="form-group"><label class="form-label">Nº de parcelas</label><input class="form-control" type="number" min="1" max="36" id="pp-n" value="1" oninput="parcPreview('pp')"></div>
+        <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="pp-venc" onchange="parcPreview('pp')"></div>
+      </div>
+      <div id="pp-preview" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface3);border-radius:8px;padding:8px 12px"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-prop-parcelas')">Manter à vista (20 dias)</button><button class="btn btn-primary" onclick="propParcelasSalvar()">✅ Aplicar parcelamento</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-previsao-avulsa">
   <div class="modal" style="max-width:420px">
     <div class="modal-header"><span class="modal-title">Valor avulso a receber</span><button class="modal-close" onclick="closeModal('modal-previsao-avulsa')">×</button></div>
@@ -1318,10 +1337,16 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           <input class="form-control" id="prevav-desc" placeholder="Ex: Regularização de eSocial">
         </div>
         <div class="form-group">
-          <label class="form-label">Valor (R$) *</label>
-          <input class="form-control" type="number" step="0.01" id="prevav-valor" placeholder="0,00">
+          <label class="form-label">Valor total (R$) *</label>
+          <input class="form-control" type="number" step="0.01" id="prevav-valor" placeholder="0,00" oninput="parcPreview('prevav')">
         </div>
       </div>
+      <div class="form-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div class="form-group"><label class="form-label">Entrada (R$)</label><input class="form-control" type="number" step="0.01" id="prevav-entrada" placeholder="0,00" oninput="parcPreview('prevav')"></div>
+        <div class="form-group"><label class="form-label">Nº de parcelas</label><input class="form-control" type="number" min="1" max="36" id="prevav-n" value="1" oninput="parcPreview('prevav')"></div>
+        <div class="form-group"><label class="form-label">1º vencimento</label><input class="form-control" type="date" id="prevav-venc" onchange="parcPreview('prevav')"></div>
+      </div>
+      <div id="prevav-preview" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface3);border-radius:8px;padding:8px 12px"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-previsao-avulsa')">Cancelar</button>
@@ -4775,6 +4800,8 @@ function abrirPrevisaoAvulsaModal() {
   fillClienteSelect(document.getElementById('prevav-cliente'));
   document.getElementById('prevav-desc').value = '';
   document.getElementById('prevav-valor').value = '';
+  document.getElementById('prevav-entrada').value = ''; document.getElementById('prevav-n').value = 1; document.getElementById('prevav-venc').value = ultimoDiaOuHoje();
+  parcPreview('prevav');
   openModal('modal-previsao-avulsa');
 }
 
@@ -4783,19 +4810,11 @@ function savePrevisaoAvulsa() {
   const valor = parseFloat(document.getElementById('prevav-valor').value);
   if (!desc) { toast('⚠️ Informe a descrição'); return; }
   if (!valor || valor <= 0) { toast('⚠️ Informe um valor válido'); return; }
-  const lista = DB.get('previsoesAvulsas');
-  lista.push({
-    id: DB.id(),
-    clienteId: document.getElementById('prevav-cliente').value,
-    descricao: desc,
-    valor,
-    mes: finMesAtual,
-    status: 'pendente',
-    criadoEm: new Date().toISOString(),
-  });
-  DB.set('previsoesAvulsas', lista);
+  const venc = document.getElementById('prevav-venc').value || today();
+  const plano = planoParcelas(valor, document.getElementById('prevav-entrada').value, document.getElementById('prevav-n').value, venc);
+  criarPrevisoesDoPlano({ clienteId: document.getElementById('prevav-cliente').value, descricao: desc }, plano, DB.id());
   closeModal('modal-previsao-avulsa');
-  toast('🎯 Valor avulso adicionado');
+  toast(plano.length > 1 ? `🎯 ${plano.length} recebimentos avulsos projetados` : '🎯 Valor avulso adicionado');
   renderAll();
 }
 
@@ -7128,6 +7147,55 @@ function renderPropostas() {
     </tr>`).join('');
 }
 
+/* ── Parcelamento de valores a receber (avulsos e propostas) ── */
+function addMesesStr(str, k) {
+  const [y, m, d] = str.split('-').map(Number), alvo = new Date(y, m - 1 + k, 1), ult = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  return `${alvo.getFullYear()}-${String(alvo.getMonth()+1).padStart(2,'0')}-${String(Math.min(d, ult)).padStart(2,'0')}`;
+}
+function ultimoDiaOuHoje() { return (typeof finMesAtual !== 'undefined' && finMesAtual !== mesAtual()) ? ultimoDiaDoMes(finMesAtual) : today(); }
+// Divide o total em: entrada (opcional, no 1º vencimento) + N parcelas mensais. A última parcela absorve o centavo de arredondamento.
+function planoParcelas(total, entrada, n, primeiroVenc) {
+  total = Math.round((parseFloat(total) || 0) * 100) / 100; entrada = Math.min(total, Math.max(0, Math.round((parseFloat(entrada) || 0) * 100) / 100)); n = Math.max(1, parseInt(n, 10) || 1);
+  const itens = [], saldo = Math.round((total - entrada) * 100) / 100;
+  if (entrada > 0) itens.push({ rotulo: 'entrada', valor: entrada, venc: primeiroVenc });
+  if (saldo > 0 || !entrada) {
+    const base = Math.floor(saldo / n * 100) / 100; let acum = 0;
+    for (let i = 0; i < n; i++) {
+      const valor = i === n - 1 ? Math.round((saldo - acum) * 100) / 100 : base; acum = Math.round((acum + valor) * 100) / 100;
+      itens.push({ rotulo: n > 1 ? `parcela ${i + 1}/${n}` : '', valor, venc: addMesesStr(primeiroVenc, (entrada > 0 ? 1 : 0) + i) });
+    }
+  }
+  return itens;
+}
+function parcPreview(pf) {
+  const el = document.getElementById(pf + '-preview'); if (!el) return;
+  const total = pf === 'pp' ? document.getElementById('pp-total').value : document.getElementById('prevav-valor').value;
+  const venc = document.getElementById(pf + '-venc').value || today();
+  const plano = planoParcelas(total, document.getElementById(pf + '-entrada').value, document.getElementById(pf + '-n').value, venc);
+  if (!(parseFloat(total) > 0)) { el.textContent = 'Informe o valor para ver as parcelas.'; return; }
+  el.innerHTML = plano.length === 1 && !plano[0].rotulo ? `À vista: <b>${fmtMoney(plano[0].valor)}</b> em ${fmtDate(plano[0].venc)}` : plano.map(i => `${i.rotulo || 'valor'}: <b>${fmtMoney(i.valor)}</b> · ${fmtDate(i.venc)}`).join('<br>');
+}
+function criarPrevisoesDoPlano(base, plano, grupoId) {
+  const lista = DB.get('previsoesAvulsas');
+  plano.forEach((it, idx) => lista.push({ id: DB.id() + idx, clienteId: base.clienteId || '', propostaId: base.propostaId || '', grupoId, vencimento: it.venc,
+    descricao: it.rotulo ? `${base.descricao} — ${it.rotulo}` : base.descricao, valor: it.valor, mes: it.venc.slice(0, 7), status: 'pendente', criadoEm: new Date().toISOString() }));
+  DB.set('previsoesAvulsas', lista);
+}
+function propParcelasAbrir(x) {
+  document.getElementById('pp-id').value = x.id; document.getElementById('pp-total').value = x.total || 0;
+  document.getElementById('pp-titulo').textContent = `${x.numero} — ${x.nome} · ${fmtMoney(x.total || 0)}`;
+  document.getElementById('pp-entrada').value = ''; document.getElementById('pp-n').value = 1; document.getElementById('pp-venc').value = addDiasStr(today(), PROP_DIAS_RECEBIMENTO);
+  parcPreview('pp'); openModal('modal-prop-parcelas');
+}
+function propParcelasSalvar() {
+  const x = DB.get('propostas').find(p => p.id === document.getElementById('pp-id').value); if (!x) return;
+  const venc = document.getElementById('pp-venc').value; if (!venc) { toast('⚠️ Informe o 1º vencimento'); return; }
+  const plano = planoParcelas(x.total, document.getElementById('pp-entrada').value, document.getElementById('pp-n').value, venc);
+  propRemoverPrevisaoRecebimento(x);
+  criarPrevisoesDoPlano({ clienteId: x.clienteId, propostaId: x.id, descricao: `Proposta ${x.numero} — ${x.nome}` }, plano, DB.id());
+  closeModal('modal-prop-parcelas'); toast(`💰 ${plano.length} recebimento${plano.length > 1 ? 's' : ''} projetado${plano.length > 1 ? 's' : ''}`); renderAll();
+}
+
 function propMudarStatus(id, v) {
   const props = DB.get('propostas'); const x = props.find(p=>p.id===id);
   if (!x) return;
@@ -7142,6 +7210,7 @@ function propMudarStatus(id, v) {
   if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
   else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias)` : '✅ Proposta aprovada — tarefa criada na Agenda');
   renderPropostas();
+  if (v === 'aprovada' && antes !== 'aprovada' && (x.total || 0) > 0) propParcelasAbrir(x);
 }
 const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
 function propTarefaBase(x, extra) {
