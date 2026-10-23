@@ -1301,6 +1301,22 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-venc">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">📅 Alterar vencimento</span><button class="modal-close" onclick="closeModal('modal-venc')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="vc-tipo"><input type="hidden" id="vc-id">
+      <div id="vc-titulo" style="font-size:13px;font-weight:600;margin-bottom:2px"></div>
+      <div id="vc-info" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
+      <div class="form-group"><label class="form-label">Novo vencimento</label><input class="form-control" type="date" id="vc-data"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="vencAtalho(7)">+7 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(15)">+15 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(30)">+30 dias</button><button class="btn btn-ghost btn-sm" onclick="vencAtalho(0)">Hoje</button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-venc')">Cancelar</button><button class="btn btn-primary" onclick="vencSalvar()">✅ Salvar</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-parcelar">
   <div class="modal" style="max-width:440px">
     <div class="modal-header"><span class="modal-title">✂️ Parcelar lançamento</span><button class="modal-close" onclick="closeModal('modal-parcelar')">×</button></div>
@@ -4709,7 +4725,7 @@ function renderPrevisaoRecebimento() {
     const statusChip = status === 'recebido'
       ? '<span class="chip chip-green">✅ Recebido</span>'
       : '<span class="chip chip-red">⏳ Pendente</span>';
-    return { origem:'avulso', id:a.id, clienteId:a.clienteId, nome: cliente ? cliente.nome : '—', desc:a.descricao, previsto:a.valor, recebido: status==='recebido'?a.valor:0, status, statusChip };
+    return { origem:'avulso', id:a.id, clienteId:a.clienteId, nome: cliente ? cliente.nome : '—', desc:a.descricao, venc:a.vencimento || '', previsto:a.valor, recebido: status==='recebido'?a.valor:0, status, statusChip };
   });
 
   // Lançamentos manuais de receita (criados via "+ Novo lançamento") — podem estar "em aberto" ou já baixados
@@ -4720,7 +4736,7 @@ function renderPrevisaoRecebimento() {
     const statusChip = status === 'recebido'
       ? '<span class="chip chip-green">✅ Recebido</span>'
       : '<span class="chip chip-red">⏳ Em aberto</span>';
-    return { origem:'manual', id:f.id, clienteId:f.clienteId, nome: cliente ? cliente.nome : (f.desc||'Lançamento manual'), desc: cliente?f.desc:'', previsto:f.valor, recebido: status==='recebido'?f.valor:0, status, statusChip };
+    return { origem:'manual', id:f.id, clienteId:f.clienteId, nome: cliente ? cliente.nome : (f.desc||'Lançamento manual'), desc: cliente?f.desc:'', venc:f.data || '', previsto:f.valor, recebido: status==='recebido'?f.valor:0, status, statusChip };
   });
 
   linhas = [...linhas, ...linhasAvulsas, ...linhasManuais];
@@ -4756,7 +4772,7 @@ function renderPrevisaoRecebimento() {
       const rowClick = l.clienteId ? `onclick="openClienteModal('${l.clienteId}')"` : '';
       return `
       <tr ${rowClick} style="${rowClick?'cursor:pointer':''}">
-        <td><strong>${l.nome}</strong>${l.desc?`<div style="font-size:11px;color:var(--text3)">${l.desc}</div>`:''}</td>
+        <td><strong>${l.nome}</strong>${l.desc?`<div style="font-size:11px;color:var(--text3)">${l.desc}</div>`:''}${l.venc && (l.origem==='avulso'||l.origem==='manual') ? `<div style="font-size:11px;color:${l.status!=='recebido' && l.venc < today() ? 'var(--red)' : 'var(--text3)'}">📅 ${l.status==='recebido' ? 'recebido em' : 'vence'} ${fmtDate(l.venc)}${l.status!=='recebido' && l.venc < today() ? ' · vencido' : ''}</div>`:''}</td>
         <td><span class="chip ${origemChip[l.origem]}">${origemLabel[l.origem]}</span></td>
         <td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(l.previsto)}</td>
         <td style="text-align:right;font-family:var(--font-mono);color:${l.recebido>0?'var(--green)':'var(--text3)'}">${fmtMoney(l.recebido)}</td>
@@ -4764,6 +4780,7 @@ function renderPrevisaoRecebimento() {
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
+          ${(l.origem==='avulso'||l.origem==='manual') && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();vencAbrir('${l.origem==='avulso'?'avulso':'fin'}','${l.id}')" title="Alterar o vencimento">📅 Vencimento</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('avulso','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
           ${l.origem==='manual' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('fin','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
           ${l.origem==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${l.id}')">🗑️</button>` : ''}
@@ -4784,7 +4801,7 @@ function renderPrevisaoRecebimento() {
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1"><div style="font-size:12.5px">${f.desc} ${pago?'':'<span class=\"chip chip-red\" style=\"font-size:10px;margin-left:4px\">⏳ Em aberto</span>'}</div><div style="font-size:10.5px;color:var(--text3)">${fmtDate(f.data)}</div></div>
         <div style="font-weight:600;color:var(--red);font-family:var(--font-mono)">-${fmtMoney(f.valor)}</div>
-        ${pago ? '' : `<button class="btn btn-ghost btn-sm" onclick="parcelarAbrir('fin','${f.id}')" title="Parcelar">✂️ Parcelar</button><button class="btn btn-primary btn-sm" onclick="marcarLancamentoBaixado('${f.id}')" title="Marcar como pago">✅ Marcar pago</button>`}
+        ${pago ? '' : `<button class="btn btn-ghost btn-sm" onclick="vencAbrir('fin','${f.id}')" title="Alterar vencimento">📅</button><button class="btn btn-ghost btn-sm" onclick="parcelarAbrir('fin','${f.id}')" title="Parcelar">✂️ Parcelar</button><button class="btn btn-primary btn-sm" onclick="marcarLancamentoBaixado('${f.id}')" title="Marcar como pago">✅ Marcar pago</button>`}
         <button class="btn btn-ghost btn-sm" onclick="openFinanceiroModal('${f.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteFinanceiro('${f.id}')">🗑️</button>
       </div>`;
@@ -4799,10 +4816,41 @@ function abrirPrevisaoAvulsaModal() {
   openModal('modal-previsao-avulsa');
 }
 
+function vencAtual(tipo, item) {
+  return tipo === 'avulso' ? (item.vencimento || (item.mes && item.mes !== mesAtual() ? ultimoDiaDoMes(item.mes) : today())) : (item.data || today());
+}
+function vencAbrir(tipo, id) {
+  const item = tipo === 'avulso' ? DB.get('previsoesAvulsas').find(x => x.id === id) : DB.get('financeiro').find(x => x.id === id);
+  if (!item) return;
+  document.getElementById('vc-tipo').value = tipo; document.getElementById('vc-id').value = id;
+  document.getElementById('vc-titulo').textContent = tipo === 'avulso' ? item.descricao.replace(/ \(prev\. [^)]*\)$/, '') : item.desc;
+  const atual = vencAtual(tipo, item);
+  document.getElementById('vc-info').textContent = `${fmtMoney(item.valor)} · vencimento atual: ${fmtDate(atual)}`;
+  document.getElementById('vc-data').value = atual; openModal('modal-venc');
+}
+function vencAtalho(dias) { document.getElementById('vc-data').value = addDiasStr(dias ? (document.getElementById('vc-data').value || today()) : today(), dias); }
+function vencSalvar() {
+  const tipo = document.getElementById('vc-tipo').value, id = document.getElementById('vc-id').value, nova = document.getElementById('vc-data').value;
+  if (!nova) { toast('⚠️ Informe a data'); return; }
+  if (tipo === 'avulso') {
+    const lista = DB.get('previsoesAvulsas'), a = lista.find(x => x.id === id); if (!a) return;
+    a.vencimento = nova; a.mes = nova.slice(0, 7);
+    if (/ \(prev\. [^)]*\)$/.test(a.descricao)) a.descricao = a.descricao.replace(/ \(prev\. [^)]*\)$/, ` (prev. ${fmtDate(nova)})`);
+    DB.set('previsoesAvulsas', lista);
+  } else {
+    const lista = DB.get('financeiro'), f = lista.find(x => x.id === id); if (!f) return;
+    f.data = nova; DB.set('financeiro', lista);
+  }
+  closeModal('modal-venc');
+  const fora = nova.slice(0, 7) !== finMesAtual;
+  toast(`📅 Vencimento alterado para ${fmtDate(nova)}${fora ? ' — o lançamento passou para ' + mesLabel(nova.slice(0, 7)) : ''}`);
+  renderAll();
+}
+
 function parcelarAbrir(tipo, id) {
   const item = tipo === 'avulso' ? DB.get('previsoesAvulsas').find(x => x.id === id) : DB.get('financeiro').find(x => x.id === id);
   if (!item) return;
-  const venc = tipo === 'avulso' ? (item.vencimento || (item.mes && item.mes !== mesAtual() ? ultimoDiaDoMes(item.mes) : today())) : (item.data || today());
+  const venc = vencAtual(tipo, item);
   document.getElementById('pl-tipo').value = tipo; document.getElementById('pl-id').value = id; document.getElementById('pl-total').value = item.valor;
   document.getElementById('pl-titulo').textContent = tipo === 'avulso' ? item.descricao : item.desc;
   document.getElementById('pl-valor').textContent = `Valor atual: ${fmtMoney(item.valor)}`;
