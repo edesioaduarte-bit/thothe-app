@@ -517,6 +517,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <div class="nav-item" data-page="gestao" onclick="showPage('gestao')" title="Gestão Financeira"><span class="ico"><i class="ti ti-chart-infographic"></i></span><span class="nav-text">Gestão Financeira</span></div>
       <div class="nav-item" data-page="relatorios" onclick="showPage('relatorios')" title="Relatórios"><span class="ico"><i class="ti ti-report-analytics"></i></span><span class="nav-text">Relatórios</span></div>
       <div class="nav-label">Pessoal</div>
+      <div class="nav-item" data-page="pessoalfin" onclick="showPage('pessoalfin')" title="Finanças Pessoais"><span class="ico"><i class="ti ti-wallet"></i></span><span class="nav-text">Finanças Pessoais</span></div>
       <div class="nav-item" data-page="rotina" onclick="showPage('rotina')" title="Rotina Pessoal"><span class="ico"><i class="ti ti-heartbeat"></i></span><span class="nav-text">Rotina Pessoal</span></div>
     </div>
 
@@ -1182,6 +1183,21 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
       </div>
 
+      <!-- ══════════ FINANÇAS PESSOAIS (separado da ThoThe; só os recebimentos são sincronizados) ══════════ -->
+      <div class="page" id="page-pessoalfin">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-ghost btn-sm" onclick="pfMesMover(-1)">◀</button>
+          <strong id="pf-mes-label" style="min-width:140px;text-align:center"></strong>
+          <button class="btn btn-ghost btn-sm" onclick="pfMesMover(1)">▶</button>
+          <button class="btn btn-ghost btn-sm" onclick="pfMesIr(mesAtual())">Hoje</button>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary btn-sm" onclick="pfImportAbrir()">📥 Importar extrato / cartão</button>
+          <button class="btn btn-ghost btn-sm" onclick="pfLancAbrir()">+ Lançamento</button>
+        </div>
+        <div id="pf-abas" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div id="pf-conteudo"></div>
+      </div>
+
       <div class="page" id="page-rotina">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:10px;flex-wrap:wrap">
           <div style="font-size:11.5px;color:var(--text3)">Sincronizado com todos os seus dispositivos, igual ao resto do sistema.</div>
@@ -1317,6 +1333,42 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="closeModal('modal-registro-manual')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveRegistroManual()">Salvar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pf-import">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><span class="modal-title">📥 Importar extrato ou fatura do cartão</span><button class="modal-close" onclick="closeModal('modal-pf-import')">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Aceita arquivos <b>CSV</b> ou <b>OFX</b> baixados no app/internet banking. (PDF não é lido — no banco, procure "exportar" e escolha CSV ou OFX.) Lançamentos já importados antes são ignorados automaticamente.</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Este arquivo é</label>
+          <select class="form-control" id="pfi-origem" onchange="pfImportReprocessar()"><option value="cartao">💳 Fatura do cartão de crédito</option><option value="extrato">🏦 Extrato da conta corrente</option></select></div>
+        <div class="form-group"><label class="form-label">Sinal dos valores</label>
+          <select class="form-control" id="pfi-sinal" onchange="pfImportReprocessar()"><option value="auto">Automático</option><option value="manter">Gastos já são negativos</option><option value="inverter">Gastos são positivos (inverter)</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Arquivo</label><input type="file" class="form-control" id="pfi-arquivo" accept=".csv,.ofx,.txt,.qfx" onchange="pfImportLer(this)"></div>
+      <div id="pfi-previa"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-pf-import')">Cancelar</button><button class="btn btn-primary" id="pfi-btn" onclick="pfImportConfirmar()" disabled>✅ Importar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pf-lanc">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><span class="modal-title">+ Lançamento pessoal</span><button class="modal-close" onclick="closeModal('modal-pf-lanc')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="pfl-tipo"><option value="saida">Saída (gasto)</option><option value="entrada">Entrada</option></select></div>
+        <div class="form-group"><label class="form-label">Data</label><input class="form-control" type="date" id="pfl-data"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Descrição</label><input class="form-control" id="pfl-desc"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-control" type="number" step="0.01" id="pfl-valor"></div>
+        <div class="form-group"><label class="form-label">Categoria</label><select class="form-control" id="pfl-cat"></select></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-pf-lanc')">Cancelar</button><button class="btn btn-primary" onclick="pfLancSalvar()">✅ Salvar</button></div>
   </div>
 </div>
 
@@ -1561,18 +1613,6 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="propMsgWhats()">WhatsApp</button>
       <button class="btn btn-primary" onclick="propMsgCopiar()">📋 Copiar mensagem</button>
     </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-prop-etapas">
-  <div class="modal" style="max-width:680px">
-    <div class="modal-header"><span class="modal-title" id="prop-etapas-titulo">🧩 Etapas da proposta</span><button class="modal-close" onclick="closeModal('modal-prop-etapas')">×</button></div>
-    <div class="modal-body">
-      <div id="prop-etapas-resumo" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
-      <div id="prop-etapas-lista" style="display:flex;flex-direction:column;gap:8px"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:10px">Cada etapa vira uma tarefa na Agenda quando você a inicia. Pré-datar agenda a tarefa para a data escolhida. Ao concluir uma etapa na Agenda, esta tela abre para você iniciar ou pré-datar a próxima.</div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-prop-etapas')">Fechar</button></div>
   </div>
 </div>
 
@@ -2973,6 +3013,7 @@ const PAGE_CONFIG = {
   propostas:   { title: 'Propostas', sub: 'abertura, cancelamento e regularização' },
   contratos:   { title: 'Contratos', sub: 'modelos com cláusulas selecionáveis' },
   recibos:     { title: 'Recibos', sub: 'emissão e histórico de recibos' },
+  pessoalfin:  { title: 'Finanças Pessoais', sub: 'extrato, cartão e projeção — separado da ThoThe' },
   rotina:      { title: 'Rotina Pessoal', sub: 'hábitos e acompanhamento do dia a dia' },
 };
 
@@ -2992,7 +3033,7 @@ function showPage(id) {
     dashboard: () => renderDashboard(), clientes: () => { gerarCodigosClientes(true); renderClientes(); }, gestao: () => renderGestao(),
     fechamento: () => renderFechamento(), obrigacoes: () => renderObrigacoes(), agenda: () => { gerarOcorrenciasRecorrentesFuturas(); renderAgendaUnificada(); },
     financeiro: () => renderFinanceiro(), relatorios: () => renderRelatorioAtual(), rotina: () => renderRotina(), propostas: () => renderPropostas(),
-    recibos: () => renderRecibos(), contratos: () => renderContratos(),
+    recibos: () => renderRecibos(), contratos: () => renderContratos(), pessoalfin: () => renderPessoalFin(),
   }[id];
   const aviso = document.getElementById('page-' + id).querySelector(':scope > .erro-tela'); if (aviso) aviso.remove();
   try { if (r) r(); } catch (e) {
@@ -7036,7 +7077,6 @@ function emailSalvar(modo) {
 }
 // Chamado quando uma tarefa-e-mail em redação é concluída (cronômetro parado ou marcada como feita)
 function emailPosConclusao(tarefas, t) {
-  if (t && t.propKind === 'etapa') { const pid = t.propostaId, ix = t.etapaIdx; setTimeout(() => { try { propEtapaConcluida(pid, ix); } catch (e) {} }, 350); }
   if (!t || t.emailKind !== 'redigir') return;
   t.emailKind = 'enviado'; t.titulo = `📧 E-mail enviado: ${t.emailAssunto}`; t.emailEnviadoEm = today();
   let msg = '📧 E-mail enviado';
@@ -7341,7 +7381,7 @@ function renderPropostas() {
           ${Object.keys(PROP_STATUS).map(k=>`<option value="${k}" ${x.status===k?'selected':''}>${PROP_STATUS[k]}</option>`).join('')}
         </select>
       </td>
-      <td style="white-space:nowrap">${x.status === 'aprovada' && (x.itens || []).length ? (() => { const pg = propEtapasProgresso(x); return `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propEtapasAbrir('${x.id}')" title="Etapas de execução">🧩 ${pg.feitas}/${pg.n}</button>`; })() : ''}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propMsgAbrir('${x.id}')" title="Mensagem para o cliente">💬</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();imprimirProposta('${x.id}')" title="Gerar / imprimir">🖨️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirProposta('${x.id}')" title="Excluir">🗑️</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();propMsgAbrir('${x.id}')" title="Mensagem para o cliente">💬</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();imprimirProposta('${x.id}')" title="Gerar / imprimir">🖨️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirProposta('${x.id}')" title="Excluir">🗑️</button></td>
     </tr>`).join('');
 }
 
@@ -7387,116 +7427,12 @@ function propMudarStatus(id, v) {
   if (v === 'enviada' && antes !== 'enviada') x.enviadaEm = today();
   DB.set('propostas', props);
   let prevData = null;
-  if (v === 'aprovada' && antes !== 'aprovada') { prevData = propCriarPrevisaoRecebimento(x); }
-  if (antes === 'aprovada' && v !== 'aprovada') propCancelarEtapasFuturas(x);
+  if (v === 'aprovada' && antes !== 'aprovada') { propCriarTarefaExecucao(x); prevData = propCriarPrevisaoRecebimento(x); }
   if (antes === 'aprovada' && v !== 'aprovada') propRemoverPrevisaoRecebimento(x);
   propSincronizarAcompanhamento();
   if (v === 'enviada' && antes !== 'enviada') toast('📅 Acompanhamento da proposta aberto na Agenda');
-  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias) — use ✂️ Parcelar no Financeiro se for parcelado` : '✅ Proposta aprovada');
+  else if (v === 'aprovada' && antes !== 'aprovada') toast(prevData ? `✅ Proposta aprovada — tarefa criada e ${fmtMoney(x.total)} projetados para ${fmtDate(prevData)} (20 dias) — use ✂️ Parcelar no Financeiro se for parcelado` : '✅ Proposta aprovada — tarefa criada na Agenda');
   renderPropostas();
-  if (v === 'aprovada' && antes !== 'aprovada' && (x.itens || []).length) setTimeout(() => propEtapasAbrir(x.id), 400);
-}
-// ── Execução por etapas: cada item da proposta aprovada vira uma tarefa, iniciada (ou pré-datada) uma de cada vez ──
-function propEtapaTarefa(propId, idx, tarefas) {
-  return (tarefas || DB.get('tarefas')).find(t => t.propKind === 'etapa' && t.propostaId === propId && t.etapaIdx === idx);
-}
-function propEtapaSituacao(t) {
-  if (!t) return 'aguardando';
-  if (t.status === 'concluida') return 'concluida';
-  return t.data && t.data > today() ? 'predatada' : 'andamento';
-}
-function propEtapasProgresso(x) {
-  const tarefas = DB.get('tarefas'); const n = (x.itens || []).length;
-  const feitas = (x.itens || []).filter((_, i) => propEtapaSituacao(propEtapaTarefa(x.id, i, tarefas)) === 'concluida').length;
-  return { n, feitas };
-}
-function propEtapasAbrir(propId) {
-  const x = DB.get('propostas').find(p => p.id === propId);
-  if (!x) return;
-  document.getElementById('prop-etapas-titulo').textContent = `🧩 Etapas — ${x.numero} · ${x.nome}`;
-  const tarefas = DB.get('tarefas');
-  const itens = x.itens || [];
-  const pg = propEtapasProgresso(x);
-  document.getElementById('prop-etapas-resumo').textContent = `${PROP_TIPOS[x.tipo] || ''} · ${fmtMoney(x.total || 0)} · ${pg.feitas} de ${pg.n} etapa${pg.n !== 1 ? 's' : ''} concluída${pg.feitas !== 1 ? 's' : ''}`;
-  const amanha = addDiasStr(today(), 1);
-  const chips = { aguardando: '<span class="chip chip-gray">Aguardando início</span>', predatada: '<span class="chip chip-purple">📅 Pré-datada</span>', andamento: '<span class="chip chip-blue">▶ Em andamento</span>', concluida: '<span class="chip chip-green">✓ Concluída</span>' };
-  document.getElementById('prop-etapas-lista').innerHTML = itens.length ? itens.map((it, i) => {
-    const t = propEtapaTarefa(x.id, i, tarefas); const sit = propEtapaSituacao(t);
-    let info = '', acoes = '';
-    const datePick = (val, label, fn) => `<input type="date" class="form-control" id="prop-etapa-data-${i}" value="${val}" min="${amanha}" style="width:auto;padding:4px 8px;font-size:12px"><button class="btn btn-ghost btn-sm" onclick="${fn}('${x.id}',${i})">${label}</button>`;
-    if (sit === 'aguardando') acoes = `<button class="btn btn-primary btn-sm" onclick="propEtapaIniciar('${x.id}',${i},today())">▶ Iniciar hoje</button>${datePick(amanha, '📅 Pré-datar', 'propEtapaPredatar')}`;
-    if (sit === 'predatada') { info = `Agendada para ${fmtDate(t.data)}`; acoes = `<button class="btn btn-primary btn-sm" onclick="propEtapaIniciar('${x.id}',${i},today())">▶ Antecipar para hoje</button>${datePick(t.data, '🔁 Reagendar', 'propEtapaPredatar')}<button class="btn btn-danger btn-sm" onclick="propEtapaCancelar('${x.id}',${i})" title="Cancelar agendamento">✖</button>`; }
-    if (sit === 'andamento') { info = `Iniciada em ${fmtDate(t.data)}`; acoes = `<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-prop-etapas');abrirDetalhesTarefa('${t.id}')">Abrir tarefa</button>`; }
-    if (sit === 'concluida') info = `Concluída em ${fmtDate(t.dataConclusao || t.data)}`;
-    return `<div class="card" style="padding:10px 12px;display:flex;flex-direction:column;gap:6px;${sit === 'concluida' ? 'opacity:.65' : ''}">
-      <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between">
-        <div style="font-size:13px"><b>${i + 1}.</b> ${propEsc(it.descricao || '')}${it.valor ? ` <span style="color:var(--text3)">· ${fmtMoney(it.valor)}</span>` : ''}</div>
-        <div style="flex-shrink:0">${chips[sit]}</div>
-      </div>
-      ${info ? `<div style="font-size:11.5px;color:var(--text3)">${info}</div>` : ''}
-      ${acoes ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${acoes}</div>` : ''}
-    </div>`;
-  }).join('') : '<div style="font-size:13px;color:var(--text3)">Esta proposta não tem etapas cadastradas.</div>';
-  openModal('modal-prop-etapas');
-}
-function propEtapaGravar(propId, idx, data) {
-  const x = DB.get('propostas').find(p => p.id === propId);
-  if (!x || !(x.itens || [])[idx]) return false;
-  const tarefas = DB.get('tarefas');
-  const t = propEtapaTarefa(propId, idx, tarefas);
-  if (t) { if (t.status === 'concluida') return false; t.data = data; }
-  else {
-    const it = x.itens[idx]; const n = x.itens.length;
-    tarefas.push(propTarefaBase(x, {
-      propKind: 'etapa', etapaIdx: idx,
-      titulo: `🧩 Etapa ${idx + 1}/${n} — ${x.numero} · ${x.nome}: ${it.descricao}`,
-      data,
-      comentarios: `Proposta ${x.numero} (${PROP_TIPOS[x.tipo] || ''}) — etapa ${idx + 1} de ${n}.${it.valor ? '\nValor da etapa: ' + fmtMoney(it.valor) + '.' : ''}${it.detalhe ? '\n' + it.detalhe : ''}\nAo concluir esta tarefa, você poderá iniciar ou pré-datar a próxima etapa.`,
-    }));
-  }
-  DB.set('tarefas', tarefas);
-  return true;
-}
-function propEtapaIniciar(propId, idx, data) {
-  const x = DB.get('propostas').find(p => p.id === propId);
-  if (!x) return;
-  const tarefas = DB.get('tarefas');
-  const anteriorAberta = (x.itens || []).slice(0, idx).some((_, i) => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) !== 'concluida');
-  if (anteriorAberta && !confirm('Há etapa anterior ainda não concluída. Iniciar esta etapa mesmo assim?')) return;
-  if (propEtapaGravar(propId, idx, data)) toast(`▶ Etapa ${idx + 1} iniciada — tarefa na Agenda de hoje`);
-  renderAll(); propEtapasAbrir(propId);
-}
-function propEtapaPredatar(propId, idx) {
-  const el = document.getElementById('prop-etapa-data-' + idx);
-  const data = el && el.value;
-  if (!data) { toast('⚠️ Escolha a data'); return; }
-  if (data <= today()) { toast('⚠️ Para hoje, use "Iniciar hoje"'); return; }
-  if (propEtapaGravar(propId, idx, data)) toast(`📅 Etapa ${idx + 1} pré-datada para ${fmtDate(data)}`);
-  renderAll(); propEtapasAbrir(propId);
-}
-function propEtapaCancelar(propId, idx) {
-  const t = propEtapaTarefa(propId, idx);
-  if (!t || t.status === 'concluida') return;
-  if (!confirm(`Cancelar o agendamento da etapa ${idx + 1}? A tarefa sai da Agenda e a etapa volta para "Aguardando início".`)) return;
-  DB.set('tarefas', DB.get('tarefas').filter(x => x.id !== t.id));
-  toast('✖ Agendamento cancelado'); renderAll(); propEtapasAbrir(propId);
-}
-// Se a aprovação for desfeita, saem da Agenda as etapas ainda não iniciadas (pré-datadas); as em andamento ficam
-function propCancelarEtapasFuturas(x) {
-  const tarefas = DB.get('tarefas');
-  const resto = tarefas.filter(t => !(t.propKind === 'etapa' && t.propostaId === x.id && t.status !== 'concluida' && t.data > today()));
-  if (resto.length !== tarefas.length) DB.set('tarefas', resto);
-}
-// Chamada quando uma tarefa de etapa é concluída (por qualquer caminho)
-function propEtapaConcluida(propId, idx) {
-  const x = DB.get('propostas').find(p => p.id === propId);
-  if (!x) return;
-  const tarefas = DB.get('tarefas'); const n = (x.itens || []).length;
-  const pendentes = (x.itens || []).map((_, i) => i).filter(i => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) !== 'concluida');
-  if (!pendentes.length) { toast(`🏁 Todas as ${n} etapas da proposta ${x.numero} foram concluídas`); return; }
-  const prox = pendentes.find(i => propEtapaSituacao(propEtapaTarefa(propId, i, tarefas)) === 'aguardando');
-  toast(`✅ Etapa ${idx + 1} de ${n} concluída${prox !== undefined ? ' — inicie ou pré-date a próxima' : ''}`);
-  if (prox !== undefined) propEtapasAbrir(propId);
 }
 const PROP_INTERVALO_FOLLOWUP = 2;   // dias entre um contato e o próximo
 function propTarefaBase(x, extra) {
@@ -9389,6 +9325,362 @@ function aplicarEstadoSidebarSalvo() {
     startApp();
   }
 })();
+
+/* ══════════════════════════════════════════════════════
+   FINANÇAS PESSOAIS — dados próprios (pf_*), separados da ThoThe.
+   Único vínculo: os recebimentos da ThoThe entram como "entrada" (calculados ao vivo, não copiados).
+   ══════════════════════════════════════════════════════ */
+const PF_CATS = ['Alimentação','Mercado','Transporte','Moradia','Saúde','Assinaturas','Lazer','Compras','Educação','Impostos e taxas','Transferências','Renda','Outros','Pagamento de fatura','Ignorar'];
+const PF_EXCL = ['Pagamento de fatura','Ignorar'];
+const PF_REGRAS = [
+  ['Pagamento de fatura', ['pagamento de fatura','pgto fatura','pagamento recebido','pagamento fatura','fatura cartao','pag fatura','pagto fatura','pagamento on line','pagamento efetuado']],
+  ['Assinaturas', ['netflix','spotify','amazon prime','prime video','disney','hbo','youtube','apple com bill','icloud','google one','google storage','microsoft','adobe','chatgpt','openai','claude','deezer','globoplay','paramount','canva','dropbox','playplus','crunchyroll','assinatura']],
+  ['Compras', ['mercado livre','mercadolivre','amazon','shopee','aliexpress','magalu','magazine luiza','americanas','shein','renner','zara','riachuelo','casas bahia','kabum','netshoes','centauro','leroy','tok stok','c&a']],
+  ['Mercado', ['supermercado','mercado','atacad','carrefour','assai','pao de acucar','hortifruti','sacolao','acougue','bompreco','extra','dia','guanabara','sams club']],
+  ['Alimentação', ['ifood','restaurante','lanchonete','padaria','pizzaria','burger','mcdonald','subway','cafe','cafeteria','rappi','churrasc','sorveteria','doceria','confeitaria','outback','habibs','bar','lanches','sushi','acai']],
+  ['Transporte', ['uber','99','cabify','posto','combustivel','shell','ipiranga','estacionamento','sem parar','conectcar','pedagio','metro','cptm','bilhete unico','lava jato','oficina','mecanica']],
+  ['Moradia', ['aluguel','condominio','enel','light','cemig','sabesp','comgas','gas natural','internet','vivo','claro','tim','oi','net virtua','energia','agua','iptu','luz']],
+  ['Saúde', ['farmacia','drogaria','droga raia','drogasil','pacheco','unimed','hospital','clinica','laboratorio','dentista','plano de saude','amil','bradesco saude','sulamerica','medic','psicolog','academia','smartfit','smart fit']],
+  ['Lazer', ['cinema','ingresso','sympla','teatro','steam','playstation','xbox','nintendo','hotel','airbnb','booking','decolar','latam','gol linhas','azul linhas','viagem','show','parque']],
+  ['Educação', ['curso','faculdade','escola','udemy','alura','livraria','universidade','colegio']],
+  ['Impostos e taxas', ['iof','tarifa','juros','anuidade','multa','encargos','imposto','darf','ipva','mora','seguro']],
+  ['Transferências', ['pix','ted','doc','transferencia','transf']],
+];
+let pfAba = 'resumo', pfMes = mesAtual(), pfImp = null;
+function pfLanc() { return DB.get('pf_lanc'); }
+function pfObj(k) { try { const r = JSON.parse(localStorage.getItem('gw_' + k) || 'null'); return (r && !Array.isArray(r)) ? r : {}; } catch (e) { return {}; } }
+function pfCfg() { return Object.assign({ pct: 100, incluirThothe: true, saldo: 0, metaTotal: 0, metas: {}, ignorarEntradas: '' }, pfObj('pf_cfg')); }
+function pfSalvarCfg(c) { DB.set('pf_cfg', c); }
+function pfRegrasApr() { return pfObj('pf_regras'); }
+function pfNorm(s) { return ' ' + String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9&]+/g, ' ').trim() + ' '; }
+function pfChave(desc) {
+  const t = pfNorm(desc).replace(/\b(parcela|parc|compra|cartao|debito|credito|pagamento|enviado|recebido|pix|no|em|de|da|do)\b/g, ' ').replace(/\b\d+\b/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  return t.slice(0, 3).join(' ');
+}
+function pfCasa(n, kw) { kw = kw.trim(); return kw.length <= 3 ? new RegExp('(^| )' + kw.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&') + '( |$)').test(n.trim()) : n.includes(kw); }
+function pfCategorizar(desc, valor) {
+  const n = pfNorm(desc), ch = pfChave(desc);
+  const apr = pfRegrasApr(), sg = valor > 0 ? '+' : '-';
+  if (ch && apr[ch + sg]) return apr[ch + sg];
+  for (const [cat, kws] of PF_REGRAS) { if (kws.some(k => pfCasa(n, k))) { if (valor > 0 && cat !== 'Pagamento de fatura') continue; return cat; } }
+  const cfg = pfCfg();
+  if (valor > 0) { if (cfg.ignorarEntradas && cfg.ignorarEntradas.split(',').map(x => pfNorm(x).trim()).filter(Boolean).some(k => n.includes(k))) return 'Ignorar'; return 'Renda'; }
+  return 'Outros';
+}
+function pfAddMes(m, k) { let [y, mm] = m.split('-').map(Number); mm += k; while (mm > 12) { mm -= 12; y++; } while (mm < 1) { mm += 12; y--; } return y + '-' + String(mm).padStart(2, '0'); }
+function pfParcela(desc) {
+  const m = String(desc).match(/parc(?:ela)?\.?\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})/i) || String(desc).match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\s*$/);
+  if (!m) return null; const n = +m[1], t = +m[2]; return (t >= 2 && t <= 60 && n >= 1 && n <= t) ? { n, t } : null;
+}
+function pfValor(s) {
+  s = String(s == null ? '' : s).trim(); if (!s) return NaN;
+  const neg = /^\(.*\)$/.test(s) || /-/.test(s) || /\bD\b$/i.test(s);
+  s = s.replace(/[^\d.,]/g, '');
+  if (!s) return NaN;
+  const ic = s.lastIndexOf(','), ip = s.lastIndexOf('.');
+  if (ic > -1 && ip > -1) s = ic > ip ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (ic > -1) s = s.replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const v = parseFloat(s); if (isNaN(v)) return NaN;
+  return neg ? -Math.abs(v) : v;
+}
+function pfData(s) {
+  s = String(s || '').trim(); let m;
+  if ((m = s.match(/(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
+  if ((m = s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/))) { let y = m[3]; if (y.length === 2) y = '20' + y; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  return '';
+}
+function pfSplit(l, d) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < l.length; i++) { const ch = l[i]; if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; } else if (ch === d && !q) { out.push(cur); cur = ''; } else cur += ch; }
+  out.push(cur); return out.map(x => x.trim());
+}
+function pfParseOFX(txt) {
+  const itens = [];
+  txt.split(/<STMTTRN>/i).slice(1).forEach(b => {
+    const tag = n => { const m = b.match(new RegExp('<' + n + '>([^<\\r\\n]*)', 'i')); return m ? m[1].trim() : ''; };
+    const data = pfData(tag('DTPOSTED')); const v = parseFloat(tag('TRNAMT').replace(',', '.'));
+    const desc = tag('MEMO') || tag('NAME');
+    if (data && !isNaN(v)) itens.push({ data, desc, valor: v });
+  });
+  return itens;
+}
+function pfParseCSV(txt) {
+  txt = txt.replace(/^﻿/, '');
+  const linhas = txt.split(/\r?\n/).filter(l => l.trim()); if (!linhas.length) return [];
+  const amostra = linhas.slice(0, 8).join('\n');
+  const delim = [';', '\t', ','].map(d => [d, amostra.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = linhas.map(l => pfSplit(l, delim));
+  const nn = c => pfNorm(c).trim();
+  const hi = rows.findIndex(r => r.some(c => /^(data|date)/.test(nn(c))) && r.some(c => /(valor|amount|value|credito|debito)/.test(nn(c))));
+  let iD = -1, iV = -1, iDesc = -1, iC = -1, iCred = -1, iDeb = -1, dados = rows;
+  if (hi > -1) {
+    const h = rows[hi].map(nn); dados = rows.slice(hi + 1);
+    iD = h.findIndex(c => /^(data|date)/.test(c));
+    iV = h.findIndex(c => /^(valor|amount|value)/.test(c));
+    iCred = h.findIndex(c => /^credito/.test(c)); iDeb = h.findIndex(c => /^debito/.test(c));
+    iDesc = h.findIndex(c => /(descri|title|historico|lancamento|estabelecimento|memo|detalhe|nome)/.test(c));
+    iC = h.findIndex(c => /^(categoria|category)/.test(c));
+    if (iDesc < 0) iDesc = h.findIndex((c, i) => i !== iD && i !== iV && i !== iC && i !== iCred && i !== iDeb);
+  } else {
+    const r0 = rows.find(r => r.some(c => pfData(c))) || rows[0];
+    iD = r0.findIndex(c => pfData(c)); iV = r0.length - 1; while (iV > 0 && isNaN(pfValor(r0[iV]))) iV--;
+    iDesc = r0.map((c, i) => [i, c.length]).filter(([i]) => i !== iD && i !== iV).sort((a, b) => b[1] - a[1]).map(x => x[0])[0];
+  }
+  const itens = [];
+  dados.forEach(r => {
+    const data = pfData(r[iD]); if (!data) return;
+    let v = NaN;
+    if (iV > -1) v = pfValor(r[iV]);
+    if (isNaN(v) && (iCred > -1 || iDeb > -1)) { const c = iCred > -1 ? Math.abs(pfValor(r[iCred]) || 0) : 0, d = iDeb > -1 ? Math.abs(pfValor(r[iDeb]) || 0) : 0; v = c - d; if (!c && !d) v = NaN; }
+    if (isNaN(v)) return;
+    const desc = (r[iDesc] || '').trim(); if (/^saldo\b/.test(pfNorm(desc).trim())) return;
+    itens.push({ data, desc, valor: v });
+  });
+  return itens;
+}
+function pfImportAbrir() { pfImp = null; document.getElementById('pfi-arquivo').value = ''; document.getElementById('pfi-previa').innerHTML = ''; document.getElementById('pfi-btn').disabled = true; openModal('modal-pf-import'); }
+function pfImportLer(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    let txt = String(rd.result);
+    if (txt.includes('�')) { const rd2 = new FileReader(); rd2.onload = () => { pfImp = { nome: f.name, txt: String(rd2.result) }; pfImportReprocessar(); }; rd2.readAsText(f, 'ISO-8859-1'); return; }
+    pfImp = { nome: f.name, txt }; pfImportReprocessar();
+  };
+  rd.readAsText(f, 'UTF-8');
+}
+function pfImportReprocessar() {
+  if (!pfImp) return;
+  const origem = document.getElementById('pfi-origem').value, sinal = document.getElementById('pfi-sinal').value;
+  const txt = pfImp.txt, ofx = /<OFX|<STMTTRN/i.test(txt);
+  const itens = ofx ? pfParseOFX(txt) : pfParseCSV(txt);
+  let inverter = sinal === 'inverter';
+  if (sinal === 'auto' && origem === 'cartao' && !ofx) { const pos = itens.filter(i => i.valor > 0).length, neg = itens.filter(i => i.valor < 0).length; inverter = pos > neg; }
+  if (inverter) itens.forEach(i => i.valor = -i.valor);
+  const existentes = {}; pfLanc().forEach(l => { existentes[l.h] = (existentes[l.h] || 0) + 1; });
+  const cont = {}; const lote = DB.id(); const novos = []; let dup = 0;
+  itens.forEach(i => {
+    const base = [i.data, pfNorm(i.desc).trim(), i.valor.toFixed(2), origem].join('|');
+    cont[base] = (cont[base] || 0) + 1;
+    if (cont[base] <= (existentes[base] || 0)) { dup++; return; }
+    novos.push({ id: DB.id() + novos.length, data: i.data, desc: i.desc, valor: Math.round(i.valor * 100) / 100, origem, cat: pfCategorizar(i.desc, i.valor), parcela: pfParcela(i.desc), h: base, lote });
+  });
+  pfImp.novos = novos; pfImp.lote = lote;
+  const ent = novos.filter(x => x.valor > 0 && !PF_EXCL.includes(x.cat)).reduce((s, x) => s + x.valor, 0), sai = novos.filter(x => x.valor < 0 && !PF_EXCL.includes(x.cat)).reduce((s, x) => s - x.valor, 0);
+  const datas = novos.map(x => x.data).sort();
+  document.getElementById('pfi-previa').innerHTML = !itens.length
+    ? '<div class="chip chip-red">Não consegui ler lançamentos neste arquivo. Confira se é CSV ou OFX com colunas de data, descrição e valor.</div>'
+    : `<div style="font-size:13px;margin-bottom:8px"><b>${novos.length}</b> lançamentos novos${dup ? ` · ${dup} já importados (ignorados)` : ''}${datas.length ? ` · de ${fmtDate(datas[0])} a ${fmtDate(datas[datas.length - 1])}` : ''}<br>Saídas: <b style="color:var(--red)">${fmtMoney(sai)}</b> · Entradas: <b style="color:var(--green)">${fmtMoney(ent)}</b></div>
+       <div style="max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="tbl"><tbody>${novos.slice(0, 40).map(x => `<tr><td style="font-size:11.5px">${fmtDate(x.data)}</td><td style="font-size:12px">${propEsc(x.desc)}${x.parcela ? ` <span class="chip chip-blue" style="font-size:9px">${x.parcela.n}/${x.parcela.t}</span>` : ''}</td><td><span class="chip chip-gray" style="font-size:10px">${x.cat}</span></td><td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:${x.valor < 0 ? 'var(--red)' : 'var(--green)'}">${fmtMoney(x.valor)}</td></tr>`).join('')}</tbody></table></div>${novos.length > 40 ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">… e mais ${novos.length - 40}</div>` : ''}`;
+  document.getElementById('pfi-btn').disabled = !novos.length;
+}
+function pfImportConfirmar() {
+  if (!pfImp || !pfImp.novos || !pfImp.novos.length) return;
+  DB.set('pf_lanc', pfLanc().concat(pfImp.novos));
+  const meses = pfImp.novos.map(x => x.data.slice(0, 7)).sort(); pfMes = meses[meses.length - 1];
+  try { localStorage.setItem('gw_pf_ultimo_lote', pfImp.lote); } catch (e) {}
+  const n = pfImp.novos.length; closeModal('modal-pf-import'); toast(`📥 ${n} lançamentos importados`); pfImp = null; pfAba = 'resumo'; renderPessoalFin();
+}
+function pfDesfazerLote() {
+  const lote = localStorage.getItem('gw_pf_ultimo_lote'); if (!lote) { toast('Nenhuma importação para desfazer'); return; }
+  const l = pfLanc(); const n = l.filter(x => x.lote === lote).length; if (!n || !confirm(`Desfazer a última importação (${n} lançamentos)?`)) return;
+  DB.set('pf_lanc', l.filter(x => x.lote !== lote)); localStorage.removeItem('gw_pf_ultimo_lote'); renderPessoalFin();
+}
+function pfLancAbrir() {
+  document.getElementById('pfl-cat').innerHTML = PF_CATS.map(c => `<option>${c}</option>`).join('');
+  document.getElementById('pfl-tipo').value = 'saida'; document.getElementById('pfl-data').value = today(); document.getElementById('pfl-desc').value = ''; document.getElementById('pfl-valor').value = ''; document.getElementById('pfl-cat').value = 'Outros';
+  openModal('modal-pf-lanc');
+}
+function pfLancSalvar() {
+  const desc = document.getElementById('pfl-desc').value.trim(), v = parseFloat(document.getElementById('pfl-valor').value), data = document.getElementById('pfl-data').value;
+  if (!desc || !(v > 0) || !data) { toast('⚠️ Informe data, descrição e valor'); return; }
+  const valor = document.getElementById('pfl-tipo').value === 'saida' ? -v : v;
+  const l = pfLanc(); l.push({ id: DB.id(), data, desc, valor, origem: 'manual', cat: document.getElementById('pfl-cat').value, parcela: pfParcela(desc), h: 'manual|' + DB.id(), lote: '' });
+  DB.set('pf_lanc', l); closeModal('modal-pf-lanc'); pfMes = data.slice(0, 7); renderPessoalFin();
+}
+function pfMudarCat(id, cat) {
+  const l = pfLanc(), x = l.find(y => y.id === id); if (!x) return;
+  const ch = pfChave(x.desc), sg = x.valor > 0 ? '+' : '-';
+  if (ch) { const r = pfRegrasApr(); r[ch + sg] = cat; DB.set('pf_regras', r); }
+  let n = 0; l.forEach(y => { if ((y.valor > 0) === (x.valor > 0) && (y.id === id || (ch && pfChave(y.desc) === ch))) { y.cat = cat; n++; } });
+  DB.set('pf_lanc', l); toast(n > 1 ? `🏷️ ${n} lançamentos parecidos foram para "${cat}"` : '🏷️ Categoria alterada'); renderPessoalFin();
+}
+function pfExcluir(id) { DB.set('pf_lanc', pfLanc().filter(x => x.id !== id)); renderPessoalFin(); }
+function pfMesMover(k) { pfMes = pfAddMes(pfMes, k); renderPessoalFin(); }
+function pfMesIr(m) { pfMes = m; renderPessoalFin(); }
+function pfSetAba(a) { pfAba = a; renderPessoalFin(); }
+
+// Recebimentos da ThoThe (calculados ao vivo — é a única ponte entre o escritório e o pessoal)
+function pfThothe(m) {
+  const cfg = pfCfg(); if (!cfg.incluirThothe) return { recebido: 0, previsto: 0, total: 0 };
+  const f = DB.get('financeiro'), real = financeiroRealizado().filter(x => x.tipo === 'receita' && x.data && x.data.slice(0, 7) === m);
+  const recebido = real.reduce((s, x) => s + x.valor, 0);
+  let pendente = 0;
+  if (m >= mesAtual()) {
+    DB.get('clientes').filter(c => c.status === 'ativo' && c.temFechamento === true && c.honorario > 0).forEach(c => {
+      const rec = real.filter(x => x.clienteId === c.id).reduce((s, x) => s + x.valor, 0); pendente += Math.max(0, honV(c, m) - rec);
+    });
+    pendente += DB.get('previsoesAvulsas').filter(a => a.mes === m && a.status !== 'recebido').reduce((s, a) => s + a.valor, 0);
+    pendente += f.filter(x => x.tipo === 'receita' && x.status === 'pendente' && x.data && x.data.slice(0, 7) === m && !x.origem).reduce((s, x) => s + x.valor, 0);
+  }
+  const k = cfg.pct / 100;
+  return { recebido: recebido * k, previsto: pendente * k, total: (recebido + pendente) * k };
+}
+function pfTotais(m) {
+  const l = pfLanc().filter(x => x.data.slice(0, 7) === m && !PF_EXCL.includes(x.cat));
+  const ent = l.filter(x => x.valor > 0).reduce((s, x) => s + x.valor, 0), sai = l.filter(x => x.valor < 0).reduce((s, x) => s - x.valor, 0);
+  const th = pfThothe(m);
+  return { ent, sai, th, entTotal: ent + th.recebido, saldo: ent + th.recebido - sai };
+}
+function pfPorCategoria(m) {
+  const o = {}; pfLanc().filter(x => x.data.slice(0, 7) === m && x.valor < 0 && !PF_EXCL.includes(x.cat)).forEach(x => { o[x.cat] = (o[x.cat] || 0) - x.valor; });
+  return Object.entries(o).sort((a, b) => b[1] - a[1]);
+}
+function pfRecorrentes() {
+  const g = {}; const atual = mesAtual();
+  pfLanc().filter(x => !PF_EXCL.includes(x.cat) && !x.parcela && x.origem !== 'manual').forEach(x => {
+    const ch = pfChave(x.desc); if (!ch) return; const k = ch + (x.valor > 0 ? '+' : '-'); (g[k] = g[k] || []).push(x);
+  });
+  const out = [];
+  Object.entries(g).forEach(([k, arr]) => {
+    const meses = [...new Set(arr.map(x => x.data.slice(0, 7)))].sort();
+    const ass = arr[0].cat === 'Assinaturas';
+    if (meses.length < (ass ? 2 : 3)) return;
+    if (meses[meses.length - 1] < pfAddMes(atual, -2)) return;
+    const porMes = meses.map(m => arr.filter(x => x.data.slice(0, 7) === m).reduce((s, x) => s + x.valor, 0));
+    const mx = Math.max(...porMes.map(Math.abs)), mn = Math.min(...porMes.map(Math.abs));
+    if ((mx - mn) / (mx || 1) > (ass ? 0.6 : 0.25)) return;
+    out.push({ chave: k, desc: arr[arr.length - 1].desc, cat: arr[arr.length - 1].cat, valor: porMes[porMes.length - 1], meses: meses.length, ultimo: meses[meses.length - 1] });
+  });
+  return out.sort((a, b) => a.valor - b.valor);
+}
+function pfParcelasFuturas() {
+  const g = {}; pfLanc().filter(x => x.parcela && x.valor < 0 && !PF_EXCL.includes(x.cat)).forEach(x => {
+    const k = pfChave(x.desc) + '|' + x.parcela.t; if (!g[k] || x.parcela.n > g[k].parcela.n || (x.parcela.n === g[k].parcela.n && x.data > g[k].data)) g[k] = x;
+  });
+  const out = []; const atual = mesAtual();
+  Object.values(g).forEach(x => { for (let k = 1; k <= x.parcela.t - x.parcela.n; k++) { const m = pfAddMes(x.data.slice(0, 7), k); if (m >= atual) out.push({ mes: m, valor: -x.valor, desc: x.desc, n: x.parcela.n + k, t: x.parcela.t, cat: x.cat }); } });
+  return out;
+}
+function pfVariavelMedia(recs) {
+  const chavesRec = new Set(recs.filter(r => r.valor < 0).map(r => r.chave)); const atual = mesAtual(); const tot = [];
+  for (let k = 1; k <= 3; k++) {
+    const m = pfAddMes(atual, -k); const l = pfLanc().filter(x => x.data.slice(0, 7) === m && x.valor < 0 && !PF_EXCL.includes(x.cat) && !x.parcela && !chavesRec.has(pfChave(x.desc) + '-'));
+    if (l.length) tot.push(l.reduce((s, x) => s - x.valor, 0));
+  }
+  return tot.length ? tot.reduce((a, b) => a + b, 0) / tot.length : 0;
+}
+function pfProjecao() {
+  const recs = pfRecorrentes(), parc = pfParcelasFuturas(), media = pfVariavelMedia(recs), cfg = pfCfg(), atual = mesAtual();
+  const linhas = []; let acum = cfg.saldo || 0;
+  for (let k = 0; k < 6; k++) {
+    const m = pfAddMes(atual, k), th = pfThothe(m);
+    const entRec = recs.filter(r => r.valor > 0).reduce((s, r) => s + r.valor, 0);
+    const fixas = -recs.filter(r => r.valor < 0).reduce((s, r) => s + r.valor, 0);
+    const parcelas = parc.filter(p => p.mes === m).reduce((s, p) => s + p.valor, 0);
+    let variavel = media, entradas = th.total + entRec;
+    if (k === 0) { const t = pfTotais(m); const real = pfLanc().filter(x => x.data.slice(0, 7) === m && x.valor < 0 && !PF_EXCL.includes(x.cat)).reduce((s, x) => s - x.valor, 0); variavel = Math.max(media, real - fixas - parcelas); entradas = Math.max(entradas, th.total + t.ent); }
+    const saidas = fixas + parcelas + variavel; const saldoMes = entradas - saidas; acum += saldoMes;
+    linhas.push({ m, entradas, fixas, parcelas, variavel, saidas, saldoMes, acum });
+  }
+  return { linhas, recs, parc, media };
+}
+const pfBarra = (pct, cor) => `<div style="height:8px;border-radius:99px;background:var(--surface3);overflow:hidden"><div style="height:100%;width:${Math.min(100, Math.max(0, pct))}%;background:${cor || 'var(--gold)'}"></div></div>`;
+const pfC = v => v < 0 ? 'var(--red)' : 'var(--green)';
+
+function renderPessoalFin() {
+  document.getElementById('pf-mes-label').textContent = mesLabel(pfMes);
+  const abas = [['resumo', '📊 Resumo'], ['lanc', '🧾 Lançamentos'], ['futuro', '🔮 Futuro'], ['economizar', '✂️ Economizar'], ['ajustes', '⚙️ Ajustes']];
+  document.getElementById('pf-abas').innerHTML = abas.map(([k, t]) => `<button class="btn ${pfAba === k ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pfSetAba('${k}')">${t}</button>`).join('');
+  const el = document.getElementById('pf-conteudo');
+  if (!pfLanc().length && pfAba !== 'ajustes') {
+    const th = pfThothe(pfMes);
+    el.innerHTML = `<div class="card hud"><div class="card-body" style="text-align:center;padding:34px 20px"><div style="font-size:34px">💳</div><div style="font-size:16px;font-weight:600;margin:8px 0">Comece importando seu extrato e a fatura do cartão</div><div style="font-size:13px;color:var(--text3);max-width:520px;margin:0 auto 14px">No app do banco, exporte em <b>CSV</b> ou <b>OFX</b>. O sistema categoriza os gastos, acha assinaturas e parcelas, e projeta os próximos meses.${th.recebido ? `<br><br>Seus recebimentos da ThoThe neste mês (${fmtMoney(th.recebido)}) já entram como entrada automaticamente.` : ''}</div><button class="btn btn-primary" onclick="pfImportAbrir()">📥 Importar arquivo</button></div></div>`;
+    return;
+  }
+  el.innerHTML = ({ resumo: pfHtmlResumo, lanc: pfHtmlLanc, futuro: pfHtmlFuturo, economizar: pfHtmlEconomizar, ajustes: pfHtmlAjustes }[pfAba] || pfHtmlResumo)();
+}
+function pfHtmlResumo() {
+  const t = pfTotais(pfMes), ant = pfTotais(pfAddMes(pfMes, -1)), cats = pfPorCategoria(pfMes), cfg = pfCfg();
+  const antCat = Object.fromEntries(pfPorCategoria(pfAddMes(pfMes, -1)));
+  const tot = cats.reduce((s, c) => s + c[1], 0);
+  const card = (tt, v, sub, cor) => `<div class="card hud"><div class="card-body"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${tt}</div><div style="font-size:22px;font-weight:700;font-family:var(--font-mono);color:${cor || 'var(--text)'}">${fmtMoney(v)}</div><div style="font-size:11.5px;color:var(--text3)">${sub}</div></div></div>`;
+  const dv = (a, b) => b > 0 ? `${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / b * 100))}% vs mês anterior` : '—';
+  let metaHtml = '';
+  if (cfg.metaTotal > 0) { const p = t.sai / cfg.metaTotal * 100; metaHtml = `<div class="card hud" style="margin-top:14px"><div class="card-body"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><b>🎯 Meta de gastos do mês</b><span>${fmtMoney(t.sai)} de ${fmtMoney(cfg.metaTotal)} (${Math.round(p)}%)</span></div>${pfBarra(p, p > 100 ? 'var(--red)' : 'var(--green)')}</div></div>`; }
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    ${card('Entradas', t.entTotal, `${t.th.recebido ? `inclui ${fmtMoney(t.th.recebido)} da ThoThe` : 'lançadas/importadas'}${t.th.previsto ? ` · +${fmtMoney(t.th.previsto)} a receber da ThoThe` : ''}`, 'var(--green)')}
+    ${card('Saídas', t.sai, dv(t.sai, ant.sai), 'var(--red)')}
+    ${card('Resultado do mês', t.saldo, t.saldo >= 0 ? 'sobrou no mês' : 'gastou mais do que entrou', pfC(t.saldo))}
+  </div>${metaHtml}
+  <div class="card hud" style="margin-top:14px"><div class="card-body"><div style="font-weight:600;margin-bottom:10px">Para onde foi o dinheiro</div>
+  ${cats.length ? cats.map(([c, v]) => { const a = antCat[c] || 0; const lim = cfg.metas[c]; return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${c}${lim ? ` <span style="color:var(--text3);font-size:11px">(meta ${fmtMoney(lim)})</span>` : ''}</span><span><b style="font-family:var(--font-mono)">${fmtMoney(v)}</b> <span style="color:var(--text3);font-size:11px">${Math.round(v / tot * 100)}%${a ? ` · ${v >= a ? '▲' : '▼'}${Math.abs(Math.round((v - a) / a * 100))}%` : ''}</span></span></div>${pfBarra(lim ? v / lim * 100 : v / cats[0][1] * 100, lim && v > lim ? 'var(--red)' : 'var(--gold)')}</div>`; }).join('') : '<div style="color:var(--text3);font-size:13px">Sem saídas neste mês.</div>'}
+  </div></div>`;
+}
+function pfHtmlLanc() {
+  const q = (document.getElementById('pf-busca') || {}).value || '', fc = (document.getElementById('pf-fcat') || {}).value || '';
+  let l = pfLanc().filter(x => x.data.slice(0, 7) === pfMes).sort((a, b) => b.data.localeCompare(a.data));
+  if (q) l = l.filter(x => pfNorm(x.desc).includes(pfNorm(q).trim()));
+  if (fc) l = l.filter(x => x.cat === fc);
+  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><input class="form-control" id="pf-busca" placeholder="Buscar…" value="${propEsc(q)}" onchange="renderPessoalFin()" style="max-width:240px"><select class="form-control" id="pf-fcat" onchange="renderPessoalFin()" style="max-width:200px"><option value="">Todas as categorias</option>${PF_CATS.map(c => `<option ${c === fc ? 'selected' : ''}>${c}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pfDesfazerLote()">↩️ Desfazer última importação</button></div>
+  <div class="card hud"><div style="overflow:auto"><table class="tbl"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>
+  ${l.length ? l.map(x => `<tr><td style="white-space:nowrap">${fmtDate(x.data)}</td><td>${propEsc(x.desc)}${x.parcela ? ` <span class="chip chip-blue" style="font-size:9px">${x.parcela.n}/${x.parcela.t}</span>` : ''}<div style="font-size:10.5px;color:var(--text3)">${x.origem === 'cartao' ? '💳 cartão' : x.origem === 'extrato' ? '🏦 extrato' : '✍️ manual'}</div></td><td><select class="form-control" style="padding:3px 6px;font-size:12px" onchange="pfMudarCat('${x.id}',this.value)">${PF_CATS.map(c => `<option ${c === x.cat ? 'selected' : ''}>${c}</option>`).join('')}</select></td><td style="text-align:right;font-family:var(--font-mono);color:${PF_EXCL.includes(x.cat) ? 'var(--text3)' : pfC(x.valor)}">${fmtMoney(x.valor)}</td><td><button class="btn btn-danger btn-sm" onclick="pfExcluir('${x.id}')">🗑️</button></td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Nada neste mês</td></tr>'}
+  </tbody></table></div></div><div style="font-size:11.5px;color:var(--text3);margin-top:8px">Ao mudar a categoria de um gasto, o sistema aprende e aplica aos lançamentos parecidos (e nas próximas importações). "Pagamento de fatura" e "Ignorar" não entram nas somas — evita contar o cartão duas vezes.</div>`;
+}
+function pfHtmlFuturo() {
+  const p = pfProjecao();
+  const th = a => `<th style="text-align:right">${a}</th>`;
+  const fixos = p.recs.filter(r => r.valor < 0);
+  return `<div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:4px">🔮 Próximos 6 meses</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">Entradas = recebimentos previstos da ThoThe (honorários, avulsos e pendentes) + entradas recorrentes. Saídas = gastos fixos detectados + parcelas do cartão que ainda vão cair + média dos gastos variáveis dos últimos 3 meses.</div>
+  <div style="overflow:auto"><table class="tbl"><thead><tr><th>Mês</th>${th('Entradas')}${th('Fixos')}${th('Parcelas')}${th('Variáveis (média)')}${th('Resultado')}${th('Saldo acumulado')}</tr></thead><tbody>
+  ${p.linhas.map(r => `<tr><td><b>${mesLabel(r.m)}</b></td><td style="text-align:right;color:var(--green);font-family:var(--font-mono)">${fmtMoney(r.entradas)}</td><td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(r.fixas)}</td><td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(r.parcelas)}</td><td style="text-align:right;font-family:var(--font-mono)">${fmtMoney(r.variavel)}</td><td style="text-align:right;font-family:var(--font-mono);color:${pfC(r.saldoMes)}"><b>${fmtMoney(r.saldoMes)}</b></td><td style="text-align:right;font-family:var(--font-mono);color:${pfC(r.acum)}">${fmtMoney(r.acum)}</td></tr>`).join('')}
+  </tbody></table></div><div style="font-size:11.5px;color:var(--text3);margin-top:8px">O saldo acumulado parte do "saldo atual" informado em Ajustes (hoje: ${fmtMoney(pfCfg().saldo)}).</div></div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:14px">
+  <div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:8px">🔁 Gastos fixos e assinaturas detectados</div>${fixos.length ? fixos.map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)"><span>${propEsc(r.desc)} <span style="font-size:10.5px;color:var(--text3)">${r.cat} · ${r.meses} meses</span></span><b style="font-family:var(--font-mono)">${fmtMoney(-r.valor)}</b></div>`).join('') + `<div style="text-align:right;font-size:12px;margin-top:6px">Total/mês: <b>${fmtMoney(-fixos.reduce((s, r) => s + r.valor, 0))}</b></div>` : '<div style="font-size:13px;color:var(--text3)">Nada detectado ainda. Importe pelo menos 3 meses de histórico.</div>'}</div></div>
+  <div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:8px">💳 Parcelas que ainda vão cair</div>${p.parc.length ? Object.entries(p.parc.reduce((o, x) => { (o[x.mes] = o[x.mes] || []).push(x); return o; }, {})).sort().map(([m, a]) => `<div style="font-size:12.5px;margin-bottom:6px"><b>${mesLabel(m)}</b> — ${fmtMoney(a.reduce((s, x) => s + x.valor, 0))}<div style="color:var(--text3);font-size:11px">${a.map(x => `${propEsc(x.desc)} (${x.n}/${x.t})`).join(' · ')}</div></div>`).join('') : '<div style="font-size:13px;color:var(--text3)">Nenhuma parcela futura identificada.</div>'}</div></div></div>`;
+}
+function pfHtmlEconomizar() {
+  const atual = pfMes, cats = pfPorCategoria(atual), recs = pfRecorrentes(), tot = cats.reduce((s, c) => s + c[1], 0);
+  const hist = {}; for (let k = 1; k <= 3; k++) pfPorCategoria(pfAddMes(atual, -k)).forEach(([c, v]) => { (hist[c] = hist[c] || []).push(v); });
+  const subidas = cats.map(([c, v]) => { const h = hist[c] || []; const mdia = h.length ? h.reduce((a, b) => a + b, 0) / 3 : 0; return { c, v, mdia, d: v - mdia }; }).filter(x => x.mdia > 0 && x.v > x.mdia * 1.2 && x.d > 50).sort((a, b) => b.d - a.d);
+  const ass = recs.filter(r => r.valor < 0 && r.cat === 'Assinaturas'), totAss = -ass.reduce((s, r) => s + r.valor, 0);
+  const dicas = [];
+  if (cats[0]) dicas.push(`<b>${cats[0][0]}</b> é o maior gasto do mês (${fmtMoney(cats[0][1])}, ${Math.round(cats[0][1] / tot * 100)}% das saídas). Cortar 20% daqui libera <b>${fmtMoney(cats[0][1] * 0.2)}</b> por mês.`);
+  subidas.slice(0, 3).forEach(s => dicas.push(`<b>${s.c}</b> subiu ${Math.round((s.v / s.mdia - 1) * 100)}% em relação à média dos 3 meses anteriores (${fmtMoney(s.mdia)} → ${fmtMoney(s.v)}). Voltar à média economiza <b>${fmtMoney(s.d)}</b>.`));
+  if (totAss > 0) dicas.push(`Você tem <b>${ass.length}</b> assinatura(s) somando <b>${fmtMoney(totAss)}/mês</b> (${fmtMoney(totAss * 12)} por ano). Cancele o que não usou no último mês.`);
+  const juros = pfLanc().filter(x => x.data.slice(0, 7) === atual && x.valor < 0 && /juros|iof|multa|encargo|mora/.test(pfNorm(x.desc))).reduce((s, x) => s - x.valor, 0);
+  if (juros > 0) dicas.push(`<b>${fmtMoney(juros)}</b> foram em juros/IOF/multas neste mês — dinheiro que não compra nada. Evite o rotativo e atrasos.`);
+  const porEst = {}; pfLanc().filter(x => x.data.slice(0, 7) === atual && x.valor < 0 && !PF_EXCL.includes(x.cat)).forEach(x => { const ch = pfChave(x.desc) || x.desc; (porEst[ch] = porEst[ch] || { n: 0, v: 0, d: x.desc }).n++; porEst[ch].v -= x.valor; });
+  const top = Object.values(porEst).sort((a, b) => b.v - a.v).slice(0, 8);
+  const base4 = cats.slice(0, 4).reduce((s, c) => s + c[1], 0);
+  return `<div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:8px">💡 Onde dá para reduzir (${mesLabel(atual)})</div>${dicas.length ? '<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7">' + dicas.map(d => `<li>${d}</li>`).join('') + '</ul>' : '<div style="font-size:13px;color:var(--text3)">Importe mais dados para eu gerar sugestões.</div>'}</div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:14px">
+  <div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:8px">🏪 Onde mais gastou</div>${top.map(x => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)"><span>${propEsc(x.d)} <span style="font-size:10.5px;color:var(--text3)">${x.n}×</span></span><b style="font-family:var(--font-mono)">${fmtMoney(x.v)}</b></div>`).join('') || '<div style="color:var(--text3);font-size:13px">—</div>'}</div></div>
+  <div class="card hud"><div class="card-body"><div style="font-weight:600;margin-bottom:8px">🎯 Simulador de corte</div><div style="font-size:12px;color:var(--text3);margin-bottom:8px">Quanto sobraria por mês se você cortasse X% das 4 maiores categorias:</div>${[10, 20, 30].map(p => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>Cortar ${p}%</span><b style="font-family:var(--font-mono);color:var(--green)">+ ${fmtMoney(base4 * p / 100)}/mês</b></div>`).join('')}<div style="font-size:11.5px;color:var(--text3);margin-top:6px">Defina metas por categoria em ⚙️ Ajustes para acompanhar no Resumo.</div></div></div></div>`;
+}
+function pfHtmlAjustes() {
+  const cfg = pfCfg(), regras = pfRegrasApr();
+  return `<div class="card hud"><div class="card-body">
+  <div style="font-weight:600;margin-bottom:8px">🔗 Ligação com a ThoThe</div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input type="checkbox" id="pfa-th" ${cfg.incluirThothe ? 'checked' : ''}> Incluir os recebimentos da ThoThe como entrada pessoal</label>
+  <div class="form-row"><div class="form-group"><label class="form-label">% dos recebimentos que vira entrada pessoal</label><input class="form-control" type="number" min="0" max="100" id="pfa-pct" value="${cfg.pct}"></div>
+  <div class="form-group"><label class="form-label">Saldo atual em conta (R$)</label><input class="form-control" type="number" step="0.01" id="pfa-saldo" value="${cfg.saldo}"></div></div>
+  <div class="form-group"><label class="form-label">Ignorar entradas do extrato que contenham (separe por vírgula) — evita contar duas vezes o que já vem da ThoThe</label><input class="form-control" id="pfa-ign" value="${propEsc(cfg.ignorarEntradas)}" placeholder="ex.: thothe, cliente x"></div>
+  <div class="form-group"><label class="form-label">Meta de gastos por mês (R$)</label><input class="form-control" type="number" step="0.01" id="pfa-meta" value="${cfg.metaTotal || ''}"></div>
+  <div style="font-weight:600;margin:12px 0 6px">Metas por categoria (R$/mês)</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">${PF_CATS.filter(c => !PF_EXCL.includes(c) && c !== 'Renda').map(c => `<div class="form-group" style="margin:0"><label class="form-label">${c}</label><input class="form-control pfa-metacat" data-cat="${c}" type="number" step="1" value="${cfg.metas[c] || ''}"></div>`).join('')}</div>
+  <div style="margin-top:12px"><button class="btn btn-primary" onclick="pfSalvarAjustes()">✅ Salvar ajustes</button></div></div></div>
+  <div class="card hud" style="margin-top:14px"><div class="card-body"><div style="font-weight:600;margin-bottom:6px">🏷️ Regras aprendidas (${Object.keys(regras).length})</div>${Object.keys(regras).length ? Object.entries(regras).map(([k, c], i) => `<span class="chip chip-gray" style="margin:2px">${propEsc(k.slice(0, -1))} → ${c} <span style="cursor:pointer" onclick="pfRegraRemover(${i})">✖</span></span>`).join('') : '<div style="font-size:13px;color:var(--text3)">Aparecem aqui quando você corrige uma categoria.</div>'}</div></div>`;
+}
+function pfSalvarAjustes() {
+  const c = pfCfg(); c.incluirThothe = document.getElementById('pfa-th').checked; c.pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('pfa-pct').value) || 0));
+  c.saldo = parseFloat(document.getElementById('pfa-saldo').value) || 0; c.ignorarEntradas = document.getElementById('pfa-ign').value.trim(); c.metaTotal = parseFloat(document.getElementById('pfa-meta').value) || 0;
+  c.metas = {}; document.querySelectorAll('.pfa-metacat').forEach(i => { const v = parseFloat(i.value); if (v > 0) c.metas[i.dataset.cat] = v; });
+  pfSalvarCfg(c); toast('⚙️ Ajustes salvos'); renderPessoalFin();
+}
+function pfRegraRemover(i) { const r = pfRegrasApr(); const k = Object.keys(r)[i]; if (k) { delete r[k]; DB.set('pf_regras', r); } renderPessoalFin(); }
 </script>
 </body>
 </html>
