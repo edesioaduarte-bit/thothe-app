@@ -9513,12 +9513,16 @@ function pfImportReprocessar() {
   let inverter = sinal === 'inverter';
   if (sinal === 'auto' && origem === 'cartao' && !ofx && !pfImp.pdf) { const pos = itens.filter(i => i.valor > 0).length, neg = itens.filter(i => i.valor < 0).length; inverter = pos > neg; }
   if (inverter) itens.forEach(i => i.valor = -i.valor);
-  const existentes = {}; pfLanc().forEach(l => { existentes[l.h] = (existentes[l.h] || 0) + 1; });
-  const cont = {}; const lote = DB.id(); const novos = []; let dup = 0;
+  // Anti-duplicidade: mesma data + mesmo valor + mesma origem + descrição parecida = já lançado
+  const dv = (d, v, o) => d + '|' + v.toFixed(2) + '|' + o;
+  const existentes = {}; pfLanc().forEach(l => { if (l.origem === 'manual') return; (existentes[dv(l.data, l.valor, l.origem)] = existentes[dv(l.data, l.valor, l.origem)] || []).push(l.desc); });
+  const parecida = (a, b) => { const x = pfNorm(a).trim(), y = pfNorm(b).trim(); if (x === y) return true; const cx = pfChave(a), cy = pfChave(b); if (cx && cx === cy) return true; return x.length > 3 && y.length > 3 && (x.includes(y) || y.includes(x)); };
+  const lote = DB.id(); const novos = []; let dup = 0;
   itens.forEach(i => {
+    const k = dv(i.data, i.valor, origem), lista = existentes[k];
+    const idx = lista ? lista.findIndex(d => parecida(d, i.desc)) : -1;
+    if (idx > -1) { lista.splice(idx, 1); dup++; return; }
     const base = [i.data, pfNorm(i.desc).trim(), i.valor.toFixed(2), origem].join('|');
-    cont[base] = (cont[base] || 0) + 1;
-    if (cont[base] <= (existentes[base] || 0)) { dup++; return; }
     novos.push({ id: DB.id() + novos.length, data: i.data, desc: i.desc, valor: Math.round(i.valor * 100) / 100, origem, cat: pfCategorizar(i.desc, i.valor), parcela: pfParcela(i.desc), h: base, lote });
   });
   pfImp.novos = novos; pfImp.lote = lote;
