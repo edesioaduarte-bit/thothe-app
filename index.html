@@ -486,6 +486,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
       <div id="auth-error" style="display:none;font-size:12px;color:var(--red);background:var(--red-l);border:1px solid rgba(248,113,122,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px"></div>
       <button class="btn btn-primary" id="auth-login-btn" onclick="authLogin()" style="width:100%;justify-content:center;padding:11px">Entrar</button>
+      <div id="auth-offline-box" style="display:none;margin-top:12px;text-align:center">
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px">Você pode abrir o sistema só com os dados salvos neste aparelho. As alterações feitas assim sobem para a nuvem no próximo login com conexão.</div>
+        <button class="btn btn-ghost" onclick="authOffline()" style="width:100%;justify-content:center">📴 Abrir sem conexão (dados deste aparelho)</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1347,10 +1351,19 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div class="form-group"><label class="form-label">Sinal dos valores</label>
           <select class="form-control" id="pfi-sinal" onchange="pfImportReprocessar()"><option value="auto">Automático</option><option value="manter">Gastos já são negativos</option><option value="inverter">Gastos são positivos (inverter)</option></select></div>
       </div>
+      <div class="form-group"><label class="form-label">Nome do cartão / conta (para separar o resumo por cartão)</label><input class="form-control" id="pfi-cartao" list="pfi-cartoes" placeholder="ex.: Nubank final 1234, Itaú Visa, Conta Inter" oninput="if(pfImp&&pfImp.novos)pfImp.novos.forEach(x=>x.cartao=this.value.trim())"><datalist id="pfi-cartoes"></datalist></div>
       <div class="form-group"><label class="form-label">Arquivo</label><input type="file" class="form-control" id="pfi-arquivo" accept=".pdf,.csv,.ofx,.txt,.qfx" onchange="pfImportLer(this)"></div>
       <div id="pfi-previa"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-pf-import')">Cancelar</button><button class="btn btn-primary" id="pfi-btn" onclick="pfImportConfirmar()" disabled>✅ Importar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pf-det">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><span class="modal-title">🔎 Detalhes do lançamento</span><button class="modal-close" onclick="closeModal('modal-pf-det')">×</button></div>
+    <div class="modal-body" id="pfd-corpo"></div>
+    <div class="modal-footer"><button class="btn btn-danger" onclick="pfDetExcluir()">🗑️ Excluir</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeModal('modal-pf-det')">Fechar</button><button class="btn btn-primary" onclick="pfDetSalvar()">✅ Salvar</button></div>
   </div>
 </div>
 
@@ -1363,6 +1376,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div class="form-group"><label class="form-label">Data</label><input class="form-control" type="date" id="pfl-data"></div>
       </div>
       <div class="form-group"><label class="form-label">Descrição</label><input class="form-control" id="pfl-desc"></div>
+      <div class="form-group"><label class="form-label">Cartão / conta (opcional)</label><input class="form-control" id="pfl-cartao" list="pfi-cartoes"></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-control" type="number" step="0.01" id="pfl-valor"></div>
         <div class="form-group"><label class="form-label">Categoria</label><select class="form-control" id="pfl-cat"></select></div>
@@ -1809,14 +1823,14 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       </div>
       <div class="form-group">
         <label class="form-label">Referente a *</label>
-        <input class="form-control" id="rec-referente" placeholder="Ex: honorários contábeis de Setembro/2026">
+        <input class="form-control" id="rec-referente" placeholder="Ex: honorários de Setembro/2026">
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Competência</label><input class="form-control" type="month" id="rec-comp" onchange="this.dataset.auto='0'"></div>
         <div class="form-group"><label class="form-label">Contato do pagador</label><input class="form-control" id="rec-contato" placeholder="E-mail / telefone"></div>
       </div>
       <div class="form-group"><label class="form-label">Endereço do pagador (opcional)</label><input class="form-control" id="rec-end" placeholder="Rua, nº, bairro, cidade/UF"></div>
-      <div class="form-group"><label class="form-label">Discriminação dos serviços (detalhe)</label><textarea class="form-control" id="rec-detalhe" rows="3" placeholder="Ex: Escrituração contábil, apuração do Simples Nacional (PGDAS), folha de pagamento e obrigações acessórias do mês."></textarea></div>
+      <div class="form-group"><label class="form-label">Discriminação dos serviços (detalhe)</label><textarea class="form-control" id="rec-detalhe" rows="3" placeholder="Ex: Apuração do Simples Nacional (PGDAS), folha de pagamento e obrigações acessórias do mês."></textarea></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Desconto (R$)</label><input class="form-control" type="number" step="0.01" id="rec-desc" placeholder="0,00"></div>
         <div class="form-group"><label class="form-label">Juros/multa (R$)</label><input class="form-control" type="number" step="0.01" id="rec-acres" placeholder="0,00"></div>
@@ -2174,6 +2188,7 @@ const DB = {
   set: (k, v) => {
     localStorage.setItem('gw_' + k, JSON.stringify(v));
     DB._escritaLocal[k] = Date.now();
+    if (window.__offline) { try { localStorage.setItem('gw_offline_dirty', '1'); } catch (e) {} return; }
     if (SUPA_URL && SUPA_KEY) {
       DB._pendentes++;
       DB._push(k, v).finally(() => { DB._pendentes--; }).catch(e => {
@@ -2221,9 +2236,9 @@ const DB = {
 
   pushAll: async () => {
     if (!SUPA_URL || !SUPA_KEY) return false;
-    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos','contratos'];
+    const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos','contratos','pf_lanc','pf_cfg','pf_regras'];
     try {
-      for (const k of chaves) { await DB._push(k, DB.get(k)); }
+      for (const k of chaves) { if (localStorage.getItem('gw_' + k) === null) continue; await DB._push(k, JSON.parse(localStorage.getItem('gw_' + k))); }
       return true;
     } catch (e) { return false; }
   }
@@ -2321,9 +2336,18 @@ async function authLogin() {
     document.getElementById('auth-gate').style.display = 'none';
     startApp();
   } catch (e) {
-    errEl.textContent = 'Não foi possível conectar. Verifique sua internet.';
+    errEl.textContent = !navigator.onLine
+      ? 'Este aparelho está sem internet. Verifique a conexão.'
+      : 'Não foi possível falar com o servidor da nuvem (Supabase). A internet está funcionando, então o servidor pode estar pausado ou fora do ar — confira o projeto no painel do Supabase. Enquanto isso, você pode abrir o sistema sem conexão.';
     errEl.style.display = ''; btn.textContent = 'Entrar'; btn.disabled = false;
+    const ob = document.getElementById('auth-offline-box'); if (ob) ob.style.display = '';
   }
+}
+
+function authOffline() {
+  window.__offline = true;
+  document.getElementById('auth-gate').style.display = 'none';
+  startApp();
 }
 
 function authLogout() {
@@ -6510,7 +6534,7 @@ function renderDevidoAnterior() {
    CONTRATOS — modelos por tipo, cláusulas selecionáveis e editáveis
    ══════════════════════════════════════════════════════ */
 const CTR_TIPOS = {
-  continuado:   { nome: 'Recorrente (mensal e anual)', ico: '🔁', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS CONTÁBEIS CONTINUADOS', pontual: false },
+  continuado:   { nome: 'Recorrente (mensal e anual)', ico: '🔁', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ENTREGA DE OBRIGAÇÕES ACESSÓRIAS E ROTINAS FISCAIS', pontual: false },
   regularizacao:{ nome: 'Regularização (pontual)',      ico: '🧾', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE REGULARIZAÇÃO FISCAL E CADASTRAL', pontual: true },
   abertura:     { nome: 'Abertura de empresa',          ico: '🏢', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ABERTURA DE EMPRESA', pontual: true },
   cancelamento: { nome: 'Cancelamento (baixa)',         ico: '🛑', titulo: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BAIXA (CANCELAMENTO) DE EMPRESA', pontual: true },
@@ -6522,15 +6546,14 @@ const CTR_ORD = ['PRIMEIRA','SEGUNDA','TERCEIRA','QUARTA','QUINTA','SEXTA','SÉT
 const CTR_SERVICOS = {
   continuado: [
     { grupo: 'Obrigações mensais', itens: [
-      ['Escrituração contábil e fiscal', 1], ['Apuração mensal de tributos e emissão das guias (Simples Nacional/PGDAS-D, DAS, ISS, ICMS, PIS/COFINS, IRPJ/CSLL — conforme o regime)', 1],
+      ['Apuração mensal de tributos e emissão das guias (Simples Nacional/PGDAS-D, DAS, ISS, ICMS, PIS/COFINS, IRPJ/CSLL — conforme o regime)', 1],
       ['Entrega das obrigações acessórias mensais (DCTFWeb, EFD-Reinf, EFD Contribuições, DeSTDA/SPED — conforme o caso)', 1],
       ['Departamento pessoal: folha de pagamento, férias, 13º salário, rescisões e admissões', 0], ['Envio do eSocial e geração das guias de FGTS Digital e INSS', 0],
       ['Pró-labore e retiradas dos sócios', 1], ['Emissão de certidões negativas e acompanhamento de pendências fiscais', 0],
       ['Atendimento e orientação contábil/fiscal (e-mail, WhatsApp e reuniões)', 1], ['Emissão de notas fiscais de serviço', 0],
     ]},
     { grupo: 'Obrigações anuais', itens: [
-      ['Declaração anual do Simples Nacional (DEFIS) ou DASN-SIMEI', 1], ['Balanço patrimonial e Demonstração do Resultado do Exercício (DRE)', 1],
-      ['ECD e ECF (SPED Contábil e Fiscal) — quando exigidas', 0], ['RAIS/Informe de rendimentos e demais declarações anuais de empregados', 0],
+      ['Declaração anual do Simples Nacional (DEFIS) ou DASN-SIMEI', 1], ['RAIS/Informe de rendimentos e demais declarações anuais de empregados', 0],
       ['Renovação de alvarás e licenças', 0], ['Declaração de Imposto de Renda dos sócios (pessoa física)', 0],
     ]},
   ],
@@ -6553,9 +6576,9 @@ const CTR_SERVICOS = {
   ],
   cancelamento: [
     { grupo: 'Baixa', itens: [
-      ['Diagnóstico da situação e levantamento das pendências do CNPJ', 1], ['Elaboração do distrato social e baixa na Junta Comercial', 1],
+      ['Diagnóstico da situação e levantamento das pendências do CNPJ', 1], ['Consulta prévia de pendências, notificações e procedimentos de fiscalização em nome do CNPJ (e-CAC, Prefeitura, Secretaria da Fazenda e demais canais), mediante procuração/acessos fornecidos pela CONTRATANTE', 1], ['Elaboração do distrato social e baixa na Junta Comercial', 1],
       ['Baixa do CNPJ na Receita Federal', 1], ['Baixa das inscrições municipal e estadual', 1], ['Baixa de licenças e alvarás', 0],
-      ['Apuração final de tributos e balanço de encerramento', 1], ['Entrega das declarações finais (DEFIS/DASN, DCTFWeb, eSocial, SPED — conforme o caso)', 1],
+      ['Entrega das declarações finais (DEFIS/DASN, DCTFWeb, eSocial, SPED — conforme o caso)', 1],
       ['Fase de regularização prévia das pendências (quando necessária)', 0], ['Emissão de certidões e comprovantes da baixa', 1],
     ]},
   ],
@@ -6569,12 +6592,15 @@ function ctrClausulasPadrao(tipo) {
   const add = (k, titulo, texto, ativa = true) => C.push({ k, titulo, texto, ativa });
 
   const objeto = {
-    continuado: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços contábeis, fiscais e de departamento pessoal à CONTRATANTE, de forma continuada, compreendendo:\n{{SERVICOS}}\nOs serviços que não estiverem descritos nesta cláusula não integram os honorários ajustados e poderão ser contratados à parte, mediante proposta ou termo aditivo.\nOs serviços serão executados dentro dos prazos legais, desde que a CONTRATANTE forneça documentos e informações nos prazos previstos neste contrato.`,
+    continuado: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços fiscais, de entrega de obrigações acessórias e de departamento pessoal à CONTRATANTE, de forma continuada, compreendendo:\n{{SERVICOS}}\nOs serviços que não estiverem descritos nesta cláusula não integram os honorários ajustados e poderão ser contratados à parte, mediante proposta ou termo aditivo.\nOs serviços serão executados dentro dos prazos legais, desde que a CONTRATANTE forneça documentos e informações nos prazos previstos neste contrato.`,
     regularizacao: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de levantamento, análise e regularização das pendências cadastrais, fiscais e/ou administrativas da CONTRATANTE perante os órgãos competentes, compreendendo:\n{{SERVICOS}}\nA CONTRATADA assume obrigação de meio, comprometendo-se a empregar a técnica e a diligência necessárias, sem poder garantir o resultado ou a decisão dos órgãos públicos.\nOs valores de tributos, multas, juros, taxas, emolumentos e parcelamentos não integram os honorários e são de responsabilidade da CONTRATANTE, devidos diretamente aos órgãos credores.`,
     abertura: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de constituição e registro da empresa da CONTRATANTE, compreendendo:\n{{SERVICOS}}\nTaxas, emolumentos, anuidades e custos de terceiros (Junta Comercial, Prefeitura, conselhos, bombeiros, certificado digital e similares) não integram os honorários e serão custeados pela CONTRATANTE.\nOs prazos de conclusão dependem também da atuação dos órgãos públicos, não estando sob controle da CONTRATADA.`,
     cancelamento: `O presente contrato tem por objeto a prestação, pela CONTRATADA, de serviços de baixa (cancelamento) da empresa da CONTRATANTE perante os órgãos competentes, compreendendo:\n{{SERVICOS}}\nPara que a baixa seja efetivada e aceita pelos órgãos, é necessário que todas as pendências da empresa estejam regularizadas. Havendo pendências, sua regularização prévia será objeto de contratação específica ou das etapas descritas nesta cláusula.\nTributos, multas, juros e taxas apurados até a baixa são de responsabilidade da CONTRATANTE.`,
   };
   add('objeto', 'Do Objeto', objeto[tipo]);
+
+  add('natureza', 'Da Natureza dos Serviços e da Ausência de Responsabilidade pela Contabilidade',
+    `A CONTRATADA declara, e a CONTRATANTE reconhece, que a CONTRATADA não é o contador da CONTRATANTE e não realiza a contabilidade nem a escrituração (escrita contábil e fiscal) da empresa, limitando-se à execução dos serviços expressamente descritos na cláusula do objeto.\nA CONTRATADA não se responsabiliza pela contabilidade nem pela escrituração da CONTRATANTE — incluindo registros, balanços, demonstrações contábeis e as informações e declarações prestadas a órgãos públicos com base neles —, que permanecem sob a responsabilidade da CONTRATANTE, de seus sócios e administradores e do profissional de contabilidade legalmente habilitado por ela designado.\nQuaisquer serviços, obrigações ou responsabilidades não descritos de forma expressa neste contrato não foram contratados e não podem ser presumidos.`);
 
   add('honorarios', 'Dos Honorários', pont
     ? `Pelos serviços descritos neste contrato, a CONTRATANTE pagará à CONTRATADA os honorários de {{HONORARIOS}}.\nOs pagamentos poderão ser realizados por PIX, transferência bancária ou boleto, mediante emissão de recibo ou documento fiscal correspondente.\nOs honorários referem-se exclusivamente aos serviços descritos na Cláusula do Objeto; demandas adicionais serão objeto de nova proposta.`
@@ -6590,7 +6616,7 @@ function ctrClausulasPadrao(tipo) {
     ? `São obrigações da CONTRATANTE:\n• fornecer, no prazo solicitado, todos os documentos, informações, senhas, certificados e procurações necessários à execução dos serviços;\n• responder pela veracidade e integridade dos documentos e informações fornecidos;\n• pagar os honorários nas condições ajustadas e os tributos, taxas e custos de terceiros relacionados ao objeto;\n• comunicar imediatamente qualquer notificação, intimação ou comunicado recebido de órgãos públicos relacionado ao objeto.`
     : `São obrigações da CONTRATANTE:\n• encaminhar à CONTRATADA, até o dia {{DIA_DOCS}} de cada mês, os documentos e informações do mês anterior (notas fiscais, extratos, movimentação de pessoal, folha de ponto, entre outros);\n• responder pela veracidade, integridade e regularidade dos documentos e informações fornecidos;\n• pagar os honorários e os tributos, taxas e encargos nos respectivos vencimentos;\n• comunicar com antecedência qualquer alteração societária, de endereço, de atividade, de regime tributário ou de quadro de funcionários;\n• comunicar imediatamente notificações, intimações ou comunicados recebidos de órgãos públicos.\nA entrega dos documentos fora do prazo poderá implicar atraso no cumprimento das obrigações, ficando a CONTRATANTE responsável por multas e encargos daí decorrentes.`;
   add('obrig_contratante', 'Das Obrigações da Contratante', obrigContratante);
-  add('obrig_contratada', 'Das Obrigações da Contratada', `São obrigações da CONTRATADA:\n• executar os serviços com zelo, diligência e técnica, observando a legislação vigente e as normas do Conselho Federal de Contabilidade, incluindo o Código de Ética Profissional do Contador;\n• cumprir os prazos legais, desde que cumpridas as obrigações da CONTRATANTE;\n• manter a CONTRATANTE informada sobre o andamento dos serviços e sobre prazos, vencimentos e pendências relevantes;\n• designar profissional habilitado como responsável técnico: {{RESP}}.`);
+  add('obrig_contratada', 'Das Obrigações da Contratada', `São obrigações da CONTRATADA:\n• executar os serviços com zelo, diligência e técnica, observando a legislação vigente e as normas aplicáveis;\n• cumprir os prazos legais, desde que cumpridas as obrigações da CONTRATANTE;\n• manter a CONTRATANTE informada sobre o andamento dos serviços e sobre prazos, vencimentos e pendências relevantes;\n• designar profissional habilitado como responsável técnico: {{RESP}}.`);
   add('procuracao', 'Da Autorização para Atuação junto aos Órgãos', `A CONTRATANTE autoriza a CONTRATADA a atuar em seu nome perante a Receita Federal, Procuradoria, Prefeitura, Secretaria da Fazenda, Junta Comercial, previdência social e demais órgãos, podendo, para isso, utilizar procurações eletrônicas, certificado digital e acessos fornecidos, exclusivamente para os fins deste contrato.\nA CONTRATANTE poderá revogar a autorização a qualquer tempo, ficando a CONTRATADA desonerada das obrigações que dependam dela.`);
   if (pont && tipo === 'regularizacao') {
     add('parcelamentos', 'Dos Parcelamentos e Débitos', `Os débitos apurados poderão ser objeto de parcelamento, conforme as regras de cada órgão.\nO pagamento das parcelas, nos respectivos vencimentos, é de responsabilidade exclusiva da CONTRATANTE, podendo o atraso ou a falta de pagamento gerar a rescisão do parcelamento, a perda de benefícios e a cobrança integral do débito.\nOs valores de débitos informados em relatórios, propostas ou pesquisas são estimados e podem sofrer alteração até a data do efetivo pagamento ou consolidação.`);
@@ -6604,12 +6630,20 @@ function ctrClausulasPadrao(tipo) {
   add('naoinclusos', 'Dos Serviços Não Incluídos', pont
     ? `Não estão incluídos nos honorários: serviços de natureza jurídica, perícias, contratação de terceiros, processos judiciais, regularizações não descritas no objeto e eventuais exigências adicionais dos órgãos surgidas após o início dos trabalhos, que serão orçadas à parte.`
     : `Não estão incluídos nos honorários mensais: regularizações de períodos anteriores ao início do contrato, parcelamentos e defesas administrativas, alterações contratuais, abertura e baixa de filiais, atendimento a fiscalizações, perícias, declarações de pessoas físicas e quaisquer serviços não descritos no objeto, que serão orçados à parte.`);
+  if (tipo !== 'abertura') {
+    const fiscTxt = {
+      cancelamento: `A CONTRATANTE declara, sob as penas da lei, que, na data de assinatura deste contrato, não possui conhecimento de fiscalização, notificação, intimação, auto de infração, procedimento administrativo ou ação judicial em curso ou iminente em face da empresa ou de seus sócios, em qualquer esfera (federal, estadual, municipal, trabalhista ou previdenciária).\nA CONTRATANTE obriga-se a informar imediatamente à CONTRATADA, por escrito, qualquer fiscalização, notificação ou procedimento de que tenha ciência antes ou durante a execução dos serviços, bem como a encaminhar toda comunicação recebida dos órgãos (inclusive por correio, e-mail, caixa postal eletrônica e domicílio tributário eletrônico).\nA CONTRATADA realizará, dentro do objeto, a consulta prévia de pendências e procedimentos nos canais a que tiver acesso, mas não responde por fiscalizações, notificações ou lançamentos que não estejam disponíveis para consulta nesses canais, que não tenham sido informados pela CONTRATANTE ou que venham a ser iniciados ou conhecidos após a conclusão da baixa.\nA baixa da empresa não extingue as obrigações, nem impede a apuração e cobrança posterior de tributos, multas e demais débitos, que poderão ser exigidos da empresa, de seus titulares, sócios e administradores, nos termos da legislação aplicável (inclusive a Lei Complementar nº 123/2006, quando se tratar de optante pelo Simples Nacional). A CONTRATADA não se responsabiliza por tais exigências nem pelos seus efeitos.\nSe for constatada ou informada fiscalização em curso, a CONTRATADA poderá suspender o pedido de baixa e apresentar as medidas necessárias e os honorários correspondentes. Os honorários relativos aos serviços já executados não serão devolvidos.`,
+      regularizacao: `A CONTRATANTE declara que informou à CONTRATADA todas as fiscalizações, notificações, intimações, autos de infração e procedimentos de que tem conhecimento, e obriga-se a comunicar imediatamente qualquer novo fato dessa natureza, encaminhando toda comunicação recebida dos órgãos (inclusive por correio, e-mail, caixa postal eletrônica e domicílio tributário eletrônico).\nA CONTRATADA não se responsabiliza por fiscalizações, notificações ou débitos que não tenham sido informados pela CONTRATANTE ou que não estejam disponíveis para consulta nos canais a que tiver acesso, nem por seus efeitos.\nO atendimento a fiscalizações e a defesa em procedimentos administrativos somente estão incluídos neste contrato se constarem expressamente do objeto.`,
+      continuado: `A CONTRATANTE obriga-se a informar imediatamente à CONTRATADA qualquer fiscalização, notificação, intimação, auto de infração ou procedimento de que tenha ciência, e a encaminhar toda comunicação recebida dos órgãos (inclusive por correio, e-mail, caixa postal eletrônica e domicílio tributário eletrônico).\nA CONTRATADA não se responsabiliza por fiscalizações, notificações ou débitos que não lhe tenham sido informados ou que não estejam disponíveis para consulta nos canais a que tiver acesso, nem por seus efeitos.\nO atendimento a fiscalizações e a defesa em procedimentos administrativos não estão incluídos nos honorários mensais, salvo se descritos no objeto, e serão orçados à parte.`
+    };
+    add('fiscalizacao', tipo === 'cancelamento' ? 'Da Fiscalização, das Notificações e da Baixa da Empresa' : 'Das Fiscalizações e Notificações', fiscTxt[tipo]);
+  }
   add('responsabilidade', 'Da Responsabilidade', `A CONTRATADA responde pelos serviços que executar, nos limites da lei.\nA CONTRATADA não se responsabiliza por informações ou documentos inverídicos, incompletos ou entregues fora do prazo, nem por multas, juros e encargos decorrentes de atraso ou omissão da CONTRATANTE.\nA responsabilidade pelo pagamento dos tributos e pelos fatos geradores das obrigações é da CONTRATANTE.`);
   add('limite', 'Da Limitação de Responsabilidade', `Salvo dolo ou culpa grave, a responsabilidade total da CONTRATADA por eventuais danos decorrentes deste contrato fica limitada ao valor dos honorários efetivamente recebidos nos últimos 12 (doze) meses.`, false);
   add('sigilo', 'Do Sigilo e da Proteção de Dados', `As partes obrigam-se a manter sigilo sobre as informações a que tiverem acesso em razão deste contrato, salvo exigência legal ou determinação de autoridade.\nOs dados pessoais tratados pela CONTRATADA serão utilizados exclusivamente para a execução deste contrato e cumprimento de obrigações legais e regulatórias, em conformidade com a Lei nº 13.709/2018 (LGPD), adotando-se medidas de segurança adequadas.\nA CONTRATANTE declara estar autorizada a compartilhar com a CONTRATADA os dados pessoais de sócios, empregados e terceiros necessários à execução dos serviços.`);
   add('guarda', 'Da Guarda de Documentos', pont
     ? `Concluídos os serviços, a CONTRATADA entregará à CONTRATANTE os documentos e comprovantes produzidos, mantendo cópia pelo prazo legal.`
-    : `Os documentos fiscais, contábeis e trabalhistas serão arquivados pelos prazos legais. Os originais pertencem à CONTRATANTE, que é responsável por sua guarda, mantendo a CONTRATADA cópias digitais dos documentos escriturados.\nEncerrado o contrato, a CONTRATADA devolverá os documentos e entregará os livros e registros contábeis, mediante protocolo, desde que quitados os honorários.`);
+    : `Os documentos recebidos serão arquivados pelos prazos legais. Os originais pertencem à CONTRATANTE, que é responsável por sua guarda, mantendo a CONTRATADA cópias digitais dos documentos recebidos.\nEncerrado o contrato, a CONTRATADA devolverá os documentos recebidos, mediante protocolo, desde que quitados os honorários.`);
   add('vigencia', 'Da Vigência', pont
     ? `O presente contrato vigora a partir da data de sua assinatura até a conclusão dos serviços, estimada em {{PRAZO}}, contados do recebimento da documentação e do pagamento da primeira parcela, quando houver.\nEsse prazo é uma estimativa e poderá ser dilatado por atos dependentes de órgãos públicos, de terceiros ou da CONTRATANTE, sem que isso configure inadimplemento da CONTRATADA.`
     : `O presente contrato vigora {{VIGENCIA}}.\nO contrato será prorrogado automaticamente por iguais períodos, salvo manifestação contrária de qualquer das partes, na forma da cláusula de rescisão.`);
@@ -7310,7 +7344,6 @@ const PROP_PADRAO = {
     'Baixa do CNPJ na Receita Federal',
     'Baixa das inscrições municipal e estadual',
     'Entrega das declarações finais (DEFIS/DASN, DCTFWeb, eSocial, SPED — conforme o caso)',
-    'Apuração final de tributos e balanço de encerramento',
     'Baixa de licenças e alvarás',
   ],
   regularizacao: [],
@@ -8390,6 +8423,7 @@ function exportarBackup() {
   const chaves = ['clientes','tarefas','entregas','financeiro','config','obrigacoes','fechamentos','horas','previsoesAvulsas','habitos','habitosRegistros','propostas','recibos','contratos'];
   const dados = { geradoEm: new Date().toISOString(), sistema: 'ThoThe Crescimento', responsavel: RESP_TXT };
   chaves.forEach(k => dados[k] = DB.get(k));
+  ['pf_lanc','pf_cfg','pf_regras'].forEach(k => { const r = localStorage.getItem('gw_' + k); if (r !== null) dados[k] = JSON.parse(r); });
   const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -9202,8 +9236,12 @@ function startApp() {
   agendarBoasVindas();
   if (getTimersAtivos().length) iniciarLoopTimer();
   verificarSincronia();
-  if (SUPA_URL && SUPA_KEY) {
-    DB.pull().then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+  if (window.__offline) {
+    const b = document.getElementById('sync-badge'); if (b) { b.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; b.style.color = 'var(--red)'; }
+    gerarCodigosClientes(true); limparTarefasAcordar(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas();
+  } else if (SUPA_URL && SUPA_KEY) {
+    const sujo = localStorage.getItem('gw_offline_dirty') === '1';
+    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
@@ -9346,7 +9384,9 @@ const PF_REGRAS = [
   ['Impostos e taxas', ['iof','tarifa','juros','anuidade','multa','encargos','imposto','darf','ipva','mora','seguro']],
   ['Transferências', ['pix','ted','doc','transferencia','transf']],
 ];
-let pfAba = 'resumo', pfMes = mesAtual(), pfImp = null;
+let pfAba = 'resumo', pfMes = mesAtual(), pfImp = null, pfFiltroCartao = '', pfDetId = '';
+function pfFiltrarCartao(k) { pfFiltroCartao = k; pfAba = 'lanc'; renderPessoalFin(); }
+function pfNomeCartao(x) { return x.cartao || (x.origem === 'cartao' ? 'Cartão (sem nome)' : x.origem === 'extrato' ? 'Conta (sem nome)' : 'Lançamentos manuais'); }
 function pfLanc() { return DB.get('pf_lanc'); }
 function pfObj(k) { try { const r = JSON.parse(localStorage.getItem('gw_' + k) || 'null'); return (r && !Array.isArray(r)) ? r : {}; } catch (e) { return {}; } }
 function pfCfg() { return Object.assign({ pct: 100, incluirThothe: true, saldo: 0, metaTotal: 0, metas: {}, ignorarEntradas: '' }, pfObj('pf_cfg')); }
@@ -9440,7 +9480,14 @@ function pfParseCSV(txt) {
   });
   return itens;
 }
-function pfImportAbrir() { pfImp = null; document.getElementById('pfi-arquivo').value = ''; document.getElementById('pfi-previa').innerHTML = ''; document.getElementById('pfi-btn').disabled = true; openModal('modal-pf-import'); }
+function pfCartoes() { return [...new Set(pfLanc().map(l => l.cartao).filter(Boolean))].sort(); }
+function pfCartoesDatalist() { const d = document.getElementById('pfi-cartoes'); if (d) d.innerHTML = pfCartoes().map(c => `<option value="${propEsc(c)}">`).join(''); }
+function pfSugerirCartao(txt, nomeArq) {
+  const inp = document.getElementById('pfi-cartao'); if (!inp || inp.value.trim()) return;
+  const m = String(txt).match(/(?:cart[aã]o|final|terminado em|\*{2,}|x{2,})[^\d]{0,12}(\d{4})\b/i);
+  if (m) { const ex = pfCartoes().find(c => c.includes(m[1])); inp.value = ex || ('Cartão final ' + m[1]); }
+}
+function pfImportAbrir() { pfCartoesDatalist(); document.getElementById('pfi-cartao').value = ''; pfImp = null; document.getElementById('pfi-arquivo').value = ''; document.getElementById('pfi-previa').innerHTML = ''; document.getElementById('pfi-btn').disabled = true; openModal('modal-pf-import'); }
 function pfPdfCarregar() {
   return new Promise((ok, err) => {
     if (window.pdfjsLib) return ok(window.pdfjsLib);
@@ -9493,15 +9540,15 @@ function pfImportLer(inp) {
   const f = inp.files[0]; if (!f) return;
   if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
     document.getElementById('pfi-previa').innerHTML = '<div style="font-size:13px;color:var(--text3)">⏳ Lendo o PDF…</div>';
-    f.arrayBuffer().then(buf => pfPdfTexto(buf)).then(t => { pfImp = { nome: f.name, txt: t, pdf: true }; pfImportReprocessar(); })
+    f.arrayBuffer().then(buf => pfPdfTexto(buf)).then(t => { pfImp = { nome: f.name, txt: t, pdf: true }; pfSugerirCartao(t, f.name); pfImportReprocessar(); })
       .catch(e => { pfImp = null; document.getElementById('pfi-previa').innerHTML = `<div class="chip chip-red">Não consegui abrir o PDF: ${propEsc(String(e && e.message || e))}</div>`; });
     return;
   }
   const rd = new FileReader();
   rd.onload = () => {
     let txt = String(rd.result);
-    if (txt.includes('�')) { const rd2 = new FileReader(); rd2.onload = () => { pfImp = { nome: f.name, txt: String(rd2.result) }; pfImportReprocessar(); }; rd2.readAsText(f, 'ISO-8859-1'); return; }
-    pfImp = { nome: f.name, txt }; pfImportReprocessar();
+    if (txt.includes('�')) { const rd2 = new FileReader(); rd2.onload = () => { pfImp = { nome: f.name, txt: String(rd2.result) }; pfSugerirCartao(pfImp.txt, f.name); pfImportReprocessar(); }; rd2.readAsText(f, 'ISO-8859-1'); return; }
+    pfImp = { nome: f.name, txt }; pfSugerirCartao(txt, f.name); pfImportReprocessar();
   };
   rd.readAsText(f, 'UTF-8');
 }
@@ -9523,7 +9570,7 @@ function pfImportReprocessar() {
     const idx = lista ? lista.findIndex(d => parecida(d, i.desc)) : -1;
     if (idx > -1) { lista.splice(idx, 1); dup++; return; }
     const base = [i.data, pfNorm(i.desc).trim(), i.valor.toFixed(2), origem].join('|');
-    novos.push({ id: DB.id() + novos.length, data: i.data, desc: i.desc, valor: Math.round(i.valor * 100) / 100, origem, cat: pfCategorizar(i.desc, i.valor), parcela: pfParcela(i.desc), h: base, lote });
+    novos.push({ id: DB.id() + novos.length, data: i.data, desc: i.desc, valor: Math.round(i.valor * 100) / 100, origem, cartao: (document.getElementById('pfi-cartao').value || '').trim(), cat: pfCategorizar(i.desc, i.valor), parcela: pfParcela(i.desc), h: base, lote });
   });
   pfImp.novos = novos; pfImp.lote = lote;
   const ent = novos.filter(x => x.valor > 0 && !PF_EXCL.includes(x.cat)).reduce((s, x) => s + x.valor, 0), sai = novos.filter(x => x.valor < 0 && !PF_EXCL.includes(x.cat)).reduce((s, x) => s - x.valor, 0);
@@ -9548,14 +9595,14 @@ function pfDesfazerLote() {
 }
 function pfLancAbrir() {
   document.getElementById('pfl-cat').innerHTML = PF_CATS.map(c => `<option>${c}</option>`).join('');
-  document.getElementById('pfl-tipo').value = 'saida'; document.getElementById('pfl-data').value = today(); document.getElementById('pfl-desc').value = ''; document.getElementById('pfl-valor').value = ''; document.getElementById('pfl-cat').value = 'Outros';
+  document.getElementById('pfl-tipo').value = 'saida'; document.getElementById('pfl-data').value = today(); document.getElementById('pfl-desc').value = ''; document.getElementById('pfl-valor').value = ''; document.getElementById('pfl-cartao').value = ''; pfCartoesDatalist(); document.getElementById('pfl-cat').value = 'Outros';
   openModal('modal-pf-lanc');
 }
 function pfLancSalvar() {
   const desc = document.getElementById('pfl-desc').value.trim(), v = parseFloat(document.getElementById('pfl-valor').value), data = document.getElementById('pfl-data').value;
   if (!desc || !(v > 0) || !data) { toast('⚠️ Informe data, descrição e valor'); return; }
   const valor = document.getElementById('pfl-tipo').value === 'saida' ? -v : v;
-  const l = pfLanc(); l.push({ id: DB.id(), data, desc, valor, origem: 'manual', cat: document.getElementById('pfl-cat').value, parcela: pfParcela(desc), h: 'manual|' + DB.id(), lote: '' });
+  const l = pfLanc(); l.push({ id: DB.id(), data, desc, valor, origem: 'manual', cartao: document.getElementById('pfl-cartao').value.trim(), cat: document.getElementById('pfl-cat').value, parcela: pfParcela(desc), h: 'manual|' + DB.id(), lote: '' });
   DB.set('pf_lanc', l); closeModal('modal-pf-lanc'); pfMes = data.slice(0, 7); renderPessoalFin();
 }
 function pfMudarCat(id, cat) {
@@ -9565,6 +9612,33 @@ function pfMudarCat(id, cat) {
   let n = 0; l.forEach(y => { if ((y.valor > 0) === (x.valor > 0) && (y.id === id || (ch && pfChave(y.desc) === ch))) { y.cat = cat; n++; } });
   DB.set('pf_lanc', l); toast(n > 1 ? `🏷️ ${n} lançamentos parecidos foram para "${cat}"` : '🏷️ Categoria alterada'); renderPessoalFin();
 }
+function pfDetAbrir(id) {
+  const x = pfLanc().find(y => y.id === id); if (!x) return; pfDetId = id; pfCartoesDatalist();
+  const ch = pfChave(x.desc), todos = pfLanc();
+  const sim = ch ? todos.filter(y => y.id !== id && pfChave(y.desc) === ch && (y.valor > 0) === (x.valor > 0)).sort((a, b) => b.data.localeCompare(a.data)) : [];
+  const totSim = sim.reduce((s, y) => s + y.valor, 0) + x.valor;
+  let parc = '';
+  if (x.parcela) { const rest = x.parcela.t - x.parcela.n; parc = `<div class="card" style="padding:10px 12px;margin-bottom:12px;background:var(--surface2)">💳 <b>Parcela ${x.parcela.n} de ${x.parcela.t}</b> — ${rest ? `faltam <b>${rest}</b> parcela(s), total a pagar ainda: <b>${fmtMoney(Math.abs(x.valor) * rest)}</b>` : 'última parcela'}</div>`; }
+  document.getElementById('pfd-corpo').innerHTML = `${parc}
+  <div class="form-group"><label class="form-label">Descrição</label><input class="form-control" id="pfd-desc" value="${propEsc(x.desc)}"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Data</label><input class="form-control" type="date" id="pfd-data" value="${x.data}"></div>
+  <div class="form-group"><label class="form-label">Valor (R$) — negativo = saída</label><input class="form-control" type="number" step="0.01" id="pfd-valor" value="${x.valor}"></div></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Categoria</label><select class="form-control" id="pfd-cat">${PF_CATS.map(c => `<option ${c === x.cat ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+  <div class="form-group"><label class="form-label">Cartão / conta</label><input class="form-control" id="pfd-cartao" list="pfi-cartoes" value="${propEsc(x.cartao || '')}" placeholder="sem nome"></div></div>
+  <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px">Origem: ${x.origem === 'cartao' ? 'fatura de cartão' : x.origem === 'extrato' ? 'extrato' : 'lançamento manual'}${x.lote ? ' · veio de uma importação' : ''}</div>
+  ${sim.length ? `<div style="font-weight:600;font-size:13px;margin-bottom:4px">Outros lançamentos parecidos (${sim.length})</div><div style="font-size:12px;color:var(--text3);margin-bottom:6px">Somando com este: <b>${fmtMoney(totSim)}</b></div><div style="max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="tbl"><tbody>${sim.slice(0, 20).map(y => `<tr><td style="font-size:12px">${fmtDate(y.data)}</td><td style="font-size:12px">${propEsc(pfNomeCartao(y))}</td><td style="text-align:right;font-family:var(--font-mono);font-size:12px">${fmtMoney(y.valor)}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+  openModal('modal-pf-det');
+}
+function pfDetSalvar() {
+  const l = pfLanc(), x = l.find(y => y.id === pfDetId); if (!x) return;
+  const v = parseFloat(document.getElementById('pfd-valor').value), data = document.getElementById('pfd-data').value, desc = document.getElementById('pfd-desc').value.trim();
+  if (!desc || isNaN(v) || !data) { toast('⚠️ Informe descrição, data e valor'); return; }
+  const cat = document.getElementById('pfd-cat').value, catMudou = cat !== x.cat;
+  x.desc = desc; x.data = data; x.valor = Math.round(v * 100) / 100; x.cartao = document.getElementById('pfd-cartao').value.trim(); x.parcela = pfParcela(desc);
+  DB.set('pf_lanc', l); closeModal('modal-pf-det');
+  if (catMudou) pfMudarCat(x.id, cat); else renderPessoalFin();
+}
+function pfDetExcluir() { if (!confirm('Excluir este lançamento?')) return; pfExcluir(pfDetId); closeModal('modal-pf-det'); }
 function pfExcluir(id) { DB.set('pf_lanc', pfLanc().filter(x => x.id !== id)); renderPessoalFin(); }
 function pfMesMover(k) { pfMes = pfAddMes(pfMes, k); renderPessoalFin(); }
 function pfMesIr(m) { pfMes = m; renderPessoalFin(); }
@@ -9668,11 +9742,14 @@ function pfHtmlResumo() {
   const dv = (a, b) => b > 0 ? `${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / b * 100))}% vs mês anterior` : '—';
   let metaHtml = '';
   if (cfg.metaTotal > 0) { const p = t.sai / cfg.metaTotal * 100; metaHtml = `<div class="card hud" style="margin-top:14px"><div class="card-body"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><b>🎯 Meta de gastos do mês</b><span>${fmtMoney(t.sai)} de ${fmtMoney(cfg.metaTotal)} (${Math.round(p)}%)</span></div>${pfBarra(p, p > 100 ? 'var(--red)' : 'var(--green)')}</div></div>`; }
+  const porCartao = {}; pfLanc().filter(x => x.data.slice(0, 7) === pfMes && x.valor < 0 && !PF_EXCL.includes(x.cat)).forEach(x => { const k = x.cartao || (x.origem === 'cartao' ? 'Cartão (sem nome)' : x.origem === 'extrato' ? 'Conta (sem nome)' : 'Lançamentos manuais'); const o = (porCartao[k] = porCartao[k] || { v: 0, n: 0, orig: x.origem, cartao: x.cartao || '' }); o.v -= x.valor; o.n++; });
+  const cartoes = Object.entries(porCartao).sort((a, b) => b[1].v - a[1].v), totC = cartoes.reduce((s, c) => s + c[1].v, 0);
+  const blocoCartao = cartoes.length ? `<div class="card hud" style="margin-top:14px"><div class="card-body"><div style="font-weight:600;margin-bottom:10px">💳 Por cartão / conta</div>${cartoes.map(([k, o]) => `<div style="margin-bottom:10px;cursor:pointer" onclick="pfFiltrarCartao('${k.replace(/'/g, "\\'")}')" title="Ver os lançamentos deste cartão"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${o.orig === 'extrato' ? '🏦' : o.orig === 'manual' ? '✍️' : '💳'} <b>${propEsc(k)}</b> <span style="color:var(--text3);font-size:11px">${o.n} lançamento${o.n !== 1 ? 's' : ''}</span></span><span><b style="font-family:var(--font-mono)">${fmtMoney(o.v)}</b> <span style="color:var(--text3);font-size:11px">${Math.round(o.v / totC * 100)}%</span></span></div>${pfBarra(o.v / cartoes[0][1].v * 100)}</div>`).join('')}</div></div>` : '';
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
     ${card('Entradas', t.entTotal, `${t.th.recebido ? `inclui ${fmtMoney(t.th.recebido)} da ThoThe` : 'lançadas/importadas'}${t.th.previsto ? ` · +${fmtMoney(t.th.previsto)} a receber da ThoThe` : ''}`, 'var(--green)')}
     ${card('Saídas', t.sai, dv(t.sai, ant.sai), 'var(--red)')}
     ${card('Resultado do mês', t.saldo, t.saldo >= 0 ? 'sobrou no mês' : 'gastou mais do que entrou', pfC(t.saldo))}
-  </div>${metaHtml}
+  </div>${metaHtml}${blocoCartao}
   <div class="card hud" style="margin-top:14px"><div class="card-body"><div style="font-weight:600;margin-bottom:10px">Para onde foi o dinheiro</div>
   ${cats.length ? cats.map(([c, v]) => { const a = antCat[c] || 0; const lim = cfg.metas[c]; return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${c}${lim ? ` <span style="color:var(--text3);font-size:11px">(meta ${fmtMoney(lim)})</span>` : ''}</span><span><b style="font-family:var(--font-mono)">${fmtMoney(v)}</b> <span style="color:var(--text3);font-size:11px">${Math.round(v / tot * 100)}%${a ? ` · ${v >= a ? '▲' : '▼'}${Math.abs(Math.round((v - a) / a * 100))}%` : ''}</span></span></div>${pfBarra(lim ? v / lim * 100 : v / cats[0][1] * 100, lim && v > lim ? 'var(--red)' : 'var(--gold)')}</div>`; }).join('') : '<div style="color:var(--text3);font-size:13px">Sem saídas neste mês.</div>'}
   </div></div>`;
@@ -9682,9 +9759,11 @@ function pfHtmlLanc() {
   let l = pfLanc().filter(x => x.data.slice(0, 7) === pfMes).sort((a, b) => b.data.localeCompare(a.data));
   if (q) l = l.filter(x => pfNorm(x.desc).includes(pfNorm(q).trim()));
   if (fc) l = l.filter(x => x.cat === fc);
-  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><input class="form-control" id="pf-busca" placeholder="Buscar…" value="${propEsc(q)}" onchange="renderPessoalFin()" style="max-width:240px"><select class="form-control" id="pf-fcat" onchange="renderPessoalFin()" style="max-width:200px"><option value="">Todas as categorias</option>${PF_CATS.map(c => `<option ${c === fc ? 'selected' : ''}>${c}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pfDesfazerLote()">↩️ Desfazer última importação</button></div>
+  if (pfFiltroCartao) l = l.filter(x => pfNomeCartao(x) === pfFiltroCartao);
+  const nomesC = [...new Set(pfLanc().filter(x => x.data.slice(0, 7) === pfMes).map(pfNomeCartao))];
+  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><input class="form-control" id="pf-busca" placeholder="Buscar…" value="${propEsc(q)}" onchange="renderPessoalFin()" style="max-width:240px"><select class="form-control" id="pf-fcat" onchange="renderPessoalFin()" style="max-width:200px"><option value="">Todas as categorias</option>${PF_CATS.map(c => `<option ${c === fc ? 'selected' : ''}>${c}</option>`).join('')}</select><select class="form-control" onchange="pfFiltroCartao=this.value;renderPessoalFin()" style="max-width:220px"><option value="">Todos os cartões/contas</option>${nomesC.map(c => `<option ${c === pfFiltroCartao ? 'selected' : ''}>${propEsc(c)}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pfDesfazerLote()">↩️ Desfazer última importação</button></div>
   <div class="card hud"><div style="overflow:auto"><table class="tbl"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>
-  ${l.length ? l.map(x => `<tr><td style="white-space:nowrap">${fmtDate(x.data)}</td><td>${propEsc(x.desc)}${x.parcela ? ` <span class="chip chip-blue" style="font-size:9px">${x.parcela.n}/${x.parcela.t}</span>` : ''}<div style="font-size:10.5px;color:var(--text3)">${x.origem === 'cartao' ? '💳 cartão' : x.origem === 'extrato' ? '🏦 extrato' : '✍️ manual'}</div></td><td><select class="form-control" style="padding:3px 6px;font-size:12px" onchange="pfMudarCat('${x.id}',this.value)">${PF_CATS.map(c => `<option ${c === x.cat ? 'selected' : ''}>${c}</option>`).join('')}</select></td><td style="text-align:right;font-family:var(--font-mono);color:${PF_EXCL.includes(x.cat) ? 'var(--text3)' : pfC(x.valor)}">${fmtMoney(x.valor)}</td><td><button class="btn btn-danger btn-sm" onclick="pfExcluir('${x.id}')">🗑️</button></td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Nada neste mês</td></tr>'}
+  ${l.length ? l.map(x => `<tr style="cursor:pointer" onclick="pfDetAbrir('${x.id}')" title="Clique para ver os detalhes"><td style="white-space:nowrap">${fmtDate(x.data)}</td><td>${propEsc(x.desc)}${x.parcela ? ` <span class="chip chip-blue" style="font-size:9px">${x.parcela.n}/${x.parcela.t}</span>` : ''}<div style="font-size:10.5px;color:var(--text3)">${x.origem === 'cartao' ? '💳' : x.origem === 'extrato' ? '🏦' : '✍️'} ${propEsc(pfNomeCartao(x))}</div></td><td onclick="event.stopPropagation()"><select class="form-control" style="padding:3px 6px;font-size:12px" onchange="pfMudarCat('${x.id}',this.value)">${PF_CATS.map(c => `<option ${c === x.cat ? 'selected' : ''}>${c}</option>`).join('')}</select></td><td style="text-align:right;font-family:var(--font-mono);color:${PF_EXCL.includes(x.cat) ? 'var(--text3)' : pfC(x.valor)}">${fmtMoney(x.valor)}</td><td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();pfExcluir('${x.id}')">🗑️</button></td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Nada neste mês</td></tr>'}
   </tbody></table></div></div><div style="font-size:11.5px;color:var(--text3);margin-top:8px">Ao mudar a categoria de um gasto, o sistema aprende e aplica aos lançamentos parecidos (e nas próximas importações). "Pagamento de fatura" e "Ignorar" não entram nas somas — evita contar o cartão duas vezes.</div>`;
 }
 function pfHtmlFuturo() {
