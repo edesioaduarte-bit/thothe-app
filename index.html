@@ -456,6 +456,40 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 .btn-sm { border-radius: 8px; }
 .faixa-foco { display:flex; align-items:center; gap:10px; margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--gold); background: var(--accent-l); font-size: 13px; }
 @media (max-width: 900px) { .cli-foco { width: 150px; } }
+
+/* ── Fechamento Mensal: cards ── */
+.fc-card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .15s}
+.fc-card:hover{border-color:var(--border2)}
+.fc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px}
+.fc-nome{font-size:13px;font-weight:600;letter-spacing:.01em;line-height:1.25}
+.fc-cont{font-family:var(--font-mono);font-size:11px;padding:2px 9px;border-radius:99px;background:var(--surface3);color:var(--text2);white-space:nowrap}
+.fc-cont.ok{background:rgba(52,211,153,.14);color:var(--green)}
+.fc-cont.part{background:rgba(251,191,36,.14);color:#FBBF24}
+.fc-bar{height:3px;background:var(--surface3);margin:0 16px}
+.fc-bar>i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .25s}
+.fc-bar>i.ok{background:var(--green)}
+.fc-body{padding:6px 16px 4px;flex:1}
+.fc-obr{padding:10px 0;border-bottom:1px dashed var(--border)}
+.fc-obr:last-of-type{border-bottom:0}
+.fc-tit{display:flex;align-items:center;gap:9px}
+.fc-dot{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04321f}
+.fc-dot.ok{background:var(--green);border-color:var(--green)}
+.fc-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-t.ok{text-decoration:line-through;color:var(--text3);font-weight:500}
+.fc-data{font-size:10.5px;font-family:var(--font-mono);padding:2px 8px;border-radius:6px;background:var(--surface3);color:var(--text2);white-space:nowrap}
+.fc-data.atr{background:rgba(248,113,122,.14);color:var(--red)}
+.fc-data.ok{background:rgba(52,211,153,.12);color:var(--green)}
+.fc-etapas{margin:7px 0 0 26px;display:flex;flex-direction:column;gap:3px}
+.fc-et{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text2);padding:2px 4px;margin-left:-4px;border-radius:6px;cursor:pointer}
+.fc-et:hover{background:var(--surface3)}
+.fc-et.ok{color:var(--text3);text-decoration:line-through}
+.fc-box{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;color:#04321f}
+.fc-et.ok .fc-box{background:var(--green);border-color:var(--green)}
+.fc-add{display:inline-block;margin:4px 0 10px;font-size:11px;color:var(--text3);cursor:pointer;background:none;border:0;padding:2px 0}
+.fc-add:hover{color:var(--accent)}
+.fc-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2,transparent)}
+.fc-hon{font-size:11px;color:var(--text3)}
+.fc-hon b{color:var(--text);font-family:var(--font-mono);font-weight:600;margin-left:4px}
 </style>
 </head>
 <body>
@@ -789,8 +823,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <button class="btn btn-ghost btn-sm" onclick="fechMoveMes(1)">→</button>
             <button class="btn btn-ghost btn-sm" onclick="fechIrMesBase()" title="Voltar para o mês anterior ao atual">Mês anterior</button>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select class="form-control" id="fech-filtro" onchange="fechFiltro=this.value;renderFechamento()" style="max-width:170px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="form-control" id="fech-filtro" onchange="fechFiltro=this.value;renderFechamento()" style="width:150px">
               <option value="todas">Todas</option><option value="pendentes">Só pendentes</option><option value="atrasadas">Só atrasadas</option>
             </select>
             <button class="btn btn-ghost btn-sm" onclick="gerarObrigacoesDoMes(true)" title="Cria as obrigações recorrentes que faltam para este mês">↻ Gerar do mês</button>
@@ -799,7 +833,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
         <div id="fech-resumo" class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
         <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Competência <strong id="fech-comp-txt"></strong> — as obrigações abaixo são feitas no mês seguinte, no dia definido em cada uma. Marcar etapas aqui atualiza a Agenda e as Obrigações (e vice-versa).</div>
-        <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px"></div>
+        <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start"></div>
       </div>
 
       <!-- ══════════ OBRIGAÇÕES ══════════ -->
@@ -5736,32 +5770,28 @@ function renderFechamento() {
     if (c && honV(c, mesRec) > 0) {
       const recebidoMes = fin.filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===mesRec).reduce((s,fi)=>s+fi.valor,0);
       const jaRecebido = recebidoMes >= honV(c, mesRec);
-      honHtml = `<div style="padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:11px;color:var(--text3)">Honorário ${mesLabel(mesRec)}: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, mesRec))}</strong></div>
+      honHtml = `<div class="fc-foot">
+        <div class="fc-hon">Honorário ${mesLabel(mesRec)}<b>${fmtMoney(honV(c, mesRec))}</b></div>
         ${jaRecebido ? `<span class="chip chip-green">✅ Recebido</span>` : `<button class="btn btn-primary btn-sm" onclick="abrirBaixaRecebimentoModal('${c.id}')">💰 Dar baixa</button>`}
       </div>`;
     }
     const linhas = obs.sort((a,b)=>(a.venc||'9999').localeCompare(b.venc||'9999')).map(o => {
       const a = atras(o), ok = feita(o);
-      return `<div style="padding:9px 0;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div onclick="toggleObrigStatus('${o.id}')" title="Concluir/reabrir tudo" style="width:18px;height:18px;border-radius:50%;border:1.5px solid ${ok?'var(--green)':'var(--border2)'};background:${ok?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04321f">${ok?'✓':''}</div>
-          <div onclick="openObrigModal('${o.id}')" style="flex:1;min-width:0;cursor:pointer">
-            <div style="font-size:12.5px;font-weight:600;text-decoration:${ok?'line-through':'none'};color:${ok?'var(--text3)':'var(--text)'}">${String(o.titulo||'').replace(/</g,'&lt;')}${o.recorrente?' <span title="Repete todo mês">🔁</span>':''}</div>
-            <div style="font-size:10.5px;color:${a?'var(--red)':'var(--text3)'}">${o.venc?`Fazer em ${fmtDate(o.venc)}${a?' · atrasada':''}`:'sem data'}</div>
-          </div>
-        </div>${obrigEtapasHTML(o, true)}</div>`;
+      const dt = o.venc ? o.venc.slice(8,10)+'/'+o.venc.slice(5,7) : 'sem data';
+      const et = obrigEtapas(o).map(e => `<div class="fc-et ${e.done?'ok':''}" onclick="toggleObrigEtapa('${o.id}','${e.id}')"><span class="fc-box">${e.done?'✓':''}</span><span>${String(e.label||'').replace(/</g,'&lt;')}</span></div>`).join('');
+      return `<div class="fc-obr">
+        <div class="fc-tit">
+          <div class="fc-dot ${ok?'ok':''}" onclick="toggleObrigStatus('${o.id}')" title="Concluir/reabrir tudo">${ok?'✓':''}</div>
+          <div class="fc-t ${ok?'ok':''}" onclick="openObrigModal('${o.id}')" title="${String(o.titulo||'').replace(/"/g,'&quot;')}">${String(o.titulo||'').replace(/</g,'&lt;')}${o.recorrente?' <span style="opacity:.6;font-size:11px" title="Repete todo mês">↻</span>':''}</div>
+          <span class="fc-data ${ok?'ok':a?'atr':''}" title="${a?'Atrasada — ':''}fazer em ${fmtDate(o.venc)}">${ok?'✓ ':a?'⚠ ':''}${dt}</span>
+        </div>${et?`<div class="fc-etapas">${et}</div>`:''}</div>`;
     }).join('');
-    return `<div class="card hud">
-      <div class="card-body" style="padding-bottom:6px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
-          <div style="font-size:13px;font-weight:600">${nome}</div>
-          <span class="chip ${pct===100&&tot?'chip-green':pct>0?'chip-amber':'chip-gray'}">${tot?`${dn}/${tot}`:'sem obrigações'}</span>
-        </div>
-        <div class="gauge-track" style="height:6px;margin-bottom:6px"><div class="gauge-fill" style="width:${pct}%;background:${pct===100&&tot?'var(--green)':'var(--accent)'}"></div></div>
-        ${linhas || `<div style="font-size:11.5px;color:var(--text3);padding:8px 0">Nenhuma obrigação neste mês.</div>`}
-        <div style="padding:8px 0 4px"><button class="btn btn-ghost btn-sm" onclick="novaObrigParaCliente('${cid}')">+ Obrigação</button></div>
-      </div>${honHtml}
+    const cls = pct===100&&tot ? 'ok' : pct>0 ? 'part' : '';
+    return `<div class="fc-card">
+      <div class="fc-head"><div class="fc-nome">${nome}</div><span class="fc-cont ${cls}">${dn}/${tot}</span></div>
+      <div class="fc-bar"><i class="${pct===100&&tot?'ok':''}" style="width:${pct}%"></i></div>
+      <div class="fc-body">${linhas}<button class="fc-add" onclick="novaObrigParaCliente('${cid}')">+ obrigação</button></div>
+      ${honHtml}
     </div>`;
   }).join('');
 }
