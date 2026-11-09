@@ -1842,6 +1842,10 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div id="det-tarefa-sub" style="font-size:12.5px;color:var(--text2)"></div>
       </div>
 
+      <div id="det-tarefa-etapas-box" style="display:none;margin-bottom:18px;padding:10px 12px;background:var(--surface3);border-radius:8px">
+        <div class="form-label" style="margin-bottom:4px">Etapas</div>
+        <div id="det-tarefa-etapas"></div>
+      </div>
       <div id="det-tarefa-comentarios-box" style="display:none;margin-bottom:18px;padding:10px 12px;background:var(--surface3);border-radius:8px">
         <div class="form-label" style="margin-bottom:4px">Comentários</div>
         <div id="det-tarefa-comentarios" style="font-size:12.5px;color:var(--text2);white-space:pre-wrap"></div>
@@ -4113,6 +4117,9 @@ function abrirDetalhesTarefa(id) {
   if (t.data) subPartes.push(fmtDate(t.data) + (t.hora ? ' às ' + t.hora : ''));
   document.getElementById('det-tarefa-sub').textContent = subPartes.join(' · ');
 
+  const etBox = document.getElementById('det-tarefa-etapas-box');
+  if ((t.etapas||[]).length) { etBox.style.display = ''; document.getElementById('det-tarefa-etapas').innerHTML = tarefaEtapasHTML(t); }
+  else etBox.style.display = 'none';
   const comBox = document.getElementById('det-tarefa-comentarios-box');
   if (t.comentarios) {
     comBox.style.display = '';
@@ -4371,6 +4378,8 @@ function toggleTarefaEtapa(tid, eid) {
   else if (!todas && t.status==='concluida') { t.status='pendente'; t.dataConclusao=''; t.horaConclusao=''; }
   DB.set('tarefas', tarefas);
   renderAll();
+  const dm = document.getElementById('modal-tarefa-detalhes');
+  if (dm && dm.classList.contains('open') && document.getElementById('det-tarefa-id').value === tid) abrirDetalhesTarefa(tid);
 }
 function tarefaEtapasHTML(t) {
   if (!(t.etapas||[]).length) return '';
@@ -4670,7 +4679,43 @@ function saveFinanceiro() {
   renderAll();
 }
 
+function excluirRecorrenteDoMes(clienteId, mes) {
+  const lista = DB.get('clientes'), c = lista.find(x=>x.id===clienteId); if (!c) return;
+  if (!confirm(`Tirar o honorário de ${c.nome} somente de ${mesLabel(mes)}?\n\nOs outros meses não mudam. Você pode restaurar logo abaixo da tabela.`)) return;
+  c.honMes = c.honMes || {};
+  c.honMes[mes] = { ...(c.honMes[mes]||{}), excluido: true, valor: 0 };
+  DB.set('clientes', lista);
+  toast('🗑️ Honorário removido só de ' + mesLabel(mes));
+  renderAll();
+}
+function restaurarRecorrenteDoMes(clienteId, mes) {
+  const lista = DB.get('clientes'), c = lista.find(x=>x.id===clienteId); if (!c || !c.honMes) return;
+  delete c.honMes[mes];
+  c.honorario = honInfo(c, mesAtual(), true).valor;
+  DB.set('clientes', lista);
+  toast('↩ Honorário restaurado em ' + mesLabel(mes));
+  renderAll();
+}
+function desfazerBaixaRecorrente(clienteId, mes) {
+  const fin = DB.get('financeiro');
+  const alvo = financeiroRealizado().filter(f => f.tipo==='receita' && f.clienteId===clienteId && f.data && f.data.slice(0,7)===mes);
+  if (!alvo.length) { toast('Nenhum recebimento neste mês'); return; }
+  const total = alvo.reduce((s,f)=>s+f.valor,0);
+  if (!confirm(`Apagar ${alvo.length} recebimento${alvo.length!==1?'s':''} (${fmtMoney(total)}) deste cliente em ${mesLabel(mes)}?\n\nO honorário volta a ficar pendente. Recibos já emitidos não são apagados.`)) return;
+  const ids = new Set(alvo.map(f=>f.id));
+  DB.set('financeiro', fin.filter(f => !ids.has(f.id)));
+  toast('↩ Baixa desfeita');
+  renderAll();
+}
+function desfazerBaixaAvulso(id) {
+  const lista = DB.get('previsoesAvulsas'), a = lista.find(x=>x.id===id); if (!a) return;
+  if (!confirm('Voltar este valor avulso para pendente?\n\nSe a baixa gerou um lançamento no Financeiro, apague-o lá também.')) return;
+  a.status = 'pendente';
+  DB.set('previsoesAvulsas', lista);
+  renderAll();
+}
 function deleteFinanceiro(id) {
+  if (!confirm('Excluir este lançamento?')) return;
   DB.set('financeiro', DB.get('financeiro').filter(x=>x.id!==id));
   toast('🗑️ Excluído');
   renderAll();
@@ -4719,7 +4764,7 @@ function renderPrevisaoRecebimento() {
   if (previsaoMesLabelEl) previsaoMesLabelEl.textContent = mes === mesAtual() ? `${mesLabel(mes)} (mês atual)` : mesLabel(mes);
   const financeiroReal = financeiroRealizado();
   // Recorrentes: só clientes com fechamento mensal marcado (honorário previsível todo mês)
-  const clientesRecorrentes = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo' && c.temFechamento===true && c.honorario > 0).sort(ordenarPorCodigo);
+  const clientesRecorrentes = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo' && c.temFechamento===true && c.honorario > 0 && !(c.honMes && c.honMes[finMesAtual] && c.honMes[finMesAtual].excluido)).sort(ordenarPorCodigo);
 
   let linhas = clientesRecorrentes.map(c => {
     const recebido = financeiroReal
@@ -4796,6 +4841,9 @@ function renderPrevisaoRecebimento() {
         <td>
           ${l.origem==='recorrente' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId}', ${(l.previsto-l.recebido).toFixed(2)}, '${mesLabel(mes)}', null, null, '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${l.origem==='recorrente' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();vencAbrirRec('${l.clienteId}','${mes}')" title="Alterar vencimento/valor deste mês ou deste e dos próximos">📅 Vencimento</button>` : ''}
+          ${l.origem==='recorrente' && l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();desfazerBaixaRecorrente('${l.clienteId}','${mes}')" title="Apagar o recebimento lançado por engano neste mês">↩ Desfazer baixa</button>` : ''}
+          ${l.origem==='recorrente' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirRecorrenteDoMes('${l.clienteId}','${mes}')" title="Tirar este honorário só deste mês">🗑️</button>` : ''}
+          ${l.origem==='avulso' && l.status==='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();desfazerBaixaAvulso('${l.id}')" title="Voltar para pendente">↩ Desfazer baixa</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${l.clienteId||''}', ${l.previsto.toFixed(2)}, '${mesLabel(mes)}', '${l.id}', '${(l.desc||'Valor avulso').replace(/'/g,"\\'")}', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Dar baixa neste recebimento">💰 Baixar</button>` : ''}
           ${(l.origem==='avulso'||l.origem==='manual') && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();vencAbrir('${l.origem==='avulso'?'avulso':'fin'}','${l.id}')" title="Alterar o vencimento">📅 Vencimento</button>` : ''}
           ${l.origem==='avulso' && l.status!=='recebido' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();parcelarAbrir('avulso','${l.id}')" title="Parcelar este lançamento">✂️ Parcelar</button>` : ''}
@@ -4806,6 +4854,9 @@ function renderPrevisaoRecebimento() {
           ${recL ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="event.stopPropagation();reimprimirRecibo('${recL.id}')" title="Recibo ${recL.numero} já emitido — imprimir novamente">🧾✓</button>` : l.recebido>0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReciboModal('${l.clienteId||''}', ${l.recebido.toFixed(2)}, 'Honorários Mensal', '${mes===mesAtual()?today():ultimoDiaDoMes(mes)}')" title="Emitir recibo deste recebimento">🧾</button>` : ''}</td>
       </tr>`;
     }).join('');
+    // honorários recorrentes excluídos só deste mês: dá para restaurar
+    const exc = DB.get('clientes').filter(c => c.honMes && c.honMes[mes] && c.honMes[mes].excluido && focoOk(c.id));
+    if (exc.length) tbody.innerHTML += `<tr><td colspan="6" style="font-size:11.5px;color:var(--text3)">🗑️ Excluídos deste mês: ${exc.map(c => `${propEsc(c.nome)} <button class="btn btn-ghost btn-sm" onclick="restaurarRecorrenteDoMes('${c.id}','${mes}')">↩ Restaurar</button>`).join(' · ')}</td></tr>`;
   }
 
   // Despesas do mês — resumo compacto (não entram na Previsão, mas ficam visíveis já que a tabela geral saiu)
@@ -7208,15 +7259,30 @@ function propRemoverPrevisaoRecebimento(x) {
   if (resto.length !== lista.length) DB.set('previsoesAvulsas', resto);
 }
 // Tarefa de execução criada ao aprovar a proposta (uma só por proposta)
+function migrarEtapasExecucaoPropostas() {
+  const tarefas = DB.get('tarefas'), props = DB.get('propostas');
+  let mudou = false;
+  tarefas.forEach(t => {
+    if (t.propKind !== 'execucao' || (t.etapas||[]).length) return;
+    const x = props.find(p => p.id === t.propostaId);
+    const et = x ? (x.itens||[]).filter(i=>i.descricao).map((i,n)=>({ id:n, label: i.descricao + (i.valor ? ' — ' + fmtMoney(i.valor) : ''), done:false })) : [];
+    if (!et.length) return;
+    t.etapas = et;
+    if (t.comentarios) t.comentarios = t.comentarios.replace(/\n*Etapas:\n[\s\S]*$/, '').trim();
+    mudou = true;
+  });
+  if (mudou) DB.set('tarefas', tarefas);
+}
 function propCriarTarefaExecucao(x) {
   const tarefas = DB.get('tarefas');
   if (tarefas.some(t => t.propostaId === x.id && t.propKind === 'execucao')) return;
-  const etapas = (x.itens || []).map((i, n) => `${n+1}. ${i.descricao}${i.valor ? ' — ' + fmtMoney(i.valor) : ''}`).join('\n');
+  const etapas = (x.itens || []).filter(i => i.descricao).map((i, n) => ({ id: n, label: i.descricao + (i.valor ? ' — ' + fmtMoney(i.valor) : ''), done: false }));
   tarefas.push(propTarefaBase(x, {
     propKind: 'execucao',
+    etapas,
     titulo: `🚀 Executar proposta ${x.numero} — ${PROP_TIPOS[x.tipo] || ''} — ${x.nome}`,
     data: today(),
-    comentarios: `Proposta aprovada em ${fmtDate(today())}. Total: ${fmtMoney(x.total || 0)}.\n${x.condicoes ? 'Pagamento: ' + x.condicoes + '\n' : ''}\nEtapas:\n${etapas}`,
+    comentarios: `Proposta aprovada em ${fmtDate(today())}. Total: ${fmtMoney(x.total || 0)}.\n${x.condicoes ? 'Pagamento: ' + x.condicoes + '\n' : ''}`.trim(),
   }));
   DB.set('tarefas', tarefas);
 }
@@ -8946,10 +9012,10 @@ function startApp() {
   verificarSincronia();
   if (window.__offline) {
     const b = document.getElementById('sync-badge'); if (b) { b.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; b.style.color = 'var(--red)'; }
-    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas();
+    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas();
   } else if (SUPA_URL && SUPA_KEY) {
     const sujo = localStorage.getItem('gw_offline_dirty') === '1';
-    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
@@ -8957,6 +9023,7 @@ function startApp() {
     arquivarPessoal();
     migrarObrigFechamentoRecorrente();
     migrarObrigEtapasV1();
+    migrarEtapasExecucaoPropostas();
     gerarObrigacoesDoMes(false);
     gerarOcorrenciasRecorrentesFuturas();
   }
