@@ -782,36 +782,24 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ FECHAMENTO MENSAL ══════════ -->
       <div class="page" id="page-fechamento">
-        <div class="card hud" style="margin-bottom:16px">
-          <div class="card-body" style="display:flex;align-items:center;justify-content:center;gap:0;padding:16px 20px">
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface3);border:1px solid var(--border2);border-radius:99px">
-              <span style="width:7px;height:7px;border-radius:50%;background:#FBBF24"></span>
-              <span style="font-size:12.5px;font-weight:600">📋 Fechamento Mensal</span>
-            </div>
-            <svg width="70" height="16" viewBox="0 0 70 16" style="flex-shrink:0">
-              <path d="M2,8 C25,8 45,8 60,8" fill="none" stroke="var(--border2)" stroke-width="1.2" stroke-dasharray="3,3"/>
-              <path d="M55,3 L62,8 L55,13" fill="none" stroke="var(--border2)" stroke-width="1.2"/>
-            </svg>
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface3);border:1px solid var(--border2);border-radius:99px">
-              <span style="width:7px;height:7px;border-radius:50%;background:#60A5FA"></span>
-              <span style="font-size:12.5px;font-weight:600">📅 Obrigações</span>
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-left:16px">cada etapa concluída gera/atualiza uma obrigação automaticamente</div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:9px;padding:3px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;gap:4px;background:var(--surface3);border-radius:9px;padding:3px;align-items:center">
             <button class="btn btn-ghost btn-sm" onclick="fechMoveMes(-1)">←</button>
             <span style="padding:5px 14px;font-size:13px;font-weight:600" id="fech-mes-label"></span>
             <button class="btn btn-ghost btn-sm" onclick="fechMoveMes(1)">→</button>
+            <button class="btn btn-ghost btn-sm" onclick="fechIrMesBase()" title="Voltar para o mês anterior ao atual">Mês anterior</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select class="form-control" id="fech-add-cliente" style="max-width:240px"><option value="">— Adicionar cliente ao fechamento —</option></select>
-            <button class="btn btn-primary btn-sm" onclick="adicionarClienteAoFechamento()">+ Adicionar</button>
-            <button class="btn btn-danger btn-sm" onclick="excluirTodosFechamentos()">🗑️ Excluir todos os fechamentos</button>
+            <select class="form-control" id="fech-filtro" onchange="fechFiltro=this.value;renderFechamento()" style="max-width:170px">
+              <option value="todas">Todas</option><option value="pendentes">Só pendentes</option><option value="atrasadas">Só atrasadas</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="gerarObrigacoesDoMes(true)" title="Cria as obrigações recorrentes que faltam para este mês">↻ Gerar do mês</button>
+            <button class="btn btn-primary btn-sm" onclick="openObrigModal(null, fechMesAtual)">+ Nova obrigação</button>
           </div>
         </div>
-        <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
+        <div id="fech-resumo" class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Competência <strong id="fech-comp-txt"></strong> — as obrigações abaixo são feitas no mês seguinte, no dia definido em cada uma. Marcar etapas aqui atualiza a Agenda e as Obrigações (e vice-versa).</div>
+        <div id="fechamento-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px"></div>
       </div>
 
       <!-- ══════════ OBRIGAÇÕES ══════════ -->
@@ -829,7 +817,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         </div>
         <div class="card hud">
           <table class="tbl">
-            <thead><tr><th style="width:32px"><input type="checkbox" id="obrig-sel-todas" title="Selecionar todas" onchange="selecionarTodasObrig(this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"></th><th>Obrigação</th><th>Cliente</th><th>Categoria</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th style="width:32px"><input type="checkbox" id="obrig-sel-todas" title="Selecionar todas" onchange="selecionarTodasObrig(this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"></th><th>Obrigação</th><th>Cliente</th><th>Categoria</th><th>Fazer em</th><th>Status</th><th></th></tr></thead>
             <tbody id="obrigacoes-tbody"></tbody>
           </table>
         </div>
@@ -1952,15 +1940,25 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           </select>
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Etapas do serviço (uma por linha)</label>
+        <textarea class="form-control" id="obrig-etapas" rows="4" placeholder="Apurar PGDAS&#10;Emitir guia&#10;Enviar ao cliente"></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Cada etapa pode ser marcada na Agenda ou no Fechamento Mensal. Ao concluir todas, a obrigação fica concluída.</div>
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Competência</label>
-          <input class="form-control" id="obrig-competencia" placeholder="Ex: 08/2026">
+          <label class="form-label">Fazer no dia do mês</label>
+          <input class="form-control" type="number" min="1" max="31" id="obrig-dia" placeholder="Ex: 10" oninput="obrigRecalcData()">
         </div>
         <div class="form-group">
-          <label class="form-label">Vencimento</label>
-          <input class="form-control" type="date" id="obrig-venc">
+          <label class="form-label">Competência (padrão: mês anterior)</label>
+          <input class="form-control" type="month" id="obrig-competencia" onchange="obrigRecalcData()">
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fazer em (data na Agenda)</label>
+        <input class="form-control" type="date" id="obrig-venc">
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Calculada: dia escolhido, no mês seguinte à competência. Pode ajustar a data se precisar.</div>
       </div>
       <div class="form-group" style="display:none">
         <label class="form-label">Status</label>
@@ -1972,16 +1970,9 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--text2)">
           <input type="checkbox" id="obrig-recorrente" style="width:16px;height:16px;accent-color:var(--accent)">
-          🔁 Recorrente mensal
+          🔁 Repetir todo mês
         </label>
-        <div style="font-size:11px;color:var(--text3);margin-top:5px">Ao concluir esta obrigação, o sistema já cria a próxima automaticamente (mesmo título, mês seguinte). Desmarcada, a obrigação vale só uma vez.</div>
-      </div>
-      <div class="form-group">
-        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--text2)">
-          <input type="checkbox" id="obrig-fechamento" style="width:16px;height:16px;accent-color:var(--accent)">
-          🔗 Aparece no Fechamento Mensal do cliente
-        </label>
-        <div style="font-size:11px;color:var(--text3);margin-top:5px">Requer cliente e competência (ou vencimento). Fica sincronizada: concluir ou excluir aqui reflete no Fechamento e na Agenda.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Todo mês o sistema cria a obrigação da nova competência (mês anterior ao atual), com as mesmas etapas e o mesmo dia. Desmarcada, vale só uma vez.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Observações</label>
@@ -1991,32 +1982,6 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-obrig')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveObrig()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-fechamento">
-  <div class="modal">
-    <div class="modal-header"><span class="modal-title" id="modal-fechamento-title">Fechamento</span><button class="modal-close" onclick="closeModal('modal-fechamento')">×</button></div>
-    <div class="modal-body">
-      <input type="hidden" id="fech-edit-id">
-      <input type="hidden" id="fech-cliente-id">
-      <input type="hidden" id="fech-mes">
-      <div id="fech-etapas-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-      <div class="form-group">
-        <label class="form-label">Etapas (uma por linha)</label>
-        <textarea class="form-control" id="fech-etapas-texto" rows="4" placeholder="Apurar PGDAS&#10;Envio eSocial&#10;Enviar documentos ao cliente"></textarea>
-        <div style="font-size:11px;color:var(--text3);margin-top:6px">Editar essa lista recria as etapas (mantém o progresso das que continuarem com o mesmo nome).</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Observações</label>
-        <textarea class="form-control" id="fech-obs" rows="2"></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-danger" onclick="resetFechamento()" style="margin-right:auto">Resetar progresso</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-fechamento')">Fechar</button>
-      <button class="btn btn-primary" onclick="saveFechamentoEtapas()">Salvar etapas</button>
     </div>
   </div>
 </div>
@@ -3813,7 +3778,8 @@ function linhaAgendaObrigFoco(o, vencida) {
     <div onclick="toggleObrigStatus('${o.id}')" title="Marcar como concluída" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${concluida?'var(--green)':'var(--border2)'};background:${concluida?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#04321f">${concluida?'✓':''}</div>
     <div onclick="openObrigModal('${o.id}')" style="flex:1;min-width:0;cursor:pointer">
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaque?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}📋 ${(o.titulo||'').replace(/</g,'&lt;')} <span class="chip chip-purple" style="font-size:9px">Obrigação</span>${o.venc && o.venc !== today() ? ` <span style="font-size:10.5px;color:var(--text3)">· venc. ${fmtDate(o.venc)}</span>` : ''}</div>
-      ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
+      ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}${o.competencia?` · comp. ${o.competencia}`:''}</div>` : ''}
+      ${obrigEtapasHTML(o, true)}
     </div>
     ${acaoTimerObrig(o)}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')" title="Excluir">🗑️</button>
@@ -4325,6 +4291,7 @@ function obrigListHTML(o) {
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:500;text-decoration:${o.status==='concluida'?'line-through':'none'};color:${o.status==='concluida'?'var(--text3)':'var(--text)'}"><span class="chip chip-blue" style="margin-right:6px;vertical-align:middle">Obrigação</span>${o.titulo}</div>
       <div style="font-size:11px;color:${atrasada?'var(--red)':'var(--text3)'};margin-top:2px">${cliente?`<span onclick="event.stopPropagation();openClienteModal('${cliente.id}')" style="color:var(--accent);cursor:pointer">${cliente.nome}</span> · `:''}${fmtDate(o.venc)}${o.cat?' · '+o.cat:''}</div>
+      ${obrigEtapasHTML(o, true)}
     </div>
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObrigModal('${o.id}')">✏️</button>
     <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')">🗑️</button>
@@ -5264,9 +5231,9 @@ function renderRelatorioObrigacoes() {
   })).sort((a,b)=>a.pct-b.pct);
 
   // fechamentos do período
-  const fechamentos = DB.get('fechamentos').filter(f=>mesesSet.has(f.mes));
-  const pctFechamentoMedio = fechamentos.length
-    ? Math.round(fechamentos.reduce((s,f)=>{ const d=f.etapas.filter(e=>e.done).length; return s + (f.etapas.length?d/f.etapas.length*100:0); },0) / fechamentos.length)
+  const obrigsPeriodo = DB.get('obrigacoes').filter(o=>mesesSet.has(mesDaObrigacao(o)));
+  const pctFechamentoMedio = obrigsPeriodo.length
+    ? Math.round(obrigsPeriodo.reduce((x,o)=>x+obrigProgresso(o).pct,0) / obrigsPeriodo.length)
     : null;
 
   const el = document.getElementById('relatorio-conteudo');
@@ -5397,91 +5364,6 @@ function atualizarObrigMultiContador() {
   if (el) el.textContent = n ? `${n} cliente${n!==1?'s':''} selecionado${n!==1?'s':''} — será criada uma obrigação para cada um` : 'Nenhum cliente selecionado (a obrigação será criada sem cliente)';
 }
 
-function openObrigModal(id) {
-  document.getElementById('obrig-edit-id').value = id || '';
-  document.getElementById('modal-obrig-title').textContent = id ? 'Editar obrigação' : 'Nova obrigação';
-  fillClienteSelect(document.getElementById('obrig-cliente'));
-  // Nova obrigação: escolha de vários clientes; edição: um cliente só
-  document.getElementById('obrig-multi-wrap').style.display = id ? 'none' : '';
-  document.getElementById('obrig-cliente-wrap').style.display = id ? '' : 'none';
-  if (!id) montarObrigMulti();
-  if (id) {
-    const o = DB.get('obrigacoes').find(x=>x.id===id);
-    if (o) {
-      document.getElementById('obrig-titulo').value = o.titulo || '';
-      document.getElementById('obrig-cliente').value = o.clienteId || '';
-      document.getElementById('obrig-cat').value = o.cat || 'Fiscal';
-      document.getElementById('obrig-competencia').value = o.competencia || '';
-      document.getElementById('obrig-venc').value = o.venc || '';
-      document.getElementById('obrig-status').value = o.status || 'pendente';
-      document.getElementById('obrig-recorrente').checked = !!o.recorrente;
-      document.getElementById('obrig-fechamento').checked = obrigEstaNoFechamento(o);
-      document.getElementById('obrig-obs').value = o.obs || '';
-    }
-  } else {
-    ['obrig-titulo','obrig-competencia','obrig-venc','obrig-obs'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('obrig-cat').value = 'Fiscal';
-    document.getElementById('obrig-status').value = 'pendente';
-    document.getElementById('obrig-recorrente').checked = false;
-    document.getElementById('obrig-fechamento').checked = false;
-  }
-  openModal('modal-obrig');
-}
-
-function saveObrig() {
-  const titulo = document.getElementById('obrig-titulo').value.trim();
-  if (!titulo) { toast('⚠️ Informe o título'); return; }
-  const editId = document.getElementById('obrig-edit-id').value;
-  const obrigacoes = DB.get('obrigacoes');
-  const antiga = editId ? obrigacoes.find(x=>x.id===editId) : null;
-  const statusAntigo = antiga ? antiga.status : null;
-  // Nova obrigação: uma para cada cliente marcado (nenhum marcado = uma sem cliente)
-  const clientesAlvo = editId ? [document.getElementById('obrig-cliente').value] : (obrigMultiSelecionados().length ? obrigMultiSelecionados() : ['']);
-  const criados = [];
-  clientesAlvo.forEach((clienteIdAlvo, idxAlvo) => {
-  const item = {
-    ...(antiga || {}),
-    id: editId || (DB.id() + idxAlvo),
-    titulo,
-    clienteId: clienteIdAlvo,
-    cat: document.getElementById('obrig-cat').value,
-    competencia: document.getElementById('obrig-competencia').value.trim(),
-    venc: document.getElementById('obrig-venc').value,
-    status: document.getElementById('obrig-status').value,
-    dataConclusao: (document.getElementById('obrig-status').value === 'concluida')
-      ? ((antiga && antiga.status === 'concluida' && antiga.dataConclusao) || today()) : '',
-    recorrente: document.getElementById('obrig-recorrente').checked,
-    noFechamento: document.getElementById('obrig-fechamento').checked,
-    obs: document.getElementById('obrig-obs').value.trim(),
-  };
-  if (editId) { const i = obrigacoes.findIndex(x=>x.id===editId); if (i>-1) obrigacoes[i]=item; }
-  else obrigacoes.push(item);
-  criados.push(item);
-  });
-  DB.set('obrigacoes', obrigacoes);
-  criados.forEach(item => {
-    vincularObrigacaoAoFechamento(item.id);
-    if (item.recorrente && item.status === 'concluida' && statusAntigo !== 'concluida') gerarProximaOcorrenciaObrig(item);
-  });
-  closeModal('modal-obrig');
-  toast(criados.length > 1 ? `📅 ${criados.length} obrigações criadas` : '📅 Obrigação salva');
-  renderAll();
-}
-
-function toggleObrigStatus(id) {
-  const obrigacoes = DB.get('obrigacoes');
-  const o = obrigacoes.find(x=>x.id===id);
-  if (o) {
-    const eraConcluida = o.status === 'concluida';
-    o.status = eraConcluida ? 'pendente' : 'concluida';
-    o.dataConclusao = eraConcluida ? '' : today();
-    DB.set('obrigacoes', obrigacoes);
-    sincronizarFechamentoDaObrigacao(id);
-    if (o.recorrente && !eraConcluida) gerarProximaOcorrenciaObrig(o);
-    renderAll();
-  }
-}
-
 // Avança "MM/AAAA" ou data "AAAA-MM-DD" em 1 mês
 function avancarCompetencia(comp) {
   const m = (comp||'').match(/^(\d{2})\/(\d{4})$/);
@@ -5490,49 +5372,6 @@ function avancarCompetencia(comp) {
   mes++; if (mes > 12) { mes = 1; ano++; }
   return `${String(mes).padStart(2,'0')}/${ano}`;
 }
-function avancarData(dataStr) {
-  if (!dataStr) return '';
-  const [y,m,d] = dataStr.split('-').map(Number);
-  const nova = new Date(y, m, d); // m já é o próximo mês (0-indexed = mês atual+1)
-  return toISO(nova);
-}
-
-// Cria a próxima ocorrência de uma obrigação recorrente já concluída
-function gerarProximaOcorrenciaObrig(o) {
-  const proximaCompetencia = avancarCompetencia(o.competencia);
-  const proximoVenc = avancarData(o.venc);
-  const noFech = obrigEstaNoFechamento(o);
-  // garante o fechamento do mês seguinte (cria as etapas padrão e suas obrigações) antes de checar duplicidade
-  const mm = (proximaCompetencia||'').match(/^(\d{2})\/(\d{4})$/);
-  if (noFech && o.clienteId && mm) ensureFechamento(o.clienteId, `${mm[2]}-${mm[1]}`);
-  const obrigacoes = DB.get('obrigacoes');
-  // evita duplicar se a próxima já existir (mesmo título+cliente+competência) — herda recorrência e vencimento
-  const existente = obrigacoes.find(x => x.titulo===o.titulo && x.clienteId===o.clienteId && x.competencia===proximaCompetencia && x.id!==o.id);
-  if (existente) {
-    let mudou = false;
-    if (!existente.recorrente) { existente.recorrente = true; mudou = true; }
-    if (!existente.venc && proximoVenc) { existente.venc = proximoVenc; mudou = true; }
-    if (mudou) DB.set('obrigacoes', obrigacoes);
-    return;
-  }
-  const nova = {
-    id: DB.id(),
-    titulo: o.titulo,
-    clienteId: o.clienteId,
-    cat: o.cat,
-    competencia: proximaCompetencia,
-    venc: proximoVenc,
-    status: 'pendente',
-    recorrente: true,
-    noFechamento: obrigEstaNoFechamento(o),
-    obs: o.obs,
-  };
-  obrigacoes.push(nova);
-  DB.set('obrigacoes', obrigacoes);
-  if (nova.noFechamento) vincularObrigacaoAoFechamento(nova.id);
-  toast(`🔁 Próxima ocorrência criada (${proximaCompetencia || 'próximo mês'})`);
-}
-
 // ── Sincronização Fechamento Mensal ⇄ Obrigações ⇄ Agenda ─────────────────────────────
 // A obrigação é o registro único: a Agenda a lê pelo vencimento e o Fechamento a referencia
 // por etapa (etapa.obrigId). Concluir, editar ou excluir em qualquer lugar vale para todos.
@@ -5541,38 +5380,198 @@ function mesDaObrigacao(o) {
   if (m) return `${m[2]}-${m[1]}`;
   return o.venc ? o.venc.slice(0,7) : '';
 }
-function obrigEstaNoFechamento(o) {
-  if (o.noFechamento || o.origemFechamento) return true;
-  return DB.get('fechamentos').some(f => (f.etapas||[]).some(e => e.obrigId === o.id));
-}
 // Garante que a obrigação tenha (ou não tenha) a etapa correspondente no fechamento certo
-function vincularObrigacaoAoFechamento(obrigId) {
-  const o = DB.get('obrigacoes').find(x=>x.id===obrigId);
-  if (!o) return;
-  const quer = obrigEstaNoFechamento(o) && o.clienteId && mesDaObrigacao(o);
-  const mes = mesDaObrigacao(o);
-  let fechs = DB.get('fechamentos');
-  let atual = null, fAtual = null;
-  fechs.forEach(f => (f.etapas||[]).forEach(e => { if (e.obrigId === obrigId) { atual = e; fAtual = f; } }));
-  let alvo = quer ? fechs.find(f => f.clienteId === o.clienteId && f.mes === mes) : null;
-  if (atual && alvo && fAtual === alvo) {
-    atual.label = o.titulo; atual.done = o.status === 'concluida';
-    DB.set('fechamentos', fechs); return;
-  }
-  if (atual) fAtual.etapas = fAtual.etapas.filter(e => e !== atual);
-  if (!quer) { DB.set('fechamentos', fechs); return; }
-  DB.set('fechamentos', fechs);
-  if (!alvo) {
-    ensureFechamento(o.clienteId, mes);       // cria o mês com as etapas padrão
-    fechs = DB.get('fechamentos');
-    alvo = fechs.find(f => f.clienteId === o.clienteId && f.mes === mes);
-    if (!alvo) return;
-  }
-  const proxId = Math.max(-1, ...alvo.etapas.map(e => Number(e.id) || 0)) + 1;
-  alvo.etapas.push({ id: proxId, label: o.titulo, done: o.status === 'concluida', obrigId: o.id });
-  DB.set('fechamentos', fechs);
+// ── Obrigação = Título + etapas + "fazer no dia X" + competência (mês anterior ao atual, editável) ──
+// É o registro único: a Agenda lê pela data "Fazer em" (venc), o Fechamento Mensal agrupa pela competência.
+const _pad2 = n => String(n).padStart(2,'0');
+function mesParaComp(mes) { if (!mes) return ''; const [y,m] = mes.split('-'); return `${m}/${y}`; }
+function obrigEtapas(o) { return Array.isArray(o.etapas) ? o.etapas : []; }
+function obrigProgresso(o) {
+  const et = obrigEtapas(o);
+  if (et.length) { const done = et.filter(e=>e.done).length; return { done, total: et.length, pct: Math.round(done/et.length*100) }; }
+  const ok = o.status === 'concluida';
+  return { done: ok?1:0, total: 1, pct: ok?100:0 };
 }
-// Remove obrigações e as etapas de fechamento ligadas a elas
+// Data de execução: o dia escolhido, no mês SEGUINTE à competência (limitado ao último dia do mês)
+function dataFazer(mes, dia) {
+  if (!mes || !dia) return '';
+  const [y,m] = mes.split('-').map(Number);
+  const alvo = new Date(y, m, 1);
+  const ult = new Date(alvo.getFullYear(), alvo.getMonth()+1, 0).getDate();
+  return `${alvo.getFullYear()}-${_pad2(alvo.getMonth()+1)}-${_pad2(Math.min(Math.max(1,Number(dia)), ult))}`;
+}
+function obrigRecalcData() {
+  const mes = document.getElementById('obrig-competencia').value;
+  const dia = document.getElementById('obrig-dia').value;
+  const d = dataFazer(mes, dia);
+  if (d) document.getElementById('obrig-venc').value = d;
+}
+function etapasDeTexto(texto, antigas) {
+  const ant = antigas || [];
+  return String(texto||'').split('\n').map(l=>l.trim()).filter(Boolean).map((label,i) => {
+    const old = ant.find(e=>e.label===label);
+    return { id: i, label, done: old ? !!old.done : false };
+  });
+}
+// Status automático a partir das etapas
+function recalcularStatusObrig(o) {
+  const et = obrigEtapas(o);
+  if (!et.length) return;
+  const todas = et.every(e=>e.done);
+  if (todas && o.status !== 'concluida') { o.status = 'concluida'; o.dataConclusao = today(); }
+  else if (!todas && o.status === 'concluida') { o.status = 'pendente'; o.dataConclusao = ''; }
+}
+function toggleObrigEtapa(obrigId, etapaId) {
+  const obrigs = DB.get('obrigacoes');
+  const o = obrigs.find(x=>x.id===obrigId);
+  const e = o && obrigEtapas(o).find(x=>String(x.id)===String(etapaId));
+  if (!e) return;
+  e.done = !e.done;
+  const antes = o.status;
+  recalcularStatusObrig(o);
+  DB.set('obrigacoes', obrigs);
+  if (o.status === 'concluida' && antes !== 'concluida') toast('✅ Obrigação concluída: ' + o.titulo);
+  renderAll();
+}
+function toggleObrigStatus(id) {
+  const obrigs = DB.get('obrigacoes');
+  const o = obrigs.find(x=>x.id===id);
+  if (!o) return;
+  const eraConcluida = o.status === 'concluida';
+  o.status = eraConcluida ? 'pendente' : 'concluida';
+  o.dataConclusao = eraConcluida ? '' : today();
+  obrigEtapas(o).forEach(e => { e.done = !eraConcluida; });
+  DB.set('obrigacoes', obrigs);
+  renderAll();
+}
+function obrigEtapasHTML(o, compacto) {
+  const et = obrigEtapas(o);
+  if (!et.length) return '';
+  return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">` + et.map(e =>
+    `<span class="check-pill ${e.done?'done':''}" onclick="event.stopPropagation();toggleObrigEtapa('${o.id}','${e.id}')" style="cursor:pointer;font-size:${compacto?'10.5':'11.5'}px;padding:3px 9px">${e.done?'✅':'⬜'} ${String(e.label||'').replace(/</g,'&lt;')}</span>`).join('') + `</div>`;
+}
+
+// Cria a ocorrência de uma obrigação recorrente para a competência `mes` (YYYY-MM), sem duplicar
+function criarOcorrenciaObrig(modelo, mes) {
+  const obrigs = DB.get('obrigacoes');
+  const comp = mesParaComp(mes);
+  if (obrigs.some(x => x.titulo===modelo.titulo && (x.clienteId||'')===(modelo.clienteId||'') && mesDaObrigacao(x)===mes)) return null;
+  const dia = modelo.diaFazer || (modelo.venc ? Number(modelo.venc.slice(8,10)) : 0);
+  const nova = {
+    id: DB.id() + Math.floor(Math.random()*1000),
+    titulo: modelo.titulo, clienteId: modelo.clienteId || '', cat: modelo.cat || 'Fiscal',
+    competencia: comp, diaFazer: dia || '', venc: dia ? dataFazer(mes, dia) : '',
+    etapas: obrigEtapas(modelo).map((e,i)=>({ id:i, label:e.label, done:false })),
+    status: 'pendente', dataConclusao: '', recorrente: true, obs: modelo.obs || '',
+  };
+  obrigs.push(nova);
+  DB.set('obrigacoes', obrigs);
+  return nova;
+}
+// Para cada obrigação recorrente (título + cliente), garante a do mês-base (mês anterior ao atual)
+function gerarObrigacoesDoMes(manual) {
+  const base = mesBaseFechamento();
+  const alvoMes = manual ? fechMesAtual : base;
+  const series = new Map();
+  DB.get('obrigacoes').filter(o=>o.recorrente).forEach(o => {
+    const k = o.titulo + '||' + (o.clienteId||'');
+    const m = mesDaObrigacao(o);
+    const cur = series.get(k);
+    if (!cur || m > mesDaObrigacao(cur)) series.set(k, o);
+  });
+  let n = 0;
+  series.forEach(o => {
+    const m = mesDaObrigacao(o);
+    if (m && m < alvoMes && criarOcorrenciaObrig(o, alvoMes)) n++;
+  });
+  if (manual) { toast(n ? `↻ ${n} obrigaç${n!==1?'ões criadas':'ão criada'} para ${mesLabel(alvoMes)}` : 'Nada a gerar: as recorrentes já estão neste mês'); if (n) renderAll(); }
+  return n;
+}
+// Migração única: dia do mês a partir da data atual; recorrentes antigas continuam recorrentes
+function migrarObrigEtapasV1() {
+  const cfg = getConfig();
+  if (cfg.obrigEtapasV1) return;
+  const obrigs = DB.get('obrigacoes');
+  let mudou = false;
+  obrigs.forEach(o => {
+    if (!Array.isArray(o.etapas)) { o.etapas = []; mudou = true; }
+    if (!o.diaFazer && o.venc) { o.diaFazer = Number(o.venc.slice(8,10)); mudou = true; }
+  });
+  if (mudou) DB.set('obrigacoes', obrigs);
+  setConfig({ ...getConfig(), obrigEtapasV1: true });
+}
+
+function openObrigModal(id, mesComp) {
+  document.getElementById('obrig-edit-id').value = id || '';
+  document.getElementById('modal-obrig-title').textContent = id ? 'Editar obrigação' : 'Nova obrigação';
+  fillClienteSelect(document.getElementById('obrig-cliente'));
+  document.getElementById('obrig-multi-wrap').style.display = id ? 'none' : '';
+  document.getElementById('obrig-cliente-wrap').style.display = id ? '' : 'none';
+  if (!id) montarObrigMulti();
+  const o = id ? DB.get('obrigacoes').find(x=>x.id===id) : null;
+  if (o) {
+    document.getElementById('obrig-titulo').value = o.titulo || '';
+    document.getElementById('obrig-cliente').value = o.clienteId || '';
+    document.getElementById('obrig-cat').value = o.cat || 'Fiscal';
+    document.getElementById('obrig-etapas').value = obrigEtapas(o).map(e=>e.label).join('\n');
+    document.getElementById('obrig-competencia').value = mesDaObrigacao(o);
+    document.getElementById('obrig-dia').value = o.diaFazer || (o.venc ? Number(o.venc.slice(8,10)) : '');
+    document.getElementById('obrig-venc').value = o.venc || '';
+    document.getElementById('obrig-status').value = o.status || 'pendente';
+    document.getElementById('obrig-recorrente').checked = !!o.recorrente;
+    document.getElementById('obrig-obs').value = o.obs || '';
+  } else {
+    ['obrig-titulo','obrig-etapas','obrig-dia','obrig-venc','obrig-obs'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('obrig-competencia').value = mesComp || mesBaseFechamento();
+    document.getElementById('obrig-cat').value = 'Fiscal';
+    document.getElementById('obrig-status').value = 'pendente';
+    document.getElementById('obrig-recorrente').checked = false;
+  }
+  openModal('modal-obrig');
+}
+
+function saveObrig() {
+  const titulo = document.getElementById('obrig-titulo').value.trim();
+  if (!titulo) { toast('⚠️ Informe o título'); return; }
+  const mes = document.getElementById('obrig-competencia').value || mesBaseFechamento();
+  const dia = parseInt(document.getElementById('obrig-dia').value, 10) || 0;
+  let venc = document.getElementById('obrig-venc').value;
+  if (!venc && dia) venc = dataFazer(mes, dia);
+  const editId = document.getElementById('obrig-edit-id').value;
+  const obrigacoes = DB.get('obrigacoes');
+  const antiga = editId ? obrigacoes.find(x=>x.id===editId) : null;
+  const textoEtapas = document.getElementById('obrig-etapas').value;
+  const clientesAlvo = editId ? [document.getElementById('obrig-cliente').value] : (obrigMultiSelecionados().length ? obrigMultiSelecionados() : ['']);
+  const criados = [];
+  clientesAlvo.forEach((clienteIdAlvo, idxAlvo) => {
+    const item = {
+      ...(antiga || {}),
+      id: editId || (DB.id() + idxAlvo),
+      titulo, clienteId: clienteIdAlvo,
+      cat: document.getElementById('obrig-cat').value,
+      competencia: mesParaComp(mes),
+      diaFazer: dia || (venc ? Number(venc.slice(8,10)) : ''),
+      venc,
+      etapas: etapasDeTexto(textoEtapas, antiga ? obrigEtapas(antiga) : []),
+      status: antiga ? antiga.status : 'pendente',
+      dataConclusao: antiga ? (antiga.dataConclusao || '') : '',
+      recorrente: document.getElementById('obrig-recorrente').checked,
+      obs: document.getElementById('obrig-obs').value.trim(),
+    };
+    recalcularStatusObrig(item);
+    if (editId) { const i = obrigacoes.findIndex(x=>x.id===editId); if (i>-1) obrigacoes[i]=item; }
+    else obrigacoes.push(item);
+    criados.push(item);
+  });
+  DB.set('obrigacoes', obrigacoes);
+  closeModal('modal-obrig');
+  toast(criados.length > 1 ? `📅 ${criados.length} obrigações criadas — já na Agenda e no Fechamento` : '📅 Obrigação salva — sincronizada com a Agenda');
+  renderAll();
+}
+function obrigEstaNoFechamento(o) { return !!o.clienteId; }
+function vincularObrigacaoAoFechamento() {}
+
+// Remove obrigações (a Agenda e o Fechamento leem desta mesma lista)
 function removerObrigacoesEEtapas(ids) {
   const set = new Set(ids);
   DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !set.has(o.id)));
@@ -5584,30 +5583,6 @@ function removerObrigacoesEEtapas(ids) {
     if (f.etapas.length !== antes) mudou = true;
   });
   if (mudou) DB.set('fechamentos', fechs);
-}
-
-function excluirTodosFechamentos() {
-  const fechs = DB.get('fechamentos');
-  const obrigIds = new Set();
-  fechs.forEach(f => (f.etapas||[]).forEach(e => { if (e.obrigId) obrigIds.add(e.obrigId); }));
-  DB.get('obrigacoes').forEach(o => { if (o.origemFechamento) obrigIds.add(o.id); });
-  if (!confirm(`Zerar o Fechamento Mensal?\n\n• ${fechs.length} fechamento${fechs.length!==1?'s':''} registrado${fechs.length!==1?'s':''} (todos os meses e clientes) serão excluídos;\n• ${obrigIds.size} obrigaç${obrigIds.size!==1?'ões':'ão'} ligada${obrigIds.size!==1?'s':''} a eles também, inclusive da Agenda;\n• os cards dos clientes somem — você adiciona de novo, um a um, em "+ Adicionar".\n\nEsta ação não pode ser desfeita.`)) return;
-  setConfig({ ...getConfig(), fechamentoManual: true });
-  DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !obrigIds.has(o.id)));
-  DB.set('fechamentos', []);
-  toast('🗑️ Todos os fechamentos foram excluídos');
-  renderAll();
-  confirmarExclusaoNaNuvem(['fechamentos','obrigacoes','config']);
-}
-
-function adicionarClienteAoFechamento() {
-  const sel = document.getElementById('fech-add-cliente');
-  const id = sel && sel.value;
-  if (!id) { toast('⚠️ Escolha o cliente'); return; }
-  ensureFechamento(id, fechMesAtual);
-  sel.value = '';
-  toast('✅ Cliente adicionado ao fechamento de ' + mesLabel(fechMesAtual));
-  renderAll();
 }
 
 // Confere se a exclusão chegou na nuvem; se não chegou, avisa (senão ela "volta" ao recarregar)
@@ -5643,10 +5618,6 @@ function deleteObrig(id) {
 // Garante que toda etapa de todo fechamento mensal (de qualquer cliente/mês) tenha
 // sua obrigação correspondente na lista de Obrigações, mesmo que o fechamento nunca
 // tenha sido aberto manualmente — roda toda vez que a tela de Obrigações é exibida.
-function sincronizarTodasObrigacoesDosFechamentos() {
-  DB.get('fechamentos').forEach(f => sincronizarObrigacoesDoFechamento(f.id));
-}
-
 // ── Seleção em massa de obrigações → agendar tudo num dia ──
 let obrigSel = new Set();
 function atualizarBarraObrigSel() {
@@ -5676,14 +5647,19 @@ function agendarObrigacoesSelecionadas() {
   let n = 0;
   obrigs.forEach(o => { if (obrigSel.has(o.id)) { o.venc = data; n++; } });
   DB.set('obrigacoes', obrigs);
-  ids.forEach(id => vincularObrigacaoAoFechamento(id));
   obrigSel = new Set();
   toast(`📅 ${n} obrigaç${n!==1?'ões agendadas':'ão agendada'} para ${fmtDate(data)} — já na Agenda`);
   renderAll();
 }
 
+/* ══════════════════════════════════════════════════════
+   FECHAMENTO MENSAL
+   ══════════════════════════════════════════════════════ */
+// O Fechamento trabalha sempre o mês ANTERIOR (em outubro, fecha-se setembro): é o mês-base.
+function mesBaseFechamento() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+let fechMesAtual = mesBaseFechamento();
+
 function renderObrigacoes() {
-  sincronizarTodasObrigacoesDosFechamentos();
   let obrigacoes = DB.get('obrigacoes').filter(o => focoOk(o.clienteId));
   if (obrigFiltro === 'pendentes') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida');
   if (obrigFiltro === 'atrasadas') obrigacoes = obrigacoes.filter(o=>o.status!=='concluida' && o.venc && o.venc<today());
@@ -5695,29 +5671,27 @@ function renderObrigacoes() {
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="ico">📅</div><div class="txt">Nenhuma obrigação encontrada</div></div></td></tr>`;
     return;
   }
+  const clientes = DB.get('clientes');
   tbody.innerHTML = obrigacoes.map(o => {
-    const cliente = o.clienteId ? DB.get('clientes').find(c=>c.id===o.clienteId) : null;
+    const cliente = o.clienteId ? clientes.find(c=>c.id===o.clienteId) : null;
     const atrasada = o.status!=='concluida' && o.venc && o.venc<today();
+    const pr = obrigProgresso(o);
+    const et = obrigEtapas(o);
     return `
     <tr style="${atrasada?'background:var(--red-l)':''};cursor:pointer" onclick="openObrigModal('${o.id}')">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="obrig-sel" value="${o.id}" ${obrigSel.has(o.id)?'checked':''} onchange="toggleSelObrig('${o.id}',this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"></td>
-      <td><strong>${o.titulo}</strong>${o.origemFechamento?' <span class="chip chip-blue" style="font-size:9px" title="Gerada pelo Fechamento Mensal">🔗 Fechamento</span>':''}${o.recorrente?' <span class="chip chip-purple" style="font-size:9px" title="Recorrente mensal">🔁 Recorrente</span>':''}${o.competencia?`<div style="font-size:11px;color:var(--text3)">${o.competencia}</div>`:''}</td>
+      <td><strong>${String(o.titulo||'').replace(/</g,'&lt;')}</strong>${o.recorrente?' <span class="chip chip-purple" style="font-size:9px" title="Repete todo mês">🔁 Todo mês</span>':''}<div style="font-size:11px;color:var(--text3)">Competência ${o.competencia || mesParaComp(mesDaObrigacao(o)) || '—'}${et.length?` · etapas ${pr.done}/${pr.total}`:''}</div>${obrigEtapasHTML(o, true)}</td>
       <td>${cliente?`<span onclick="event.stopPropagation();openClienteModal('${cliente.id}')" style="color:var(--accent);cursor:pointer">${cliente.nome}</span>`:'—'}</td>
       <td><span class="chip chip-gray">${o.cat}</span></td>
       <td style="font-family:monospace;font-size:12px;color:${atrasada?'var(--red)':'var(--text)'}">${fmtDate(o.venc)}</td>
-      <td><span class="chip ${o.status==='concluida'?'chip-green':atrasada?'chip-red':'chip-amber'}" title="A baixa é feita na Agenda">${o.status==='concluida'?'✅ Concluída':atrasada?'⚠️ Atrasada':'⏳ Pendente'}</span></td>
+      <td><span class="chip ${o.status==='concluida'?'chip-green':atrasada?'chip-red':pr.done>0?'chip-blue':'chip-amber'}">${o.status==='concluida'?'✅ Concluída':atrasada?'⚠️ Atrasada':pr.done>0?'🔄 Em andamento':'⏳ Pendente'}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObrigModal('${o.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')">🗑️</button></td>
     </tr>`;
   }).join('');
   atualizarBarraObrigSel();
 }
-
-/* ══════════════════════════════════════════════════════
-   FECHAMENTO MENSAL
-   ══════════════════════════════════════════════════════ */
-// O Fechamento trabalha sempre o mês ANTERIOR (em outubro, fecha-se setembro): é o mês-base.
-function mesBaseFechamento() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-let fechMesAtual = mesBaseFechamento();
+let fechFiltro = 'todas';
+function fechIrMesBase() { fechMesAtual = mesBaseFechamento(); renderFechamento(); }
 
 function fechMoveMes(dir) {
   const [y,m] = fechMesAtual.split('-').map(Number);
@@ -5726,182 +5700,82 @@ function fechMoveMes(dir) {
   renderFechamento();
 }
 
-const ETAPAS_PADRAO = ['Apurar PGDAS', 'Envio eSocial', 'Enviar documentos ao cliente'];
+function renderFechamento() {
+  gerarObrigacoesDoMes(false);
+  document.getElementById('fech-mes-label').textContent = mesLabel(fechMesAtual);
+  const ct = document.getElementById('fech-comp-txt'); if (ct) ct.textContent = mesParaComp(fechMesAtual) + (fechMesAtual===mesBaseFechamento() ? ' (mês anterior ao atual)' : '');
+  const sf = document.getElementById('fech-filtro'); if (sf) sf.value = fechFiltro;
+  const hoje = today();
+  const todas = DB.get('obrigacoes').filter(o => mesDaObrigacao(o)===fechMesAtual && focoOk(o.clienteId));
+  const feita = o => o.status==='concluida';
+  const atras = o => !feita(o) && o.venc && o.venc < hoje;
+  const nConc = todas.filter(feita).length, nAtr = todas.filter(atras).length;
+  const resumo = document.getElementById('fech-resumo');
+  if (resumo) resumo.innerHTML = `
+    <div class="metric-card hud"><div class="metric-label">Obrigações no mês</div><div class="metric-value">${todas.length}</div></div>
+    <div class="metric-card hud"><div class="metric-label">Concluídas</div><div class="metric-value" style="color:var(--green)">${nConc}</div></div>
+    <div class="metric-card hud"><div class="metric-label">Pendentes</div><div class="metric-value">${todas.length-nConc}</div></div>
+    <div class="metric-card hud"><div class="metric-label">Atrasadas</div><div class="metric-value" style="color:${nAtr?'var(--red)':'var(--text)'}">${nAtr}</div></div>`;
+  const filtradas = todas.filter(o => fechFiltro==='pendentes' ? !feita(o) : fechFiltro==='atrasadas' ? atras(o) : true);
+  const porCliente = new Map();
+  filtradas.forEach(o => { const k = o.clienteId || ''; if (!porCliente.has(k)) porCliente.set(k, []); porCliente.get(k).push(o); });
+  const clientesAtivos = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo');
+  // clientes com fechamento recorrente aparecem mesmo sem obrigação (para você ver o que falta cadastrar)
+  if (fechFiltro==='todas') clientesAtivos.filter(c=>c.temFechamento===true).forEach(c => { if (!porCliente.has(c.id)) porCliente.set(c.id, []); });
+  const grupos = [...porCliente.entries()].map(([cid, obs]) => ({ c: cid ? DB.get('clientes').find(x=>x.id===cid) : null, cid, obs }))
+    .sort((a,b) => a.c && b.c ? ordenarPorCodigo(a.c,b.c) : a.c ? -1 : 1);
+  const grid = document.getElementById('fechamento-grid');
+  if (!grupos.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="ico">📋</div><div class="txt">Nenhuma obrigação com competência ${mesParaComp(fechMesAtual)}</div><div class="sub">Crie em "+ Nova obrigação" (já vem com a competência do mês anterior) ou use "↻ Gerar do mês" para as recorrentes</div></div>`;
+    return;
+  }
+  const fin = financeiroRealizado();
+  grid.innerHTML = grupos.map(({c, cid, obs}) => {
+    const tot = obs.reduce((s,o)=>s+obrigProgresso(o).total,0), dn = obs.reduce((s,o)=>s+obrigProgresso(o).done,0);
+    const pct = tot ? Math.round(dn/tot*100) : 0;
+    const nome = c ? c.nome : 'Sem cliente';
+    let honHtml = '';
+    if (c && honV(c, fechMesAtual) > 0) {
+      const recebidoMes = fin.filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
+      const jaRecebido = recebidoMes >= honV(c, fechMesAtual);
+      honHtml = `<div style="padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11px;color:var(--text3)">Honorário: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, fechMesAtual))}</strong></div>
+        ${jaRecebido ? `<span class="chip chip-green">✅ Recebido</span>` : `<button class="btn btn-primary btn-sm" onclick="abrirBaixaRecebimentoModal('${c.id}')">💰 Dar baixa</button>`}
+      </div>`;
+    }
+    const linhas = obs.sort((a,b)=>(a.venc||'9999').localeCompare(b.venc||'9999')).map(o => {
+      const a = atras(o), ok = feita(o);
+      return `<div style="padding:9px 0;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div onclick="toggleObrigStatus('${o.id}')" title="Concluir/reabrir tudo" style="width:18px;height:18px;border-radius:50%;border:1.5px solid ${ok?'var(--green)':'var(--border2)'};background:${ok?'var(--green)':'transparent'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#04321f">${ok?'✓':''}</div>
+          <div onclick="openObrigModal('${o.id}')" style="flex:1;min-width:0;cursor:pointer">
+            <div style="font-size:12.5px;font-weight:600;text-decoration:${ok?'line-through':'none'};color:${ok?'var(--text3)':'var(--text)'}">${String(o.titulo||'').replace(/</g,'&lt;')}${o.recorrente?' <span title="Repete todo mês">🔁</span>':''}</div>
+            <div style="font-size:10.5px;color:${a?'var(--red)':'var(--text3)'}">${o.venc?`Fazer em ${fmtDate(o.venc)}${a?' · atrasada':''}`:'sem data'}</div>
+          </div>
+        </div>${obrigEtapasHTML(o, true)}</div>`;
+    }).join('');
+    return `<div class="card hud">
+      <div class="card-body" style="padding-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+          <div style="font-size:13px;font-weight:600">${nome}</div>
+          <span class="chip ${pct===100&&tot?'chip-green':pct>0?'chip-amber':'chip-gray'}">${tot?`${dn}/${tot}`:'sem obrigações'}</span>
+        </div>
+        <div class="gauge-track" style="height:6px;margin-bottom:6px"><div class="gauge-fill" style="width:${pct}%;background:${pct===100&&tot?'var(--green)':'var(--accent)'}"></div></div>
+        ${linhas || `<div style="font-size:11.5px;color:var(--text3);padding:8px 0">Nenhuma obrigação neste mês.</div>`}
+        <div style="padding:8px 0 4px"><button class="btn btn-ghost btn-sm" onclick="novaObrigParaCliente('${cid}')">+ Obrigação</button></div>
+      </div>${honHtml}
+    </div>`;
+  }).join('');
+}
+function novaObrigParaCliente(cid) {
+  openObrigModal(null, fechMesAtual);
+  setTimeout(() => { document.querySelectorAll('#obrig-multi-lista input').forEach(i => { i.checked = (i.value === cid); }); atualizarObrigMultiContador(); }, 0);
+}
+
 
 // Garante que cada etapa do fechamento tenha uma Obrigação correspondente
 // (cria a obrigação na primeira vez; nas próximas, só sincroniza o status)
-function sincronizarObrigacoesDoFechamento(fechamentoId) {
-  const fechamentos = DB.get('fechamentos');
-  const f = fechamentos.find(x=>x.id===fechamentoId);
-  if (!f) return;
-  const obrigacoes = DB.get('obrigacoes');
-  const [ano, mes] = f.mes.split('-');
-  const competenciaStr = `${mes}/${ano}`;
-  let mudouObrig = false, mudouFech = false;
-  const proximas = [];
-
-  f.etapas = f.etapas.filter(etapa => {
-    if (etapa.obrigId) {
-      const o = obrigacoes.find(x=>x.id===etapa.obrigId);
-      if (!o) { mudouFech = true; return false; }   // obrigação excluída → some do fechamento
-      const novoStatus = etapa.done ? 'concluida' : 'pendente';
-      if (o.status !== novoStatus) {
-        o.status = novoStatus; o.dataConclusao = etapa.done ? today() : ''; mudouObrig = true;
-        if (etapa.done && o.recorrente) proximas.push(o.id);
-      }
-      if (o.titulo && etapa.label !== o.titulo) { etapa.label = o.titulo; mudouFech = true; }
-      return true;
-    }
-    // não tem obrigação vinculada ainda — cria uma nova
-    const nova = {
-      id: DB.id(), titulo: etapa.label, clienteId: f.clienteId, cat: 'Fiscal',
-      competencia: competenciaStr, venc: '', status: etapa.done ? 'concluida' : 'pendente',
-      obs: 'Gerada automaticamente pelo Fechamento Mensal', origemFechamento: true, noFechamento: true, recorrente: true,
-    };
-    obrigacoes.push(nova);
-    etapa.obrigId = nova.id;
-    mudouObrig = true; mudouFech = true;
-    return true;
-  });
-
-  if (mudouObrig) DB.set('obrigacoes', obrigacoes);
-  if (mudouFech) DB.set('fechamentos', fechamentos);
-  proximas.forEach(id => { const o = DB.get('obrigacoes').find(x=>x.id===id); if (o) gerarProximaOcorrenciaObrig(o); });
-}
-
 // Direção inversa: concluir/reabrir a obrigação reflete na etapa do fechamento vinculada
-function sincronizarFechamentoDaObrigacao(obrigId) {
-  const obrigacoes = DB.get('obrigacoes');
-  const o = obrigacoes.find(x=>x.id===obrigId);
-  if (!o) return;
-  const fechamentos = DB.get('fechamentos');
-  let mudou = false;
-  fechamentos.forEach(f => {
-    f.etapas.forEach(etapa => {
-      if (etapa.obrigId === obrigId) {
-        const novoDone = o.status === 'concluida';
-        if (etapa.done !== novoDone) { etapa.done = novoDone; mudou = true; }
-      }
-    });
-  });
-  if (mudou) DB.set('fechamentos', fechamentos);
-}
-
-function getFechamento(clienteId, mes) {
-  return DB.get('fechamentos').find(f=>f.clienteId===clienteId && f.mes===mes);
-}
-
-function ensureFechamento(clienteId, mes) {
-  let fechamentos = DB.get('fechamentos');
-  let f = fechamentos.find(x=>x.clienteId===clienteId && x.mes===mes);
-  if (!f) {
-    f = { id: DB.id(), clienteId, mes, etapas: ETAPAS_PADRAO.map((label,i)=>({id:i,label,done:false,obrigId:null})), obs: '' };
-    fechamentos.push(f);
-    DB.set('fechamentos', fechamentos);
-  }
-  sincronizarObrigacoesDoFechamento(f.id);
-  return f;
-}
-
-function toggleFechStep(clienteId, stepId) {
-  try {
-    const f = ensureFechamento(clienteId, fechMesAtual);
-    const fechamentos = DB.get('fechamentos');
-    const idx = fechamentos.findIndex(x=>x.id===f.id);
-    if (idx < 0) { toast('❌ Não achei esse fechamento — tente reabrir a tela'); return; }
-    const step = fechamentos[idx].etapas.find(e=>String(e.id)===String(stepId));
-    if (!step) { toast('❌ Não achei essa etapa — tente reabrir o card do cliente'); return; }
-    step.done = !step.done;
-    DB.set('fechamentos', fechamentos);
-    sincronizarObrigacoesDoFechamento(f.id);
-    renderFechamento();
-  } catch (e) {
-    console.error('Erro ao marcar etapa do fechamento:', e);
-    toast('❌ Erro ao marcar etapa: ' + e.message);
-  }
-}
-
-function openFechamentoModal(clienteId) {
-  try {
-    const f = ensureFechamento(clienteId, fechMesAtual);
-    const cliente = DB.get('clientes').find(c=>c.id===clienteId);
-    document.getElementById('fech-edit-id').value = f.id;
-    document.getElementById('fech-cliente-id').value = clienteId;
-    document.getElementById('fech-mes').value = fechMesAtual;
-    document.getElementById('modal-fechamento-title').textContent = (cliente?cliente.nome:'') + ' — ' + mesLabel(fechMesAtual);
-    document.getElementById('fech-etapas-texto').value = f.etapas.map(e=>e.label).join('\n');
-    document.getElementById('fech-obs').value = f.obs || '';
-    renderFechEtapasLista(f);
-    openModal('modal-fechamento');
-  } catch (e) {
-    console.error('Erro ao abrir fechamento:', e);
-    toast('❌ Erro ao abrir o fechamento: ' + e.message);
-  }
-}
-
-// Delegação de clique: um único listener no container, em vez de onclick colado em cada linha —
-// evita que aspas/caracteres especiais no nome da etapa quebrem o HTML silenciosamente.
-document.addEventListener('click', function(ev) {
-  const pill = ev.target.closest('#fech-etapas-lista .check-pill');
-  if (!pill) return;
-  const clienteId = pill.getAttribute('data-cliente-id');
-  const stepId = pill.getAttribute('data-step-id');
-  toggleFechStep(clienteId, stepId);
-  reopenFechamentoModal();
-});
-
-function renderFechEtapasLista(f) {
-  const el = document.getElementById('fech-etapas-lista');
-  if (!el) return;
-  el.innerHTML = f.etapas.map(e => `
-    <div class="check-pill ${e.done?'done':''}" data-cliente-id="${f.clienteId}" data-step-id="${e.id}" style="width:100%;justify-content:flex-start">${e.done?'✅':'⬜'} ${(e.label||'').replace(/</g,'&lt;')}</div>
-  `).join('') + `<div style="font-size:10.5px;color:var(--text3);margin-top:6px">🔗 Cada etapa gera/atualiza automaticamente uma obrigação em "Obrigações"</div>`;
-}
-
-function reopenFechamentoModal() {
-  const clienteId = document.getElementById('fech-cliente-id').value;
-  const f = getFechamento(clienteId, fechMesAtual);
-  if (f) renderFechEtapasLista(f);
-  renderFechamento();
-}
-
-function saveFechamentoEtapas() {
-  const clienteId = document.getElementById('fech-cliente-id').value;
-  const mes = document.getElementById('fech-mes').value;
-  const linhas = document.getElementById('fech-etapas-texto').value.split('\n').map(l=>l.trim()).filter(Boolean);
-  if (!linhas.length) { toast('⚠️ Adicione ao menos uma etapa'); return; }
-  const fechamentos = DB.get('fechamentos');
-  const idx = fechamentos.findIndex(f=>f.clienteId===clienteId && f.mes===mes);
-  const existing = idx>-1 ? fechamentos[idx].etapas : [];
-  const novasEtapas = linhas.map((label,i) => {
-    const old = existing.find(e=>e.label===label);
-    return { id: i, label, done: old ? old.done : false, obrigId: old ? old.obrigId : null };
-  });
-  const obs = document.getElementById('fech-obs').value.trim();
-  // etapas removidas do texto → as obrigações ligadas a elas também são excluídas
-  const removidas = existing.filter(e => !linhas.includes(e.label) && e.obrigId).map(e => e.obrigId);
-  if (removidas.length) DB.set('obrigacoes', DB.get('obrigacoes').filter(o => !removidas.includes(o.id)));
-  let fechamentoId;
-  if (idx>-1) { fechamentos[idx].etapas = novasEtapas; fechamentos[idx].obs = obs; fechamentoId = fechamentos[idx].id; }
-  else { fechamentoId = DB.id(); fechamentos.push({ id: fechamentoId, clienteId, mes, etapas: novasEtapas, obs }); }
-  DB.set('fechamentos', fechamentos);
-  sincronizarObrigacoesDoFechamento(fechamentoId);
-  closeModal('modal-fechamento');
-  toast('📋 Etapas atualizadas — obrigações sincronizadas');
-  renderAll();
-}
-
-function resetFechamento() {
-  if (!confirm('Zerar o progresso deste fechamento?')) return;
-  const clienteId = document.getElementById('fech-cliente-id').value;
-  const mes = document.getElementById('fech-mes').value;
-  const fechamentos = DB.get('fechamentos');
-  const f = fechamentos.find(x=>x.clienteId===clienteId && x.mes===mes);
-  if (f) { f.etapas.forEach(e=>e.done=false); DB.set('fechamentos', fechamentos); }
-  closeModal('modal-fechamento');
-  toast('🔄 Progresso resetado');
-  renderAll();
-}
 
 function abrirBaixaRecebimentoModal(clienteId, valorSugerido, mesRotulo, avulsoId, descricaoAvulso, dataSugerida) {
   const c = clienteId ? DB.get('clientes').find(x=>x.id===clienteId) : null;
@@ -6159,6 +6033,7 @@ function renderRecibos() {
 function mesesComEvidenciaCliente(clienteId) {
   const meses = new Set();
   DB.get('fechamentos').filter(f=>f.clienteId===clienteId).forEach(f=>meses.add(f.mes));
+  DB.get('obrigacoes').filter(o=>o.clienteId===clienteId).forEach(o=>{ const m = mesDaObrigacao(o); if (m) meses.add(m); });
   DB.get('financeiro').filter(f=>f.clienteId===clienteId && f.data).forEach(f=>meses.add(f.data.slice(0,7)));
   return meses;
 }
@@ -7008,69 +6883,6 @@ function confirmarBaixaRecebimento() {
   toast(rec ? `💰 Recebimento confirmado · 🧾 recibo ${rec.numero} salvo em Recibos` : `💰 Recebimento de ${nomeExibicao} confirmado`);
   renderAll();
 }
-
-function renderFechamento() {
-  document.getElementById('fech-mes-label').textContent = mesLabel(fechMesAtual);
-  const manual = !!getConfig().fechamentoManual;   // depois de "Excluir todos", só aparece quem for adicionado
-  const clientes = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo' && (manual ? !!getFechamento(c.id, fechMesAtual) : c.temFechamento===true)).sort(ordenarPorCodigo);
-  const selAdd = document.getElementById('fech-add-cliente');
-  if (selAdd) fillClienteSelect(selAdd, selAdd.value || '', { semNovo: true, vazio: '— Adicionar cliente ao fechamento —' });
-  const grid = document.getElementById('fechamento-grid');
-  if (!clientes.length) {
-    grid.innerHTML = manual
-      ? `<div class="empty-state"><div class="ico">📋</div><div class="txt">Nenhum fechamento em ${mesLabel(fechMesAtual)}</div><div class="sub">Escolha um cliente acima e clique em "+ Adicionar"</div></div>`
-      : `<div class="empty-state"><div class="ico">📋</div><div class="txt">Nenhum cliente com fechamento recorrente marcado</div><div class="sub">Marque "Tem fechamento mensal recorrente" no cadastro do cliente</div></div>`;
-    return;
-  }
-  grid.innerHTML = clientes.map(c => {
-    const f = getFechamento(c.id, fechMesAtual);
-    const etapas = f ? f.etapas : ETAPAS_PADRAO.map((label,i)=>({id:i,label,done:false}));
-    const done = etapas.filter(e=>e.done).length;
-    const pct = etapas.length ? Math.round(done/etapas.length*100) : 0;
-    const historico = historicoFechamento(c.id);
-    const recebidoMes = financeiroRealizado().filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
-    const jaRecebido = honV(c, fechMesAtual) > 0 && recebidoMes >= honV(c, fechMesAtual);
-    return `
-    <div class="card hud">
-      <div class="card-body" style="cursor:pointer" onclick="openFechamentoModal('${c.id}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:600">${c.nome}</div>
-          <span class="chip ${pct===100?'chip-green':pct>0?'chip-amber':'chip-gray'}">${done}/${etapas.length}</span>
-        </div>
-        <div class="gauge-track" style="height:6px"><div class="gauge-fill" style="width:${pct}%;background:${pct===100?'var(--green)':'var(--accent)'}"></div></div>
-      </div>
-      ${historico.length ? `
-      <div style="padding:0 20px 14px;display:flex;gap:5px;align-items:center">
-        <span style="font-size:10px;color:var(--text3);margin-right:2px">Histórico:</span>
-        ${historico.map(h => `<span title="${mesLabel(h.mes)} — ${h.pct}%" style="width:9px;height:9px;border-radius:2px;background:${h.pct===100?'var(--green)':h.pct>0?'var(--amber)':'var(--border2)'}"></span>`).join('')}
-      </div>` : ''}
-      ${honV(c, fechMesAtual) > 0 ? `
-      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:11px;color:var(--text3)">Honorário: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, fechMesAtual))}</strong></div>
-        ${jaRecebido
-          ? `<span class="chip chip-green">✅ Recebido</span>`
-          : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirBaixaRecebimentoModal('${c.id}')">💰 Dar baixa</button>`}
-      </div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function historicoFechamento(clienteId, meses = 6) {
-  const out = [];
-  let [y,m] = fechMesAtual.split('-').map(Number);
-  for (let i=1;i<=meses;i++) {
-    const d = new Date(y, m-1-i, 1);
-    const mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const f = getFechamento(clienteId, mes);
-    if (f) {
-      const done = f.etapas.filter(e=>e.done).length;
-      const pct = f.etapas.length ? Math.round(done/f.etapas.length*100) : 0;
-      out.unshift({ mes, pct });
-    }
-  }
-  return out;
-}
-
 
 /* ══════════════════════════════════════════════════════
    PROPOSTAS — abertura, cancelamento e regularização fiscal
@@ -8976,16 +8788,18 @@ function startApp() {
   verificarSincronia();
   if (window.__offline) {
     const b = document.getElementById('sync-badge'); if (b) { b.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; b.style.color = 'var(--red)'; }
-    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas();
+    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas();
   } else if (SUPA_URL && SUPA_KEY) {
     const sujo = localStorage.getItem('gw_offline_dirty') === '1';
-    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
     limparTarefasAcordar();
     arquivarPessoal();
     migrarObrigFechamentoRecorrente();
+    migrarObrigEtapasV1();
+    gerarObrigacoesDoMes(false);
     gerarOcorrenciasRecorrentesFuturas();
   }
 }
