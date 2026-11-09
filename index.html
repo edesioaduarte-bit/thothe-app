@@ -3322,7 +3322,7 @@ function retomarTimer(id) {
 }
 
 // Para um cronômetro específico, salva como registro de horas e remove da lista de ativos
-function pararTimer(id) {
+function pararTimer(id, manterAberta) {
   const timers = getTimersAtivos();
   const idx = timers.findIndex(x=>x.id===id);
   if (idx === -1) return;
@@ -3345,6 +3345,11 @@ function pararTimer(id) {
   setTimersAtivos(timers);
 
   let tarefaConcluida = false;
+  if (manterAberta) {
+    if (registrou) toast(`⏱️ ${fmtDuracaoCurta(segundos)} do dia registrado`);
+    renderAll();
+    return;
+  }
   if (t.tarefaId) {
     const tarefas = DB.get('tarefas');
     const tarefa = tarefas.find(x=>x.id===t.tarefaId);
@@ -4332,16 +4337,22 @@ function salvarReagendar() {
   const nova = document.getElementById('rea-data').value;
   if (!nova) { toast('⚠️ Escolha o novo dia'); return; }
   const col = kind==='o' ? 'obrigacoes' : 'tarefas', campo = kind==='o' ? 'venc' : 'data';
-  const lista = DB.get(col), it = lista.find(x=>x.id===id);
-  if (!it) return;
   const nota = document.getElementById('rea-nota').value.trim();
-  it.historico = (it.historico||[]).concat({ em: today(), de: it[campo]||'', para: nova, nota });
-  it.notaAcompanhamento = nota;
-  it[campo] = nova;
-  DB.set(col, lista);
+  // Cronômetro rodando/pausado: fecha o tempo de hoje (vai para Horas) e a tarefa segue zerada no novo dia
+  let segHoje = 0;
+  const tm = getTimerPorTarefa(id);
+  if (tm) { segHoje = Math.round(elapsedSegundos(tm)); pararTimer(tm.id, true); }
+  const lista2 = DB.get(col), it2 = lista2.find(x=>x.id===id);
+  if (!it2) return;
+  it2.historico = (it2.historico||[]).concat({ em: today(), de: it2[campo]||'', para: nova, nota, segundos: segHoje });
+  it2.notaAcompanhamento = nota;
+  it2[campo] = nova;
+  if (kind!=='o') { it2.horaInicio = ''; it2.horaConclusao = ''; }
+  DB.set(col, lista2);
   closeModal('modal-reagendar');
-  toast(`⏭ Movida para ${fmtDate(nova)} — o que já foi feito continua marcado`);
+  toast(segHoje ? `⏭ ${fmtDuracaoCurta(segHoje)} de hoje registrados · segue para ${fmtDate(nova)} com o cronômetro zerado` : `⏭ Movida para ${fmtDate(nova)} — o que já foi feito continua marcado`);
   renderAll();
+  return;
 }
 function reagendarInfoHTML(it) {
   const h = it.historico || [];
