@@ -1814,6 +1814,11 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div style="font-size:11px;color:var(--text3);margin-top:5px">Ao concluir, a próxima ocorrência é criada automaticamente.</div>
       </div>
       <div class="form-group">
+        <label class="form-label">Etapas (uma por linha, opcional)</label>
+        <textarea class="form-control" id="tar-etapas" rows="3" placeholder="Separar documentos&#10;Conferir valores&#10;Enviar ao cliente"></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">Marque cada etapa na Agenda. Ao concluir todas, a tarefa é concluída.</div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Comentários</label>
         <textarea class="form-control" id="tar-comentarios" rows="3" placeholder="Observações, detalhes da tarefa..."></textarea>
       </div>
@@ -3854,6 +3859,7 @@ function linhaAgendaFocoItem(t, vencida) {
     <div onclick="abrirDetalhesTarefa('${t.id}')" style="flex:1;min-width:0;cursor:pointer">
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaqueVencida?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}${tipoIcone} ${(t.titulo||'').replace(/</g,'&lt;')}${t.recorrencia?' 🔁':''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
+      ${tarefaEtapasHTML(t)}
     </div>
     ${emailAcoesHtml(t)}${timerHtml}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirTarefaComOpcoes('${t.id}')" title="Excluir">🗑️</button>
@@ -4115,6 +4121,7 @@ function openTarefaModal(id) {
       document.getElementById('tar-prioridade').value = t.prioridade || 'normal';
       document.getElementById('tar-recorrencia').value = t.recorrencia || '';
       document.getElementById('tar-comentarios').value = t.comentarios || '';
+      document.getElementById('tar-etapas').value = (t.etapas||[]).map(e=>e.label).join('\n');
       setTarTipo(t.tipo || 'profissional');
     }
   } else {
@@ -4124,6 +4131,7 @@ function openTarefaModal(id) {
     document.getElementById('tar-prioridade').value = 'normal';
     document.getElementById('tar-recorrencia').value = '';
     document.getElementById('tar-comentarios').value = '';
+    document.getElementById('tar-etapas').value = '';
     setTarTipo('profissional');
   }
   openModal('modal-tarefa');
@@ -4147,11 +4155,17 @@ function saveTarefa(iniciar) {
     prioridade: document.getElementById('tar-prioridade').value,
     recorrencia: document.getElementById('tar-recorrencia').value,
     comentarios: document.getElementById('tar-comentarios').value.trim(),
+    etapas: etapasDeTexto(document.getElementById('tar-etapas').value, existente ? existente.etapas : []),
     status: existente ? (existente.status || 'pendente') : 'pendente',
     // Horário de criação — usado para ordenar na Agenda quando a tarefa não tem horário definido.
     // Só é gravado na criação (nunca sobrescrito numa edição) e nunca altera um horário já definido.
     horaCriacao: existente ? existente.horaCriacao : (horaInformada ? null : horaAgora()),
   };
+  if (item.etapas.length) {
+    const todas = item.etapas.every(e=>e.done);
+    if (todas && item.status!=='concluida') { item.status='concluida'; item.dataConclusao=today(); }
+    else if (!todas && item.status==='concluida') { item.status='pendente'; item.dataConclusao=''; }
+  }
   if (editId) { const i = tarefas.findIndex(x=>x.id===editId); if (i>-1) tarefas[i]=item; }
   else tarefas.push(item);
   DB.set('tarefas', tarefas);
@@ -4252,7 +4266,7 @@ function gerarOcorrenciasRecorrentesFuturas() {
         tarefas.push({
           id: DB.id(), tipo: base.tipo, titulo: base.titulo, clienteId: base.clienteId,
           data: proxData, hora: base.hora, prioridade: base.prioridade, recorrencia: base.recorrencia,
-          status: 'pendente',
+          status: 'pendente', etapas: (base.etapas||[]).map((e,i)=>({id:i,label:e.label,done:false})),
         });
         datasExistentesPorSerie[key].add(proxData);
         mudou = true;
@@ -4265,12 +4279,29 @@ function gerarOcorrenciasRecorrentesFuturas() {
   if (mudou) DB.set('tarefas', tarefas);
 }
 
+function toggleTarefaEtapa(tid, eid) {
+  const tarefas = DB.get('tarefas');
+  const t = tarefas.find(x=>x.id===tid);
+  const e = t && (t.etapas||[]).find(x=>String(x.id)===String(eid));
+  if (!e) return;
+  e.done = !e.done;
+  const todas = t.etapas.every(x=>x.done);
+  if (todas && t.status!=='concluida') { t.status='concluida'; t.dataConclusao=today(); t.horaConclusao=horaAgora(); emailPosConclusao(tarefas, t); toast('✅ Tarefa concluída'); }
+  else if (!todas && t.status==='concluida') { t.status='pendente'; t.dataConclusao=''; t.horaConclusao=''; }
+  DB.set('tarefas', tarefas);
+  renderAll();
+}
+function tarefaEtapasHTML(t) {
+  if (!(t.etapas||[]).length) return '';
+  return `<div class="fc-etapas" style="margin-left:0;margin-top:6px">` + t.etapas.map(e => `<div class="fc-et ${e.done?'ok':''}" onclick="event.stopPropagation();toggleTarefaEtapa('${t.id}','${e.id}')"><span class="fc-box">${e.done?'✓':''}</span><span>${String(e.label||'').replace(/</g,'&lt;')}</span></div>`).join('') + `</div>`;
+}
 function toggleTarefa(id) {
   const tarefas = DB.get('tarefas');
   const t = tarefas.find(x=>x.id===id);
   if (t) {
     const ficandoConcluida = t.status !== 'concluida';
     t.status = ficandoConcluida ? 'concluida' : 'pendente';
+    (t.etapas||[]).forEach(e => { e.done = ficandoConcluida; });
     if (ficandoConcluida) {
       const agora = new Date();
       t.horaConclusao = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
