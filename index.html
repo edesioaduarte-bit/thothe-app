@@ -2213,12 +2213,13 @@ function limparTarefasAcordar() {
 /* ══════════════════════════════════════════════════════
    AUTH — Supabase Auth (mesma conta do sistema principal)
    ══════════════════════════════════════════════════════ */
+// Sessão mantida neste aparelho (localStorage) — assim a rotina automática diária consegue abrir o sistema já conectado.
 function authGetSession() {
-  try { return JSON.parse(sessionStorage.getItem('growth_supa_session') || 'null'); }
+  try { return JSON.parse(localStorage.getItem('growth_supa_session') || sessionStorage.getItem('growth_supa_session') || 'null'); }
   catch (e) { return null; }
 }
-function authSaveSession(s) { sessionStorage.setItem('growth_supa_session', JSON.stringify(s)); }
-function authClearSession() { sessionStorage.removeItem('growth_supa_session'); }
+function authSaveSession(s) { try { localStorage.setItem('growth_supa_session', JSON.stringify(s)); } catch (e) { sessionStorage.setItem('growth_supa_session', JSON.stringify(s)); } }
+function authClearSession() { try { localStorage.removeItem('growth_supa_session'); } catch (e) {} sessionStorage.removeItem('growth_supa_session'); }
 
 async function authGetAccessToken() {
   const s = authGetSession();
@@ -7275,6 +7276,44 @@ function propRemoverPrevisaoRecebimento(x) {
   if (resto.length !== lista.length) DB.set('previsoesAvulsas', resto);
 }
 // Tarefa de execução criada ao aprovar a proposta (uma só por proposta)
+// ── E-mails do Outlook → tarefas na Agenda (sem duplicar) ──
+// Chave = assunto sem "RE:/RES:/ENC:/FW:" — respostas na mesma conversa não geram outra tarefa.
+// Lembra de tudo que já virou tarefa (mesmo concluída ou excluída), então só entram e-mails novos.
+function emailChave(assunto) {
+  return String(assunto||'').toLowerCase().replace(/^(\s*(re|res|enc|fw|fwd|enc\.|encaminhado)\s*:\s*)+/i,'').replace(/\s+/g,' ').trim();
+}
+function importarEmailsOutlook(lista) {
+  if (!Array.isArray(lista)) return { novas: 0, ignoradas: 0 };
+  const cfg = getConfig();
+  const vistos = new Set(cfg.emailsImportados || []);
+  DB.get('tarefas').forEach(t => { if (t.emailChave) vistos.add(t.emailChave); });
+  const tarefas = DB.get('tarefas'), hoje = today();
+  let novas = 0, ignoradas = 0;
+  lista.forEach((e, i) => {
+    const k = emailChave(e.assunto);
+    if (!k || vistos.has(k)) { ignoradas++; return; }
+    vistos.add(k); novas++;
+    tarefas.push({
+      id: DB.id() + 'ol' + i + Math.random().toString(36).slice(2,5), tipo: 'profissional', origemEmail: 'outlook', emailChave: k,
+      titulo: '📧 ' + e.assunto + (e.de ? ' — ' + e.de : ''),
+      clienteId: '', data: hoje, hora: '', prioridade: e.urgente ? 'urgente' : 'normal', recorrencia: '',
+      comentarios: 'E-mail recebido em ' + (e.quando || hoje) + '.\n' + (e.nota || ''),
+      status: 'pendente', horaCriacao: horaAgora(), etapas: [],
+    });
+  });
+  if (novas) DB.set('tarefas', tarefas);
+  setConfig({ ...getConfig(), emailsImportados: [...vistos].slice(-3000) });
+  if (novas) { try { renderAll(); toast(`📧 ${novas} e-mail${novas!==1?'s':''} novo${novas!==1?'s':''} na Agenda`); } catch (e) {} }
+  return { novas, ignoradas };
+}
+window.importarEmailsOutlook = importarEmailsOutlook;
+// Carga inicial (09/11/2026): e-mails que estavam abertos na caixa de entrada
+function importarEmailsOutlookV1() {
+  const cfg = getConfig();
+  if (cfg.emailsOutlookV1) return;
+  importarEmailsOutlook([{"de": "Luciana Cristina Bezerra (USJ)", "assunto": "RES: Confirmação de Pedido - U.S.J Açúcar e Álcool S/A", "quando": "09/11 13:26", "nota": "Retorno sobre o pedido (tem anexos).", "urgente": 0}, {"de": "Daniel Barbosa Meyer (LM Mobilidade)", "assunto": "Re: Cobrança - LM Soluções de Mobilidade", "quando": "09/11 11:24", "nota": "Enviou resumo das despesas em aberto do cliente Dane Marcos.", "urgente": 0}, {"de": "Kelly Silva", "assunto": "ENC: Solicitação de Atualização Cadastral - Regime Tributário no SAP Ariba", "quando": "09/11 09:19", "nota": "Você foi mencionado. Preencher o regime tributário conforme o manual em PDF anexo. Marcado como importante.", "urgente": 1}, {"de": "Kelly Silva", "assunto": "ENC: Aviso - Documentos Pendentes de Envio - ADECOAGRO", "quando": "09/11 09:19", "nota": "Você foi mencionado: documentos pendentes de envio.", "urgente": 0}, {"de": "Dane Avanzi", "assunto": "Fw: Procuração", "quando": "sáb 11:13", "nota": "Dane diz que a procuração já existia desde a época do Safra (anexo). Conferir e usar.", "urgente": 0}, {"de": "Betânia", "assunto": "NFSE 29 Lim (gov) GRUPO AVANZI - comp. outubro 2026", "quando": "sex 17:20", "nota": "Enviou a nota 29. Pede para acusar o recebimento.", "urgente": 0}, {"de": "Planejamento Assessoria Contábil", "assunto": "REFORMA TRIBUTÁRIA – NOTA FISCAL DE ALUGUEL DE IMÓVEIS", "quando": "sex 15:45", "nota": "Informativo da assessoria contábil.", "urgente": 0}, {"de": "Makson (Fiscal2)", "assunto": "RES: IBS e CBS - Emissão de Notas de Débito e Crédito", "quando": "sex 15:38", "nota": "Topou reunião online e perguntou qual dia da semana que vem é melhor para você. Responder com o dia.", "urgente": 0}, {"de": "Dario Medeiros", "assunto": "Boleto e NFe - nov/2026", "quando": "sex 15:29", "nota": "Enviou NF (novo Sistema Nacional) e boleto do mês. Pede confirmação de recebimento.", "urgente": 0}, {"de": "Kelly Silva", "assunto": "RES: Taxa Anatel - PPDESS | FERNANDO VINHAL", "quando": "sex 14:19", "nota": "Conforme anexo, resposta ao Yuri sobre a taxa/boleto.", "urgente": 0}, {"de": "Nathalia (DP)", "assunto": "RES: Adiantamento de salário - 11/2026 e 1ª parcela do 13º", "quando": "sex 13:55", "nota": "Perguntou para qual data você quer (pode ser segunda?). Responder a data.", "urgente": 0}, {"de": "Erivelton Gomes", "assunto": "RE: AQUISIÇÃO 36 RÁDIOS DEP250 VHF - INNOVATE - NF 14532 / 14531", "quando": "sex 13:23", "nota": "Informou que vieram 30 baterias extras. Conferir com a NF.", "urgente": 0}, {"de": "financeiro", "assunto": "Boletos 3R Network - AVANZI SOLUCOES (NFE12253)", "quando": "sex 12:09", "nota": "Boletos referentes ao faturamento NFE12253. Conferir beneficiário antes de pagar.", "urgente": 0}, {"de": "Nathalia (DP)", "assunto": "RES: Orientação sobre adequação da jornada de trabalho à nova legislação", "quando": "qui 29/10", "nota": "DP recomenda aguardar um pouco antes de adequar a jornada. Decidir/responder.", "urgente": 0}, {"de": "Kelly Silva", "assunto": "ENC: Processo de Homologação Cerradinho BIO - Rejeição", "quando": "seg 26/10", "nota": "Homologação rejeitada. Verificar o motivo e corrigir.", "urgente": 0}, {"de": "Fernanda Silva", "assunto": "CNAB - 23/10/2026", "quando": "23/10", "nota": "Enviou o CNAB.", "urgente": 0}, {"de": "Sandra (Rent Radius)", "assunto": "RES: Troca de 55 ep's de V por U", "quando": "23/10", "nota": "Rádios vieram com senha; pedem a senha. Responder.", "urgente": 0}, {"de": "Fernanda Silva (Teams)", "assunto": "CNABs: pediu para a Ana enviar", "quando": "23/10", "nota": "Mensagem do Teams: pediu à Ana para enviar os CNABs na segunda.", "urgente": 0}, {"de": "Thais Cristina Fagnoli (Safra)", "assunto": "RE: Encerramento de contas – Banco Safra", "quando": "23/10", "nota": "Banco acusou recebimento. Taxas seguem sendo cobradas indevidamente após o encerramento (Dane reclamou). Acompanhar.", "urgente": 0}, {"de": "Fernanda Silva (Teams)", "assunto": "Pedidos de compra das manutenções da VOA", "quando": "23/10", "nota": "Mensagem do Teams: provavelmente chegam os pedidos de compra das manutenções da VOA.", "urgente": 0}, {"de": "HDI Seguros", "assunto": "Lembrete: data limite para movimentação de fatura - Apólice 065722026004109930000083", "quando": "23/10", "nota": "Apólice da Avanzi Soluções em TI. Movimentar a fatura antes do limite.", "urgente": 0}, {"de": "S. G. Moreno Rádio Comunicação", "assunto": "Nota Fiscal Eletrônica 00019141", "quando": "22/10", "nota": "NF-e emitida (PDF anexo). Conferir e lançar.", "urgente": 0}, {"de": "SulAmérica Saúde", "assunto": "Seu boleto SulAmérica Saúde chegou", "quando": "22/10", "nota": "Fatura do plano de saúde (Avanzi Soluções em TI). Pagar.", "urgente": 0}, {"de": "CAIXA - Ag. 7457 (Andorinhas)", "assunto": "Oportunidade para Financiamento de Máquinas e Equipamentos", "quando": "22/10", "nota": "Oferta de financiamento. Avaliar ou arquivar.", "urgente": 0}, {"de": "Caroline Nascimento (Sicoob Copermec)", "assunto": "RE: Sicoob Copermec", "quando": "22/10", "nota": "Estão fazendo o cadastro para abertura de conta; falta o faturamento dos últimos meses. Enviar.", "urgente": 0}, {"de": "Fernanda Silva", "assunto": "RES: PEDIDO 80305 - SC 1451 - MANUTENÇÃO RÁDIO - JUNDIAÍ", "quando": "22/10", "nota": "NF 1932 e boleto da VOA SP SPE, vencimento 23/11/2026. Programar pagamento.", "urgente": 0}, {"de": "Conta Azul", "assunto": "Nota Fiscal 41 - Battery Tester Do Brasil Ltda", "quando": "22/10", "nota": "NF-e recebida (XML anexo). Conferir e lançar.", "urgente": 0}, {"de": "Yuri Costa", "assunto": "Taxa Anatel - PPDESS | GOIÁS TRIBUNAL DE CONTAS", "quando": "seg 19/10", "nota": "Boleto PPDESS para pagamento, vencimento 18/11/2026.", "urgente": 0}, {"de": "Dane Avanzi", "assunto": "Re: Localiza", "quando": "seg 19/10", "nota": "Dane mandou a notificação pronta: preencher e mandar com os anexos.", "urgente": 0}, {"de": "Kelly Silva", "assunto": "ENC: NOTIFICAÇÃO EXTRAJUDICIAL - AVANZI SOLUÇÕES", "quando": "seg 19/10", "nota": "Procuração Avanzi Soluções p/ Dane e outros anexos. Relacionado à Localiza.", "urgente": 0}, {"de": "TD Synnex (Fiscal Engine)", "assunto": "Nota Fiscal Eletrônica de Serviço 169642", "quando": "seg 19/10", "nota": "NFS-e recebida. Conferir e lançar.", "urgente": 0}, {"de": "Localiza Gestão de Frotas", "assunto": "Indique o condutor da infração do carro TEK8H46", "quando": "sex 16/10", "nota": "Notificação de infração. Indicar o condutor dentro do prazo.", "urgente": 0}, {"de": "Daniela (Contabilidade)", "assunto": "Relatório de Pendências Avanzi Comércio 07/10/2026", "quando": "07/10", "nota": "Pede para checar as pendências apuradas e confirmar recebimento.", "urgente": 0}]);
+  setConfig({ ...getConfig(), emailsOutlookV1: true });
+}
 function migrarEtapasExecucaoPropostas() {
   const tarefas = DB.get('tarefas'), props = DB.get('propostas');
   let mudou = false;
@@ -9028,10 +9067,10 @@ function startApp() {
   verificarSincronia();
   if (window.__offline) {
     const b = document.getElementById('sync-badge'); if (b) { b.innerHTML = '<i class="ti ti-cloud-off"></i> Offline'; b.style.color = 'var(--red)'; }
-    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas();
+    gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); importarEmailsOutlookV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas();
   } else if (SUPA_URL && SUPA_KEY) {
     const sujo = localStorage.getItem('gw_offline_dirty') === '1';
-    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
+    (sujo ? DB.pushAll().then(ok => { if (ok) localStorage.removeItem('gw_offline_dirty'); }) : Promise.resolve()).then(() => DB.pull()).then(() => { gerarCodigosClientes(true); limparTarefasAcordar(); arquivarPessoal(); migrarObrigFechamentoRecorrente(); migrarObrigEtapasV1(); migrarEtapasExecucaoPropostas(); importarEmailsOutlookV1(); gerarObrigacoesDoMes(false); gerarOcorrenciasRecorrentesFuturas(); renderAll(); });
     setInterval(() => { DB.pull().then(n => { if (n) renderAll(); }); verificarSincronia(); }, 30000);
   } else {
     gerarCodigosClientes(true);
@@ -9040,6 +9079,7 @@ function startApp() {
     migrarObrigFechamentoRecorrente();
     migrarObrigEtapasV1();
     migrarEtapasExecucaoPropostas();
+    importarEmailsOutlookV1();
     gerarObrigacoesDoMes(false);
     gerarOcorrenciasRecorrentesFuturas();
   }
