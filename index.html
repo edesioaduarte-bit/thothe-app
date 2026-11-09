@@ -2028,6 +2028,36 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-reagendar">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><span class="modal-title">⏭ Continuar em outro dia</span><button class="modal-close" onclick="closeModal('modal-reagendar')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rea-id"><input type="hidden" id="rea-kind">
+      <div id="rea-titulo" style="font-size:13px;font-weight:600;margin-bottom:4px"></div>
+      <div id="rea-prog" style="font-size:11.5px;color:var(--text3);margin-bottom:12px"></div>
+      <div class="form-group">
+        <label class="form-label">Novo dia</label>
+        <input class="form-control" type="date" id="rea-data">
+        <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="reaAtalho(1)">Amanhã</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="reaAtalho(2)">+2 dias</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="reaAtalho(3)">+3 dias</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="reaAtalho(7)">+1 semana</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Anotação para o próximo dia (opcional)</label>
+        <textarea class="form-control" id="rea-nota" rows="2" placeholder="Ex: aguardando resultado da consulta no portal"></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">As etapas já marcadas continuam marcadas. A tarefa sai de hoje e aparece no novo dia.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reagendar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarReagendar()">Mover para o novo dia</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-import-summary">
   <div class="modal" style="max-width:420px">
     <div class="modal-header"><span class="modal-title">📥 Importação concluída</span><button class="modal-close" onclick="closeModal('modal-import-summary')">×</button></div>
@@ -3821,9 +3851,10 @@ function linhaAgendaObrigFoco(o, vencida) {
     <div onclick="openObrigModal('${o.id}')" style="flex:1;min-width:0;cursor:pointer">
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaque?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}📋 ${(o.titulo||'').replace(/</g,'&lt;')} <span class="chip chip-purple" style="font-size:9px">Obrigação</span>${o.venc && o.venc !== today() ? ` <span style="font-size:10.5px;color:var(--text3)">· venc. ${fmtDate(o.venc)}</span>` : ''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}${o.competencia?` · comp. ${o.competencia}`:''}</div>` : ''}
-      ${obrigEtapasHTML(o, true)}
+      ${obrigEtapasHTML(o, true)}${reagendarInfoHTML(o)}
     </div>
     ${acaoTimerObrig(o)}
+    ${concluida?'':`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReagendar('o','${o.id}')" title="Continuar em outro dia">⏭</button>`}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteObrig('${o.id}')" title="Excluir">🗑️</button>
   </div>`;
 }
@@ -3859,9 +3890,10 @@ function linhaAgendaFocoItem(t, vencida) {
     <div onclick="abrirDetalhesTarefa('${t.id}')" style="flex:1;min-width:0;cursor:pointer">
       <div style="font-size:13px;text-decoration:${concluida?'line-through':'none'};color:${concluida?'var(--text3)':'var(--text)'}">${destaqueVencida?'<span style="color:var(--red);font-weight:700;font-size:10px;letter-spacing:.04em;margin-right:5px">VENCIDA ·</span>':''}${tipoIcone} ${(t.titulo||'').replace(/</g,'&lt;')}${t.recorrencia?' 🔁':''}</div>
       ${cliente ? `<div style="font-size:10.5px;color:var(--text3)">${cliente.nome}</div>` : ''}
-      ${tarefaEtapasHTML(t)}
+      ${tarefaEtapasHTML(t)}${reagendarInfoHTML(t)}
     </div>
     ${emailAcoesHtml(t)}${timerHtml}
+    ${concluida?'':`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirReagendar('t','${t.id}')" title="Continuar em outro dia">⏭</button>`}
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirTarefaComOpcoes('${t.id}')" title="Excluir">🗑️</button>
   </div>`;
 }
@@ -4279,6 +4311,44 @@ function gerarOcorrenciasRecorrentesFuturas() {
   if (mudou) DB.set('tarefas', tarefas);
 }
 
+// ── Continuar em outro dia: mantém as etapas feitas, muda a data e guarda o histórico/anotação ──
+function reaAtalho(dias) {
+  const d = new Date(); d.setDate(d.getDate()+dias);
+  document.getElementById('rea-data').value = toISO(d);
+}
+function abrirReagendar(kind, id) {
+  const it = DB.get(kind==='o' ? 'obrigacoes' : 'tarefas').find(x=>x.id===id);
+  if (!it) return;
+  document.getElementById('rea-id').value = id; document.getElementById('rea-kind').value = kind;
+  document.getElementById('rea-titulo').textContent = it.titulo || '';
+  const et = it.etapas || [];
+  document.getElementById('rea-prog').textContent = et.length ? `Etapas feitas: ${et.filter(e=>e.done).length}/${et.length} (continuam marcadas)` : 'Sem etapas';
+  document.getElementById('rea-nota').value = '';
+  reaAtalho(1);
+  openModal('modal-reagendar');
+}
+function salvarReagendar() {
+  const kind = document.getElementById('rea-kind').value, id = document.getElementById('rea-id').value;
+  const nova = document.getElementById('rea-data').value;
+  if (!nova) { toast('⚠️ Escolha o novo dia'); return; }
+  const col = kind==='o' ? 'obrigacoes' : 'tarefas', campo = kind==='o' ? 'venc' : 'data';
+  const lista = DB.get(col), it = lista.find(x=>x.id===id);
+  if (!it) return;
+  const nota = document.getElementById('rea-nota').value.trim();
+  it.historico = (it.historico||[]).concat({ em: today(), de: it[campo]||'', para: nova, nota });
+  it.notaAcompanhamento = nota;
+  it[campo] = nova;
+  DB.set(col, lista);
+  closeModal('modal-reagendar');
+  toast(`⏭ Movida para ${fmtDate(nova)} — o que já foi feito continua marcado`);
+  renderAll();
+}
+function reagendarInfoHTML(it) {
+  const h = it.historico || [];
+  if (!h.length) return '';
+  const ult = h[h.length-1];
+  return `<div style="font-size:10.5px;color:var(--amber);margin-top:4px">⏭ continuada ${h.length}x · desde ${fmtDate(h[0].de)}${it.notaAcompanhamento?` — “${String(it.notaAcompanhamento).replace(/</g,'&lt;')}”`:(ult.nota?` — “${String(ult.nota).replace(/</g,'&lt;')}”`:'')}</div>`;
+}
 function toggleTarefaEtapa(tid, eid) {
   const tarefas = DB.get('tarefas');
   const t = tarefas.find(x=>x.id===tid);
