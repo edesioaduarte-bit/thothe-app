@@ -827,6 +827,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
             <select class="form-control" id="fech-filtro" onchange="fechFiltro=this.value;renderFechamento()" style="width:150px">
               <option value="todas">Todas</option><option value="pendentes">Só pendentes</option><option value="atrasadas">Só atrasadas</option>
             </select>
+            <button class="btn btn-ghost btn-sm" onclick="puxarVencidasParaHoje()" title="Move todas as obrigações e tarefas vencidas e não concluídas para hoje">⏩ Puxar vencidas p/ hoje</button>
             <button class="btn btn-ghost btn-sm" onclick="gerarObrigacoesDoMes(true)" title="Cria as obrigações recorrentes que faltam para este mês">↻ Gerar do mês</button>
             <button class="btn btn-primary btn-sm" onclick="openObrigModal(null, fechMesAtual)">+ Nova obrigação</button>
           </div>
@@ -839,7 +840,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <!-- ══════════ OBRIGAÇÕES ══════════ -->
       <div class="page" id="page-obrigacoes">
         <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-danger" style="margin-left:auto" onclick="excluirTodasObrigacoes()">🗑️ Excluir todas</button>
+          <button class="btn btn-ghost" style="margin-left:auto" onclick="puxarVencidasParaHoje()" title="Move todas as obrigações e tarefas vencidas e não concluídas para hoje">⏩ Puxar vencidas p/ hoje</button>
+          <button class="btn btn-danger" onclick="excluirTodasObrigacoes()">🗑️ Excluir todas</button>
           <button class="btn btn-primary" onclick="openObrigModal()">+ Nova obrigação</button>
         </div>
         <div id="obrig-bulk-bar" style="display:none;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--surface3)">
@@ -873,7 +875,8 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <span class="card-title" id="agfoco-titulo">AGENDA</span>
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
             </div>
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail</button>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="puxarVencidasParaHoje()" title="Move todas as obrigações e tarefas vencidas e não concluídas para hoje">⏩ Puxar vencidas p/ hoje</button>
+            <button class="btn btn-ghost btn-sm" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail</button>
             <button class="btn btn-primary btn-sm" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
           <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
@@ -5433,6 +5436,21 @@ function dataFazer(mes, dia) {
   const alvo = new Date(y, m, 1);
   const ult = new Date(alvo.getFullYear(), alvo.getMonth()+1, 0).getDate();
   return `${alvo.getFullYear()}-${_pad2(alvo.getMonth()+1)}-${_pad2(Math.min(Math.max(1,Number(dia)), ult))}`;
+}
+// Puxa para HOJE tudo que venceu e não foi concluído (obrigações e tarefas), respeitando o filtro de cliente
+function puxarVencidasParaHoje() {
+  const hoje = today();
+  const obrigs = DB.get('obrigacoes'), tars = DB.get('tarefas');
+  const ov = obrigs.filter(o => o.status!=='concluida' && o.venc && o.venc<hoje && focoOk(o.clienteId));
+  const tv = tars.filter(t => t.status!=='concluida' && t.data && t.data<hoje && focoOk(t.clienteId));
+  if (!ov.length && !tv.length) { toast('Nenhuma tarefa vencida para puxar'); return; }
+  if (!confirm(`Puxar para hoje (${fmtDate(hoje)}):\n\n• ${ov.length} obrigaç${ov.length!==1?'ões':'ão'}\n• ${tv.length} tarefa${tv.length!==1?'s':''}\n\nA data original é substituída pela de hoje.`)) return;
+  ov.forEach(o => { o.vencOriginal = o.vencOriginal || o.venc; o.venc = hoje; });
+  tv.forEach(t => { t.dataOriginal = t.dataOriginal || t.data; t.data = hoje; });
+  if (ov.length) DB.set('obrigacoes', obrigs);
+  if (tv.length) DB.set('tarefas', tars);
+  toast(`⏩ ${ov.length+tv.length} item(ns) puxado(s) para hoje`);
+  renderAll();
 }
 function obrigRecalcData() {
   const mes = document.getElementById('obrig-competencia').value;
