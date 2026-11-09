@@ -4688,6 +4688,18 @@ function excluirRecorrenteDoMes(clienteId, mes) {
   toast('🗑️ Honorário removido só de ' + mesLabel(mes));
   renderAll();
 }
+function excluirRecorrentesAnteriores(clienteId) {
+  const lista = DB.get('clientes'), c = lista.find(x=>x.id===clienteId); if (!c) return;
+  const d = calcularDevidoMesesAnteriores().porCliente.find(p => p.clienteId === clienteId);
+  const meses = d ? d.itens.filter(m=>m.tipo==='recorrente').map(m=>m.mes) : [];
+  if (!meses.length) return;
+  if (!confirm(`Tirar da cobrança ${meses.length} meses de honorário de ${c.nome} (${meses.map(mesLabel).join(', ')})?\n\nNão afeta o mês atual nem os próximos. Recebimentos já lançados não são apagados.`)) return;
+  c.honMes = c.honMes || {};
+  meses.forEach(m => { c.honMes[m] = { ...(c.honMes[m]||{}), excluido: true, valor: 0 }; });
+  DB.set('clientes', lista);
+  toast('🗑️ Meses removidos da cobrança');
+  renderAll();
+}
 function restaurarRecorrenteDoMes(clienteId, mes) {
   const lista = DB.get('clientes'), c = lista.find(x=>x.id===clienteId); if (!c || !c.honMes) return;
   delete c.honMes[mes];
@@ -6332,7 +6344,10 @@ function renderDevidoAnterior() {
     <div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface3);${p.clienteId?'cursor:pointer':''}" ${p.clienteId?`onclick="openClienteModal('${p.clienteId}')"`:''}>
         <strong style="font-size:13px">${p.nome}</strong>
-        <span class="chip chip-red" style="font-family:var(--font-mono)">${fmtMoney(p.total)}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          ${p.itens.filter(m=>m.tipo==='recorrente').length > 1 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirRecorrentesAnteriores('${p.clienteId}')" title="Tirar da cobrança todos os meses recorrentes em aberto deste cliente">🗑️ Limpar meses</button>` : ''}
+          <span class="chip chip-red" style="font-family:var(--font-mono)">${fmtMoney(p.total)}</span>
+        </span>
       </div>
       <div>
         ${p.itens.map(m => {
@@ -6353,6 +6368,7 @@ function renderDevidoAnterior() {
               ${baixarBtn}
               ${m.tipo==='avulso' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePrevisaoAvulsa('${m.avulsoId}')">🗑️</button>` : ''}
               ${m.tipo==='lancamento' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFinanceiro('${m.lancamentoId}')">🗑️</button>` : ''}
+              ${m.tipo==='recorrente' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();excluirRecorrenteDoMes('${p.clienteId}','${m.mes}')" title="Tirar o honorário deste mês da cobrança">🗑️</button>` : ''}
             </div>
           </div>
         `;}).join('')}
