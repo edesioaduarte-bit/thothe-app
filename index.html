@@ -5719,14 +5719,11 @@ function renderFechamento() {
   const filtradas = todas.filter(o => fechFiltro==='pendentes' ? !feita(o) : fechFiltro==='atrasadas' ? atras(o) : true);
   const porCliente = new Map();
   filtradas.forEach(o => { const k = o.clienteId || ''; if (!porCliente.has(k)) porCliente.set(k, []); porCliente.get(k).push(o); });
-  const clientesAtivos = DB.get('clientes').filter(c=>focoOk(c.id) && c.status==='ativo');
-  // clientes com fechamento recorrente aparecem mesmo sem obrigação (para você ver o que falta cadastrar)
-  if (fechFiltro==='todas') clientesAtivos.filter(c=>c.temFechamento===true).forEach(c => { if (!porCliente.has(c.id)) porCliente.set(c.id, []); });
   const grupos = [...porCliente.entries()].map(([cid, obs]) => ({ c: cid ? DB.get('clientes').find(x=>x.id===cid) : null, cid, obs }))
     .sort((a,b) => a.c && b.c ? ordenarPorCodigo(a.c,b.c) : a.c ? -1 : 1);
   const grid = document.getElementById('fechamento-grid');
   if (!grupos.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="ico">📋</div><div class="txt">Nenhuma obrigação com competência ${mesParaComp(fechMesAtual)}</div><div class="sub">Crie em "+ Nova obrigação" (já vem com a competência do mês anterior) ou use "↻ Gerar do mês" para as recorrentes</div></div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="ico">📋</div><div class="txt">Nenhuma obrigação com competência ${mesParaComp(fechMesAtual)}</div><div class="sub">Só aparecem os clientes que têm obrigação cadastrada. Crie em "+ Nova obrigação" ou use "↻ Gerar do mês" para as recorrentes</div></div>`;
     return;
   }
   const fin = financeiroRealizado();
@@ -5735,11 +5732,12 @@ function renderFechamento() {
     const pct = tot ? Math.round(dn/tot*100) : 0;
     const nome = c ? c.nome : 'Sem cliente';
     let honHtml = '';
-    if (c && honV(c, fechMesAtual) > 0) {
-      const recebidoMes = fin.filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===fechMesAtual).reduce((s,fi)=>s+fi.valor,0);
-      const jaRecebido = recebidoMes >= honV(c, fechMesAtual);
+    const mesRec = mesAtual();   // recebimento sempre do mês corrente: zera sozinho ao virar o mês
+    if (c && honV(c, mesRec) > 0) {
+      const recebidoMes = fin.filter(fi=>fi.tipo==='receita' && fi.clienteId===c.id && fi.data && fi.data.slice(0,7)===mesRec).reduce((s,fi)=>s+fi.valor,0);
+      const jaRecebido = recebidoMes >= honV(c, mesRec);
       honHtml = `<div style="padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:11px;color:var(--text3)">Honorário: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, fechMesAtual))}</strong></div>
+        <div style="font-size:11px;color:var(--text3)">Honorário ${mesLabel(mesRec)}: <strong style="color:var(--text2);font-family:var(--font-mono)">${fmtMoney(honV(c, mesRec))}</strong></div>
         ${jaRecebido ? `<span class="chip chip-green">✅ Recebido</span>` : `<button class="btn btn-primary btn-sm" onclick="abrirBaixaRecebimentoModal('${c.id}')">💰 Dar baixa</button>`}
       </div>`;
     }
