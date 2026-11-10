@@ -876,7 +876,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
             </div>
             <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="puxarVencidasParaHoje()" title="Move todas as obrigações e tarefas vencidas e não concluídas para hoje">⏩ Puxar vencidas p/ hoje</button>
-            <button class="btn btn-ghost btn-sm" id="btn-emails-outlook" onclick="atualizarEmailsOutlook(false)" title="Lê a caixa de entrada do Outlook: cria tarefas dos e-mails novos e baixa as dos arquivados">🔄 Atualizar e-mails</button><button class="btn btn-ghost btn-sm" onclick="abrirEmailsOutlook()" title="Configuração e última atualização" style="padding:5px 9px">⚙️</button>
+            <button class="btn btn-ghost btn-sm" id="btn-emails-outlook" onclick="atualizarEmailsOutlook()" title="Abre o Outlook; clique no favorito 📧 Enviar p/ ThoThe para trazer os e-mails">🔄 Atualizar e-mails</button><button class="btn btn-ghost btn-sm" onclick="abrirEmailsOutlook()" title="Configuração e última atualização" style="padding:5px 9px">⚙️</button>
             <button class="btn btn-ghost btn-sm" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail</button>
             <button class="btn btn-primary btn-sm" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
@@ -2068,27 +2068,19 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     <div class="modal-header"><span class="modal-title">📧 E-mails do Outlook → Agenda</span><button class="modal-close" onclick="closeModal('modal-emails')">×</button></div>
     <div class="modal-body">
       <div id="emails-status" style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:14px"></div>
-      <div class="form-group">
-        <label class="form-label">ID do aplicativo (Azure) — configuração única</label>
-        <input class="form-control" id="ms-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
-      </div>
-      <details style="font-size:12px;color:var(--text2);line-height:1.6">
-        <summary style="cursor:pointer;font-weight:600">Como obter o ID (5 minutos, uma vez só)</summary>
-        <ol style="margin:8px 0 0 18px;padding:0">
-          <li>Entre em <b>portal.azure.com</b> → <b>Microsoft Entra ID</b> → <b>Registros de aplicativo</b> → <b>Novo registro</b>.</li>
-          <li>Nome: <b>ThoThe</b>. Tipos de conta: <b>qualquer diretório organizacional e contas pessoais</b>.</li>
-          <li>URI de redirecionamento: tipo <b>Aplicativo de página única (SPA)</b> com o endereço:<br><code id="ms-redirect" style="user-select:all"></code></li>
-          <li>Em <b>Permissões de API</b>, deixe só <b>Microsoft Graph → Mail.Read</b> (somente leitura).</li>
-          <li>Copie o <b>ID do aplicativo (cliente)</b> e cole acima.</li>
+      <div style="padding:12px 14px;background:var(--surface3);border-radius:8px;font-size:12.5px;color:var(--text2);line-height:1.6">
+        <b>Instalar uma vez (sem cadastro em ninguém):</b>
+        <ol style="margin:6px 0 10px 18px;padding:0">
+          <li>Mostre a barra de favoritos do navegador (Ctrl+Shift+B, ou ⌘+Shift+B no Mac).</li>
+          <li>Arraste o botão abaixo até a barra de favoritos.</li>
         </ol>
-        <div style="margin-top:8px;color:var(--text3)">Se a TI da empresa bloquear aplicativos, peça para aprovar o “ThoThe” com a permissão Mail.Read. O sistema só lê a caixa de entrada: não apaga, move nem responde.</div>
-      </details>
-      <div style="font-size:11px;color:var(--text3);margin-top:12px">Cada atualização cria tarefas dos e-mails novos e baixa as tarefas dos e-mails que saíram da caixa de entrada. Com o sistema aberto, atualiza sozinho a cada 30 minutos.</div>
+        <a id="bm-link" href="#" onclick="return false" class="btn btn-primary btn-sm" draggable="true" style="cursor:grab">📧 Enviar p/ ThoThe</a>
+        <button class="btn btn-ghost btn-sm" onclick="copiarBookmarklet()" style="margin-left:6px">Copiar código</button>
+        <div style="margin-top:10px"><b>Para atualizar:</b> clique em <b>🔄 Atualizar e-mails</b> aqui no sistema (abre o Outlook) e clique no favorito <b>📧 Enviar p/ ThoThe</b>. Ou, se já estiver no Outlook, é só clicar no favorito.</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:12px">O favorito lê a lista da sua caixa de entrada na sua própria sessão do Outlook (nada é enviado a terceiros) e abre o sistema com os dados. Cria tarefas dos e-mails novos e baixa as tarefas dos que saíram da caixa. Não apaga, move nem responde e-mails.</div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-emails')">Fechar</button>
-      <button class="btn btn-primary" onclick="salvarMsClientId()">Salvar e atualizar agora</button>
-    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-emails')">Fechar</button></div>
   </div>
 </div>
 
@@ -7357,94 +7349,60 @@ function abrirEmailsOutlook() {
   document.getElementById('emails-status').innerHTML =
     `<b>${ab}</b> tarefa${ab!==1?'s':''} de e-mail em aberto · ${ts.length - ab} baixada${ts.length-ab!==1?'s':''}<br>` +
     (u ? `Última atualização: ${new Date(u.em).toLocaleString('pt-BR')} — ${u.novas} nova${u.novas!==1?'s':''}, ${u.baixadas||0} baixada${(u.baixadas||0)!==1?'s':''}` : 'Ainda sem atualização registrada.');
-  document.getElementById('ms-client-id').value = getConfig().msClientId || '';
-  document.getElementById('ms-redirect').textContent = msRedirect();
+  document.getElementById('bm-link').setAttribute('href', bookmarkletEmails());
   openModal('modal-emails');
 }
-function salvarMsClientId() {
-  const v = document.getElementById('ms-client-id').value.trim();
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) { toast('⚠️ Cole o ID do aplicativo (formato xxxxxxxx-xxxx-...)'); return; }
-  setConfig({ ...getConfig(), msClientId: v });
-  closeModal('modal-emails');
-  atualizarEmailsOutlook(false);
+const APP_URL_PUBLICA = 'https://edesioaduarte-bit.github.io/thothe-app/';
+// Favorito (bookmarklet): roda dentro do Outlook do próprio usuário, lê a lista da caixa de entrada e abre o sistema com os dados
+function bookmarkletEmails() {
+  const cod = `(async()=>{
+const APP='${APP_URL_PUBLICA}';
+if(!/outlook\\./.test(location.host)){alert('Abra a Caixa de Entrada do Outlook e clique de novo.');return;}
+const cs=[...document.querySelectorAll('div.customScrollBar')].filter(d=>d.querySelector('[role=option]'));
+const sc=cs.find(d=>d.scrollHeight>d.clientHeight+10)||cs[0];
+if(!sc){alert('Não achei a lista de e-mails. Abra a Caixa de Entrada.');return;}
+const dt=/^(\\d{1,2}:\\d{2}|(dom|seg|ter|qua|qui|sex|s[áa]b)[a-zç.]*,? ?(\\d{1,2}:\\d{2}|\\d{1,2}\\/\\d{1,2})|\\d{1,2}\\/\\d{1,2}(\\/\\d{2,4})?)$/i;
+const seen=new Map();sc.scrollTop=0;await new Promise(r=>setTimeout(r,600));
+for(let i=0;i<120;i++){
+sc.querySelectorAll('[role=option]').forEach(o=>{
+const L=o.innerText.split('\\n').map(x=>x.trim()).filter(Boolean);
+const k=L.findIndex((x,j)=>j>=2&&dt.test(x));if(k<0)return;
+const aria=o.getAttribute('aria-label')||'';
+const subj=L[k-1].replace(/^\\[WARNING[^\\]]*\\]/,'').trim();const de=L[1];
+const key=o.getAttribute('data-convid')||subj+de;if(seen.has(key))return;
+seen.set(key,{de:de,assunto:subj,quando:L[k],nota:(L[k+1]||'').slice(0,220),urgente:/Importante/.test(aria.slice(0,40)),anexo:/Tem anexos/.test(aria)});
+});
+if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-3)break;
+sc.scrollTop+=400;await new Promise(r=>setTimeout(r,350));
 }
-
-/* ── Outlook (Microsoft Graph, somente leitura) → Agenda ── */
-const MS_SCOPE = 'https://graph.microsoft.com/Mail.Read offline_access';
-function msRedirect() { return location.origin + location.pathname; }
-function msTok() { try { return JSON.parse(localStorage.getItem('thothe_ms') || 'null'); } catch (e) { return null; } }
-function msSaveTok(t) { try { localStorage.setItem('thothe_ms', JSON.stringify(t)); } catch (e) {} }
-function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
-async function msTokenReq(params) {
-  const r = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: getConfig().msClientId, scope: MS_SCOPE, redirect_uri: msRedirect(), ...params }) });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error_description || d.error || 'Falha no login Microsoft');
-  const t = { access: d.access_token, refresh: d.refresh_token || (msTok() || {}).refresh, exp: Date.now() + ((d.expires_in || 3600) - 60) * 1000 };
-  msSaveTok(t); return t;
+const m=[...seen.values()];
+if(!m.length){alert('Nenhum e-mail lido. Abra a Caixa de Entrada.');return;}
+window.open(APP+'#emails='+encodeURIComponent(JSON.stringify({v:1,msgs:m})),'thothe_app');
+})()`;
+  return 'javascript:' + encodeURIComponent(cod);
 }
-function msLoginPopup() {
-  return new Promise(async (resolve, reject) => {
-    const ver = b64url(crypto.getRandomValues(new Uint8Array(32)));
-    const chal = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ver)));
-    const state = b64url(crypto.getRandomValues(new Uint8Array(12)));
-    const url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' + new URLSearchParams({ client_id: getConfig().msClientId, response_type: 'code', redirect_uri: msRedirect(), response_mode: 'query', scope: MS_SCOPE, code_challenge: chal, code_challenge_method: 'S256', state, prompt: 'select_account' });
-    const w = window.open(url, 'ms_login', 'width=520,height=700');
-    if (!w) { reject(new Error('O navegador bloqueou a janela de login. Permita pop-ups para este site e clique de novo.')); return; }
-    const onMsg = async ev => {
-      if (ev.origin !== location.origin || !ev.data || !ev.data.msauth) return;
-      window.removeEventListener('message', onMsg);
-      const q = new URLSearchParams(ev.data.msauth);
-      if (q.get('state') !== state) { reject(new Error('Resposta de login inválida')); return; }
-      if (!q.get('code')) { reject(new Error(q.get('error_description') || 'Login cancelado')); return; }
-      try { const t = await msTokenReq({ grant_type: 'authorization_code', code: q.get('code'), code_verifier: ver }); resolve(t.access); } catch (e) { reject(e); }
-    };
-    window.addEventListener('message', onMsg);
-  });
+function copiarBookmarklet() {
+  const t = decodeURIComponent(bookmarkletEmails().slice(11));
+  try { navigator.clipboard.writeText('javascript:' + t.replace(/\n/g, '')); toast('📋 Código copiado — cole como endereço de um favorito novo'); } catch (e) { prompt('Copie este código:', 'javascript:' + t.replace(/\n/g, '')); }
 }
-async function msAccessToken(interativo) {
-  const t = msTok();
-  if (t && t.exp > Date.now()) return t.access;
-  if (t && t.refresh) { try { return (await msTokenReq({ grant_type: 'refresh_token', refresh_token: t.refresh })).access; } catch (e) {} }
-  return interativo ? await msLoginPopup() : null;
+// Botão do sistema: abre o Outlook (na mesma janela nomeada) — o clique no favorito traz os e-mails de volta
+function atualizarEmailsOutlook() {
+  window.open('https://outlook.office.com/mail/inbox', 'thothe_outlook');
+  toast('📧 No Outlook, clique no favorito “Enviar p/ ThoThe”');
+  if (!getConfig().emailsUltima) setTimeout(abrirEmailsOutlook, 600);
 }
-async function msLerCaixa(token) {
-  let url = 'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=100&$orderby=receivedDateTime%20desc&$select=subject,from,receivedDateTime,importance,hasAttachments,inferenceClassification,bodyPreview';
-  const out = [];
-  for (let i = 0; i < 10 && url; i++) {
-    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-    if (!r.ok) { if (r.status === 401) { try { localStorage.removeItem('thothe_ms'); } catch (e) {} } throw new Error('O Outlook respondeu ' + r.status); }
-    const d = await r.json(); out.push(...(d.value || [])); url = d['@odata.nextLink'];
-  }
-  return out;
-}
-let emailsAtualizando = false;
-async function atualizarEmailsOutlook(silencioso) {
-  if (emailsAtualizando) return;
-  if (!getConfig().msClientId) { if (!silencioso) abrirEmailsOutlook(); return; }
-  const btn = document.getElementById('btn-emails-outlook');
-  emailsAtualizando = true;
-  if (btn && !silencioso) { btn.disabled = true; btn.textContent = '⏳ Lendo e-mails...'; }
-  try {
-    const token = await msAccessToken(!silencioso);
-    if (!token) return;
-    const msgs = await msLerCaixa(token);
-    // propagandas (Outras, sem anexo e sem importância alta) não viram tarefa, mas contam como "ainda na caixa"
-    const lista = msgs.filter(m => !(m.inferenceClassification === 'other' && !m.hasAttachments && m.importance !== 'high')).map(m => ({
-      de: (m.from && m.from.emailAddress && (m.from.emailAddress.name || m.from.emailAddress.address)) || '',
-      assunto: m.subject || '(sem assunto)',
-      quando: new Date(m.receivedDateTime).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }),
-      nota: String(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 220),
-      urgente: m.importance === 'high',
-    }));
-    const r = importarEmailsOutlook(lista, msgs.map(m => m.subject || '(sem assunto)'));
-    if (!silencioso) toast(`📧 ${msgs.length} e-mails na caixa · ${r.novas} nova${r.novas!==1?'s':''} tarefa${r.novas!==1?'s':''} · ${r.baixadas} baixada${r.baixadas!==1?'s':''}`);
-  } catch (e) {
-    if (!silencioso) alert('Não consegui atualizar os e-mails: ' + e.message);
-  } finally {
-    emailsAtualizando = false;
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 Atualizar e-mails'; }
-  }
+// Chegada dos dados: o favorito abre o sistema com #emails=...
+function processarEmailsDoFavorito() {
+  const m = /^#emails=(.+)$/.exec(location.hash || '');
+  if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  let d; try { d = JSON.parse(decodeURIComponent(m[1])); } catch (e) { toast('⚠️ Dados do Outlook ilegíveis'); return; }
+  if (!d || d.v !== 1 || !Array.isArray(d.msgs) || !d.msgs.length) return;
+  const promo = /oferta|promo[cç]|desconto|newsletter|black friday|cupom|liquida[cç]|corre pra|%\s*off/i;
+  const lista = d.msgs.filter(x => !(promo.test((x.assunto||'') + ' ' + (x.de||'')) && !x.anexo && !x.urgente));
+  const r = importarEmailsOutlook(lista, d.msgs.map(x => x.assunto || ''));
+  toast(`📧 ${d.msgs.length} e-mails na caixa · ${r.novas} nova${r.novas!==1?'s':''} tarefa${r.novas!==1?'s':''} · ${r.baixadas} baixada${r.baixadas!==1?'s':''}`);
+  try { showPage('agenda'); } catch (e) {}
 }
 // Carga inicial (09/11/2026): e-mails que estavam abertos na caixa de entrada
 function importarEmailsOutlookV1() {
@@ -9328,21 +9286,15 @@ function aplicarEstadoSidebarSalvo() {
   }
 }
 
-// Janela de login da Microsoft voltando para cá: entrega o código à janela principal e fecha
-if (window.name === 'ms_login' && window.opener && /[?&](code|error)=/.test(location.search)) {
-  try { window.opener.postMessage({ msauth: location.search }, location.origin); } catch (e) {}
-  document.body.innerHTML = '<p style="font-family:sans-serif;padding:30px">Login concluído. Pode fechar esta janela.</p>';
-  setTimeout(() => window.close(), 300);
-} else (async function boot() {
+(async function boot() {
   if (SUPA_URL && SUPA_KEY) {
     const ok = await authRestoreSession();
     if (ok) startApp(); else showAuthGate();
   } else {
     startApp();
   }
-  // Atualização automática dos e-mails (silenciosa; só se já estiver conectado ao Outlook)
-  setTimeout(() => atualizarEmailsOutlook(true), 12000);
-  setInterval(() => atualizarEmailsOutlook(true), 30 * 60 * 1000);
+  // E-mails vindos do favorito do Outlook (#emails=...): espera o sistema carregar/sincronizar e importa
+  if (/^#emails=/.test(location.hash || '')) setTimeout(processarEmailsDoFavorito, 5000);
 })();
 
 </script>
