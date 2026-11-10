@@ -876,6 +876,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="agfoco-data-sub"></div>
             </div>
             <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="puxarVencidasParaHoje()" title="Move todas as obrigações e tarefas vencidas e não concluídas para hoje">⏩ Puxar vencidas p/ hoje</button>
+            <button class="btn btn-ghost btn-sm" onclick="abrirEmailsOutlook()" title="Atualizar tarefas a partir da caixa de entrada do Outlook">🔄 E-mails Outlook</button>
             <button class="btn btn-ghost btn-sm" onclick="abrirEmailModal()" title="Registrar um e-mail enviado e acompanhar o retorno">📧 Registrar e-mail</button>
             <button class="btn btn-primary btn-sm" onclick="openTarefaModal()">+ Nova tarefa</button>
           </div>
@@ -2059,6 +2060,28 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
       <button class="btn btn-ghost" onclick="closeModal('modal-reagendar')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarReagendar()">Mover para o novo dia</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-emails">
+  <div class="modal" style="max-width:470px">
+    <div class="modal-header"><span class="modal-title">📧 E-mails do Outlook</span><button class="modal-close" onclick="closeModal('modal-emails')">×</button></div>
+    <div class="modal-body">
+      <div id="emails-status" style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:14px"></div>
+      <div style="padding:10px 12px;background:var(--surface3);border-radius:8px;font-size:12px;color:var(--text2);line-height:1.55">
+        A leitura do Outlook roda pelo Claude (o sistema não consegue abrir sua caixa sozinho). Para atualizar agora:
+        <ol style="margin:6px 0 0 18px;padding:0">
+          <li>No app do Claude, abra a rotina <b>“E-mails do Outlook para a Agenda”</b> e toque em <b>Executar agora</b>; ou</li>
+          <li>escreva no chat do Claude o texto abaixo.</li>
+        </ol>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input class="form-control" id="emails-frase" readonly value="Atualizar os e-mails do Outlook na Agenda">
+        <button class="btn btn-ghost btn-sm" onclick="copiarFraseEmails()">Copiar</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">Cada atualização cria tarefas só dos e-mails novos e baixa as tarefas dos e-mails que saíram da caixa de entrada (arquivados, movidos ou excluídos). Também roda sozinha de segunda a sexta, 7h42.</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-emails')">Fechar</button></div>
   </div>
 </div>
 
@@ -7282,8 +7305,8 @@ function propRemoverPrevisaoRecebimento(x) {
 function emailChave(assunto) {
   return String(assunto||'').toLowerCase().replace(/^(\s*(re|res|enc|fw|fwd|enc\.|encaminhado)\s*:\s*)+/i,'').replace(/\s+/g,' ').trim();
 }
-function importarEmailsOutlook(lista) {
-  if (!Array.isArray(lista)) return { novas: 0, ignoradas: 0 };
+function importarEmailsOutlook(lista, todosAssuntos) {
+  if (!Array.isArray(lista)) return { novas: 0, ignoradas: 0, baixadas: 0 };
   const cfg = getConfig();
   const vistos = new Set(cfg.emailsImportados || []);
   DB.get('tarefas').forEach(t => { if (t.emailChave) vistos.add(t.emailChave); });
@@ -7301,12 +7324,39 @@ function importarEmailsOutlook(lista) {
       status: 'pendente', horaCriacao: horaAgora(), etapas: [],
     });
   });
-  if (novas) DB.set('tarefas', tarefas);
-  setConfig({ ...getConfig(), emailsImportados: [...vistos].slice(-3000) });
-  if (novas) { try { renderAll(); toast(`📧 ${novas} e-mail${novas!==1?'s':''} novo${novas!==1?'s':''} na Agenda`); } catch (e) {} }
-  return { novas, ignoradas };
+  // Baixa as tarefas cujo e-mail saiu da caixa de entrada (arquivado/movido/excluído).
+  // Só roda se vier a lista COMPLETA de assuntos da caixa — sem ela nada é baixado (proteção contra leitura incompleta).
+  let baixadas = 0;
+  if (Array.isArray(todosAssuntos) && todosAssuntos.length) {
+    const naCaixa = new Set(todosAssuntos.map(emailChave));
+    tarefas.forEach(t => {
+      if (t.origemEmail === 'outlook' && t.status !== 'concluida' && t.emailChave && !naCaixa.has(t.emailChave)) {
+        t.status = 'concluida'; t.dataConclusao = hoje; t.horaConclusao = horaAgora();
+        (t.etapas||[]).forEach(e => { e.done = true; });
+        t.comentarios = (t.comentarios ? t.comentarios + '\n' : '') + 'Baixada automaticamente em ' + fmtDate(hoje) + ': o e-mail saiu da caixa de entrada.';
+        baixadas++;
+      }
+    });
+  }
+  if (novas || baixadas) DB.set('tarefas', tarefas);
+  setConfig({ ...getConfig(), emailsImportados: [...vistos].slice(-3000), emailsUltima: { em: new Date().toISOString(), novas, baixadas } });
+  if (novas || baixadas) { try { renderAll(); toast(`📧 ${novas} nova${novas!==1?'s':''} · ${baixadas} baixada${baixadas!==1?'s':''} (arquivadas)`); } catch (e) {} }
+  return { novas, ignoradas, baixadas };
 }
 window.importarEmailsOutlook = importarEmailsOutlook;
+function abrirEmailsOutlook() {
+  const u = getConfig().emailsUltima, ts = DB.get('tarefas').filter(t => t.origemEmail === 'outlook');
+  const ab = ts.filter(t => t.status !== 'concluida').length;
+  document.getElementById('emails-status').innerHTML =
+    `<b>${ab}</b> tarefa${ab!==1?'s':''} de e-mail em aberto · ${ts.length - ab} baixada${ts.length-ab!==1?'s':''}<br>` +
+    (u ? `Última atualização: ${new Date(u.em).toLocaleString('pt-BR')} — ${u.novas} nova${u.novas!==1?'s':''}, ${u.baixadas||0} baixada${(u.baixadas||0)!==1?'s':''}` : 'Ainda sem atualização registrada.');
+  openModal('modal-emails');
+}
+function copiarFraseEmails() {
+  const i = document.getElementById('emails-frase'); i.select();
+  try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); }
+  toast('📋 Texto copiado');
+}
 // Carga inicial (09/11/2026): e-mails que estavam abertos na caixa de entrada
 function importarEmailsOutlookV1() {
   const cfg = getConfig();
