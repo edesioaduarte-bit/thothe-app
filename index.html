@@ -861,6 +861,21 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
 
       <!-- ══════════ AGENDA ══════════ -->
       <div class="page" id="page-agenda">
+        <div id="agenda-tabs" style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px;width:max-content;margin-bottom:14px">
+          <button class="btn btn-ghost btn-sm" id="agtab-agenda" onclick="agendaAba('agenda')" style="background:var(--surface)">📅 Agenda</button>
+          <button class="btn btn-ghost btn-sm" id="agtab-pesquisar" onclick="agendaAba('pesquisar')">🔍 Pesquisar</button>
+        </div>
+        <div id="agenda-pesquisa" style="display:none">
+          <div class="card hud" style="margin-bottom:14px">
+            <div class="card-body">
+              <input class="form-control" id="pq-input" placeholder="Pesquisar em tudo: tarefas, obrigações, clientes, propostas, contratos, recibos, financeiro..." autocomplete="off" oninput="pesquisarTudoDebounce()" style="font-size:14px;padding:12px 14px">
+              <div id="pq-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+              <div style="font-size:11px;color:var(--text3);margin-top:8px">Dica: use várias palavras (ex.: “pgdas cliente 10/2026”). Ignora acentos e maiúsculas.</div>
+            </div>
+          </div>
+          <div id="pq-resultados"></div>
+        </div>
+        <div id="agenda-main">
         <div class="card hud" id="agenda-em-andamento-card" style="display:none;position:sticky;top:0;z-index:20;margin-bottom:14px;background:var(--surface);border-color:rgba(87,184,255,.5);box-shadow:0 0 0 1px rgba(87,184,255,.25)">
           <div class="card-header">
             <span class="card-title" style="color:var(--accent-m)">🔴 Em execução agora</span>
@@ -1023,6 +1038,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
           </div>
         </div>
         </div>
+      </div><!-- /agenda-main -->
       </div>
 
       <!-- ══════════ FINANCEIRO THOTHE ══════════ -->
@@ -4367,6 +4383,77 @@ function reagendarInfoHTML(it) {
   if (!h.length) return '';
   const ult = h[h.length-1];
   return `<div style="font-size:10.5px;color:var(--amber);margin-top:4px">⏭ continuada ${h.length}x · desde ${fmtDate(h[0].de)}${it.notaAcompanhamento?` — “${String(it.notaAcompanhamento).replace(/</g,'&lt;')}”`:(ult.nota?` — “${String(ult.nota).replace(/</g,'&lt;')}”`:'')}</div>`;
+}
+/* ══════════════════════════════════════════════════════
+   PESQUISA GERAL (aba "Pesquisar" na Agenda)
+   ══════════════════════════════════════════════════════ */
+let pqTipo = 'todos', pqTimer = null;
+function agendaAba(aba) {
+  const pq = aba === 'pesquisar';
+  document.getElementById('agenda-main').style.display = pq ? 'none' : '';
+  document.getElementById('agenda-pesquisa').style.display = pq ? '' : 'none';
+  document.getElementById('agtab-agenda').style.background = pq ? '' : 'var(--surface)';
+  document.getElementById('agtab-pesquisar').style.background = pq ? 'var(--surface)' : '';
+  if (pq) { pesquisarTudo(); setTimeout(() => document.getElementById('pq-input').focus(), 50); }
+}
+function pqNorm(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function pqEsc(t) { return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function pesquisarTudoDebounce() { clearTimeout(pqTimer); pqTimer = setTimeout(pesquisarTudo, 180); }
+function pqSetTipo(t) { pqTipo = t; pesquisarTudo(); }
+function pqDestacar(texto, termos) {
+  let h = pqEsc(texto);
+  termos.forEach(t => { if (t.length < 2) return; const re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'); h = h.replace(re, '<mark style="background:rgba(251,191,36,.35);color:inherit;border-radius:3px;padding:0 1px">$1</mark>'); });
+  return h;
+}
+function pqIndice() {
+  const cli = {}; DB.get('clientes').forEach(c => { cli[c.id] = c.nome || ''; });
+  const nomeC = id => (id && cli[id]) || '';
+  const it = [];
+  DB.get('tarefas').forEach(t => it.push({ tipo:'tarefas', ico:(t.etapas||[]).length?'☑️':'✅', id:t.id, titulo:t.titulo, sub:[nomeC(t.clienteId), t.data ? fmtDate(t.data) : '', t.status==='concluida'?'concluída':'pendente'].filter(Boolean).join(' · '),
+    texto:[t.titulo, t.comentarios, nomeC(t.clienteId), (t.etapas||[]).map(e=>e.label).join(' '), t.notaAcompanhamento].join(' '), abrir:`abrirDetalhesTarefa('${t.id}')`, data:t.data||'' }));
+  DB.get('obrigacoes').forEach(o => it.push({ tipo:'obrigacoes', ico:'📋', id:o.id, titulo:o.titulo, sub:[nomeC(o.clienteId), o.competencia ? 'comp. ' + o.competencia : '', o.venc ? 'fazer em ' + fmtDate(o.venc) : '', o.status==='concluida'?'concluída':'pendente'].filter(Boolean).join(' · '),
+    texto:[o.titulo, o.competencia, o.cat, o.obs, nomeC(o.clienteId), (o.etapas||[]).map(e=>e.label).join(' ')].join(' '), abrir:`openObrigModal('${o.id}')`, data:o.venc||'' }));
+  DB.get('clientes').forEach(c => it.push({ tipo:'clientes', ico:'👤', id:c.id, titulo:(c.codigo ? c.codigo + ' — ' : '') + (c.nome||''), sub:[c.status, c.docto||c.cnpj, c.contato].filter(Boolean).join(' · '),
+    texto:[c.codigo, c.nome, c.docto, c.cnpj, c.contato, c.obs, c.endereco].join(' '), abrir:`openClienteModal('${c.id}')`, data:'' }));
+  DB.get('propostas').forEach(x => it.push({ tipo:'propostas', ico:'📝', id:x.id, titulo:(x.numero||'') + ' — ' + (x.nome||''), sub:[PROP_TIPOS[x.tipo]||x.tipo, PROP_STATUS[x.status]||x.status, x.total ? fmtMoney(x.total) : ''].filter(Boolean).join(' · '),
+    texto:[x.numero, x.nome, x.docto, x.tipo, x.status, (x.itens||[]).map(i=>i.descricao).join(' ')].join(' '), abrir:`abrirPropostaModal('${x.id}')`, data:'' }));
+  DB.get('contratos').forEach(x => it.push({ tipo:'contratos', ico:'📄', id:x.id, titulo:(x.numero||'') + ' — ' + (x.nome||''), sub:[x.tipo, x.status].filter(Boolean).join(' · '),
+    texto:[x.numero, x.nome, x.docto, x.tipo, x.status].join(' '), abrir:`abrirContratoModal('${x.id}')`, data:'' }));
+  DB.get('recibos').forEach(r => it.push({ tipo:'recibos', ico:'🧾', id:r.id, titulo:'Recibo ' + (r.numero||'') + ' — ' + (r.nome||''), sub:[r.data ? fmtDate(r.data) : '', fmtMoney(r.valor), r.referente].filter(Boolean).join(' · '),
+    texto:[r.numero, r.nome, r.docto, r.referente, r.valor, r.competencia].join(' '), abrir:`reimprimirRecibo('${r.id}')`, data:r.data||'' }));
+  DB.get('financeiro').forEach(f => it.push({ tipo:'financeiro', ico:f.tipo==='despesa'?'💸':'💰', id:f.id, titulo:(f.desc||f.servico||'Lançamento'), sub:[nomeC(f.clienteId), f.data ? fmtDate(f.data) : '', (f.tipo==='despesa'?'-':'') + fmtMoney(f.valor), (f.status||'recebido')==='pendente'?'em aberto':''].filter(Boolean).join(' · '),
+    texto:[f.desc, f.servico, nomeC(f.clienteId), f.valor].join(' '), abrir:`openFinanceiroModal('${f.id}')`, data:f.data||'' }));
+  return it;
+}
+const PQ_ROTULOS = { tarefas:'Tarefas', obrigacoes:'Obrigações', clientes:'Clientes', propostas:'Propostas', contratos:'Contratos', recibos:'Recibos', financeiro:'Financeiro' };
+function pesquisarTudo() {
+  const q = pqNorm(document.getElementById('pq-input').value).trim();
+  const termos = q.split(/\s+/).filter(Boolean);
+  const box = document.getElementById('pq-resultados'), chips = document.getElementById('pq-chips');
+  if (!termos.length) {
+    chips.innerHTML = '';
+    box.innerHTML = '<div class="empty-state"><div class="ico">🔍</div><div class="txt">Digite para pesquisar</div><div class="sub">Procura em tarefas, obrigações, clientes, propostas, contratos, recibos e lançamentos financeiros</div></div>';
+    return;
+  }
+  const todos = pqIndice().filter(x => { const t = pqNorm(x.texto); return termos.every(w => t.includes(w)); });
+  const cont = {}; todos.forEach(x => { cont[x.tipo] = (cont[x.tipo]||0) + 1; });
+  chips.innerHTML = [['todos','Tudo', todos.length]].concat(Object.keys(PQ_ROTULOS).filter(k => cont[k]).map(k => [k, PQ_ROTULOS[k], cont[k]])).map(([k, n, c]) =>
+    `<button class="btn btn-sm ${pqTipo===k?'btn-primary':'btn-ghost'}" onclick="pqSetTipo('${k}')">${n} <span style="opacity:.7">${c}</span></button>`).join('');
+  const vis = pqTipo === 'todos' ? todos : todos.filter(x => x.tipo === pqTipo);
+  if (!vis.length) { box.innerHTML = '<div class="empty-state"><div class="ico">🤷</div><div class="txt">Nada encontrado</div></div>'; return; }
+  const grupos = {}; vis.forEach(x => { (grupos[x.tipo] = grupos[x.tipo] || []).push(x); });
+  const LIM = pqTipo === 'todos' ? 8 : 60;
+  box.innerHTML = Object.keys(PQ_ROTULOS).filter(k => grupos[k]).map(k => {
+    const l = grupos[k].sort((a,b) => (b.data||'').localeCompare(a.data||''));
+    return `<div class="card hud" style="margin-bottom:12px"><div class="card-header"><span class="card-title">${PQ_ROTULOS[k]} <span style="color:var(--text3);font-weight:400">(${l.length})</span></span></div>
+      <div style="padding:4px 14px 10px">${l.slice(0, LIM).map(x => `
+        <div onclick="${x.abrir}" style="display:flex;gap:10px;align-items:flex-start;padding:9px 4px;border-top:1px solid var(--border);cursor:pointer">
+          <span style="font-size:15px">${x.ico}</span>
+          <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">${pqDestacar(x.titulo, termos)}</div><div style="font-size:11px;color:var(--text3)">${pqDestacar(x.sub, termos)}</div></div>
+        </div>`).join('')}
+        ${l.length > LIM ? `<div style="font-size:11.5px;color:var(--accent);cursor:pointer;padding:8px 4px" onclick="pqSetTipo('${k}')">Ver todos os ${l.length} →</div>` : ''}
+      </div></div>`;
+  }).join('');
 }
 function toggleTarefaEtapa(tid, eid) {
   const tarefas = DB.get('tarefas');
