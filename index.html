@@ -864,6 +864,7 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
         <div id="agenda-tabs" style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px;width:max-content;margin-bottom:14px">
           <button class="btn btn-ghost btn-sm" id="agtab-agenda" onclick="agendaAba('agenda')" style="background:var(--surface)">📅 Agenda</button>
           <button class="btn btn-ghost btn-sm" id="agtab-pesquisar" onclick="agendaAba('pesquisar')">🔍 Pesquisar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirVincular()">🔗 Vincular a clientes</button>
         </div>
         <div id="agenda-pesquisa" style="display:none">
           <div class="card hud" style="margin-bottom:14px">
@@ -2044,6 +2045,31 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-obrig')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveObrig()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-vincular">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><span class="modal-title">🔗 Vincular tarefas a clientes</span><button class="modal-close" onclick="closeModal('modal-vincular')">×</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input class="form-control" id="vinc-busca" placeholder="Filtrar tarefas..." oninput="vincRender()" autocomplete="off" style="flex:1">
+        <select class="form-control" id="vinc-filtro" onchange="vincRender()" style="width:auto"><option value="sem">Sem cliente</option><option value="todas">Todas pendentes</option></select>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px">
+        <label style="cursor:pointer"><input type="checkbox" id="vinc-todas" onchange="vincTodas(this.checked)"> Selecionar todas as exibidas</label>
+        <span id="vinc-cont" style="color:var(--text3)"></span>
+      </div>
+      <div id="vinc-lista" style="max-height:42vh;overflow:auto;border:1px solid var(--border);border-radius:10px"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">Vincular selecionadas ao cliente</label>
+        <select class="form-control" id="vinc-cliente"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-vincular')">Fechar</button>
+      <button class="btn btn-primary" onclick="vincAplicar()">Vincular</button>
     </div>
   </div>
 </div>
@@ -4384,6 +4410,53 @@ function reagendarInfoHTML(it) {
   const ult = h[h.length-1];
   return `<div style="font-size:10.5px;color:var(--amber);margin-top:4px">⏭ continuada ${h.length}x · desde ${fmtDate(h[0].de)}${it.notaAcompanhamento?` — “${String(it.notaAcompanhamento).replace(/</g,'&lt;')}”`:(ult.nota?` — “${String(ult.nota).replace(/</g,'&lt;')}”`:'')}</div>`;
 }
+/* ── Vincular tarefas a clientes (seleção em lote) ── */
+let vincSel = new Set();
+function abrirVincular() {
+  vincSel = new Set();
+  document.getElementById('vinc-busca').value = '';
+  document.getElementById('vinc-filtro').value = 'sem';
+  const cl = DB.get('clientes').slice().sort((a,b) => (a.nome||'').localeCompare(b.nome||'', 'pt-BR'));
+  document.getElementById('vinc-cliente').innerHTML = '<option value="">— escolha o cliente —</option>' + cl.map(c => `<option value="${c.id}">${pqEsc((c.codigo ? c.codigo + ' — ' : '') + (c.nome||''))}</option>`).join('');
+  vincRender(); openModal('modal-vincular');
+}
+function vincLista() {
+  const q = pqNorm(document.getElementById('vinc-busca').value).trim().split(/\s+/).filter(Boolean);
+  const so = document.getElementById('vinc-filtro').value === 'sem';
+  const cli = {}; DB.get('clientes').forEach(c => { cli[c.id] = c.nome; });
+  return DB.get('tarefas').filter(t => t.status !== 'concluida' && (!so || !t.clienteId || !cli[t.clienteId]))
+    .filter(t => { const x = pqNorm(t.titulo + ' ' + (t.comentarios||'')); return q.every(w => x.includes(w)); })
+    .sort((a,b) => (a.data||'').localeCompare(b.data||'')).map(t => ({ t, cliente: cli[t.clienteId] || '' }));
+}
+function vincRender() {
+  const l = vincLista();
+  document.getElementById('vinc-lista').innerHTML = l.length ? l.map(({t, cliente}) => `
+    <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" ${vincSel.has(t.id) ? 'checked' : ''} onchange="vincToggle('${t.id}',this.checked)" style="margin-top:3px">
+      <span style="min-width:0;flex:1"><span style="font-size:13px;font-weight:600;display:block">${pqEsc(t.titulo)}</span>
+      <span style="font-size:11px;color:var(--text3)">${t.data ? fmtDate(t.data) : 'sem data'}${cliente ? ' · atual: ' + pqEsc(cliente) : ' · sem cliente'}</span></span>
+    </label>`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa encontrada 🎉</div>';
+  vincCont();
+}
+function vincCont() {
+  const l = vincLista();
+  document.getElementById('vinc-cont').textContent = vincSel.size + ' selecionada(s) · ' + l.length + ' exibida(s)';
+  document.getElementById('vinc-todas').checked = l.length > 0 && l.every(x => vincSel.has(x.t.id));
+}
+function vincToggle(id, on) { on ? vincSel.add(id) : vincSel.delete(id); vincCont(); }
+function vincTodas(on) { vincLista().forEach(x => on ? vincSel.add(x.t.id) : vincSel.delete(x.t.id)); vincRender(); }
+function vincAplicar() {
+  const cid = document.getElementById('vinc-cliente').value;
+  if (!vincSel.size) { toast('Selecione ao menos uma tarefa'); return; }
+  if (!cid) { toast('Escolha o cliente'); return; }
+  const ts = DB.get('tarefas'); let n = 0;
+  ts.forEach(t => { if (vincSel.has(t.id)) { t.clienteId = cid; n++; } });
+  DB.set('tarefas', ts);
+  const nome = (DB.get('clientes').find(c => c.id === cid) || {}).nome || '';
+  vincSel = new Set(); vincRender(); renderAll();
+  toast(n + ' tarefa(s) vinculada(s) a ' + nome);
+}
+
 /* ══════════════════════════════════════════════════════
    PESQUISA GERAL (aba "Pesquisar" na Agenda)
    ══════════════════════════════════════════════════════ */
