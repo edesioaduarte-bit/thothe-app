@@ -2049,6 +2049,32 @@ table.tbl tr:hover td { background: rgba(var(--ink),.03); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-tempo">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><span class="modal-title">⏱️ Quanto tempo levou?</span><button class="modal-close" onclick="tempoPular()">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="tempo-kind"><input type="hidden" id="tempo-id">
+      <div id="tempo-titulo" style="font-size:13px;font-weight:600;margin-bottom:4px"></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Esta tarefa foi concluída sem o cronômetro. Informe o tempo gasto para entrar nas horas do cliente.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-control" type="number" min="0" max="99" id="tempo-h" value="0" style="width:80px"> <span style="font-size:12px">h</span>
+        <input class="form-control" type="number" min="0" max="59" id="tempo-m" value="30" style="width:80px"> <span style="font-size:12px">min</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="tempoAtalho(0,10)">10 min</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="tempoAtalho(0,15)">15 min</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="tempoAtalho(0,30)">30 min</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="tempoAtalho(1,0)">1 h</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="tempoAtalho(2,0)">2 h</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="tempoPular()">Pular</button>
+      <button class="btn btn-primary" onclick="tempoSalvar()">Registrar tempo</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-vincular">
   <div class="modal" style="max-width:560px">
     <div class="modal-header"><span class="modal-title">🔗 Vincular tarefas a clientes</span><button class="modal-close" onclick="closeModal('modal-vincular')">×</button></div>
@@ -3412,7 +3438,7 @@ function pararTimer(id, manterAberta) {
 
   if (t.tarefaId && !tarefaConcluida) {
     const obrs = DB.get('obrigacoes'), o = obrs.find(x=>x.id===t.tarefaId);
-    if (o && o.status !== 'concluida') { toggleObrigStatus(o.id); tarefaConcluida = true; }
+    if (o && o.status !== 'concluida') { window.__semPerguntaTempo = true; try { toggleObrigStatus(o.id); } finally { window.__semPerguntaTempo = false; } tarefaConcluida = true; }
   }
 
   if (registrou && tarefaConcluida) toast(`✅ Tarefa concluída · ${fmtDuracaoCurta(segundos)} registrado`);
@@ -3431,6 +3457,7 @@ function concluirTarefaComTimer(tarefaId) {
   if (tarefa) { tarefa.status = 'concluida'; emailPosConclusao(tarefas, tarefa); DB.set('tarefas', tarefas); }
   toast('✅ Tarefa concluída');
   renderAll();
+  perguntarTempo('tarefa', tarefaId);
 }
 
 // Loop único que atualiza qualquer elemento de contagem visível (tarefa, dashboard, página horas)
@@ -4410,6 +4437,31 @@ function reagendarInfoHTML(it) {
   const ult = h[h.length-1];
   return `<div style="font-size:10.5px;color:var(--amber);margin-top:4px">⏭ continuada ${h.length}x · desde ${fmtDate(h[0].de)}${it.notaAcompanhamento?` — “${String(it.notaAcompanhamento).replace(/</g,'&lt;')}”`:(ult.nota?` — “${String(ult.nota).replace(/</g,'&lt;')}”`:'')}</div>`;
 }
+/* ── Pede o tempo gasto quando a tarefa é concluída SEM cronômetro ── */
+function perguntarTempo(kind, id) {
+  if (window.__semPerguntaTempo || getTimerPorTarefa(id)) return;
+  const item = DB.get(kind === 'obrig' ? 'obrigacoes' : 'tarefas').find(x => x.id === id);
+  if (!item) return;
+  document.getElementById('tempo-kind').value = kind;
+  document.getElementById('tempo-id').value = id;
+  document.getElementById('tempo-titulo').textContent = item.titulo || '';
+  document.getElementById('tempo-h').value = 0; document.getElementById('tempo-m').value = 30;
+  openModal('modal-tempo');
+}
+function tempoAtalho(h, m) { document.getElementById('tempo-h').value = h; document.getElementById('tempo-m').value = m; }
+function tempoPular() { closeModal('modal-tempo'); }
+function tempoSalvar() {
+  const kind = document.getElementById('tempo-kind').value, id = document.getElementById('tempo-id').value;
+  const seg = ((parseInt(document.getElementById('tempo-h').value) || 0) * 60 + (parseInt(document.getElementById('tempo-m').value) || 0)) * 60;
+  if (seg <= 0) { toast('⚠️ Informe o tempo gasto (ou clique em Pular)'); return; }
+  const item = DB.get(kind === 'obrig' ? 'obrigacoes' : 'tarefas').find(x => x.id === id);
+  if (!item) { closeModal('modal-tempo'); return; }
+  const regs = DB.get('horas');
+  regs.push({ id: DB.id(), clienteId: item.clienteId || '', data: today(), segundos: seg, descricao: item.titulo || '', comentarios: '', tipo: 'manual', criadoEm: new Date().toISOString() });
+  DB.set('horas', regs);
+  closeModal('modal-tempo'); toast('⏱️ ' + fmtDuracaoCurta(seg) + ' registrado'); renderAll();
+}
+
 /* ── Vincular tarefas a clientes (seleção em lote) ── */
 let vincSel = new Set();
 function abrirVincular() {
@@ -4534,13 +4586,15 @@ function toggleTarefaEtapa(tid, eid) {
   const e = t && (t.etapas||[]).find(x=>String(x.id)===String(eid));
   if (!e) return;
   e.done = !e.done;
+  let concluiuAgora = false;
   const todas = t.etapas.every(x=>x.done);
-  if (todas && t.status!=='concluida') { t.status='concluida'; t.dataConclusao=today(); t.horaConclusao=horaAgora(); emailPosConclusao(tarefas, t); toast('✅ Tarefa concluída'); }
+  if (todas && t.status!=='concluida') { t.status='concluida'; t.dataConclusao=today(); t.horaConclusao=horaAgora(); emailPosConclusao(tarefas, t); toast('✅ Tarefa concluída'); concluiuAgora = true; }
   else if (!todas && t.status==='concluida') { t.status='pendente'; t.dataConclusao=''; t.horaConclusao=''; }
   DB.set('tarefas', tarefas);
   renderAll();
   const dm = document.getElementById('modal-tarefa-detalhes');
   if (dm && dm.classList.contains('open') && document.getElementById('det-tarefa-id').value === tid) abrirDetalhesTarefa(tid);
+  if (concluiuAgora) perguntarTempo('tarefa', tid);
 }
 function tarefaEtapasHTML(t) {
   if (!(t.etapas||[]).length) return '';
@@ -4566,6 +4620,7 @@ function toggleTarefa(id) {
     }
     DB.set('tarefas', tarefas);
     renderAll();
+    if (ficandoConcluida) perguntarTempo('tarefa', id);
   }
 }
 
@@ -5820,6 +5875,7 @@ function toggleObrigEtapa(obrigId, etapaId) {
   DB.set('obrigacoes', obrigs);
   if (o.status === 'concluida' && antes !== 'concluida') toast('✅ Obrigação concluída: ' + o.titulo);
   renderAll();
+  if (o.status === 'concluida' && antes !== 'concluida') perguntarTempo('obrig', obrigId);
 }
 function toggleObrigStatus(id) {
   const obrigs = DB.get('obrigacoes');
@@ -5831,6 +5887,7 @@ function toggleObrigStatus(id) {
   obrigEtapas(o).forEach(e => { e.done = !eraConcluida; });
   DB.set('obrigacoes', obrigs);
   renderAll();
+  if (!eraConcluida) perguntarTempo('obrig', id);
 }
 function obrigEtapasHTML(o, compacto) {
   const et = obrigEtapas(o);
