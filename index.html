@@ -591,6 +591,77 @@ table.tbl tr:hover td { background: rgba(255,138,61,.06); }
 .hud { border-radius: 20px; }
 .empty-state .ico { opacity: .7; }
 ::-webkit-scrollbar-thumb { background: rgba(var(--ink),.18); }
+
+/* ═══════════ LAYOUT NOVO: painel flutuante, atalhos, grade da tela inicial ═══════════ */
+.app { padding: 14px; gap: 14px; }
+.sidebar { border-radius: 26px; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,.35); height: 100%; }
+.sidebar.collapsed { width: 76px; }
+.main { gap: 14px; background: transparent; }
+.topbar { border-radius: 22px; border: 1px solid var(--border); height: 66px; padding: 0 22px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+.content { padding: 4px 6px 40px 2px; }
+.content::-webkit-scrollbar { width: 8px; }
+.top-search { display: flex; align-items: center; gap: 8px; min-width: 230px; padding: 9px 14px; border-radius: 14px; background: rgba(var(--ink),.05); border: 1px solid var(--border); color: var(--text3); font-size: 12.5px; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+.top-search:hover { border-color: rgba(255,138,61,.5); box-shadow: 0 0 0 3px rgba(255,138,61,.12); color: var(--text2); }
+.cli-foco { border-radius: 14px !important; }
+@media (max-width: 900px) { .app { padding: 0; gap: 0; } .sidebar { border-radius: 0; } .topbar { border-radius: 0; } .top-search span { display: none; } .top-search { min-width: 0; } .content { padding: 16px; } }
+
+/* tela inicial: faixa compacta + atalhos + grade com painel lateral */
+.home-hero { border-radius: 24px !important; }
+.home-hero > div[style*="padding:28px 32px"] { padding: 20px 28px !important; }
+.home-hero .brand-logo { width: 64px !important; height: 64px !important; }
+#home-saudacao { font-size: 26px !important; }
+#home-relogio { font-size: 40px !important; }
+.home-hero .verso { margin-top: 10px; }
+.quick-tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 18px; }
+.qt { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 16px 18px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); overflow: hidden; transition: transform .2s, border-color .2s, box-shadow .2s; background: linear-gradient(160deg, rgba(34,40,52,.62), rgba(20,24,32,.78)); }
+:root[data-theme="light"] .qt { background: #fff; }
+.qt:hover { transform: translateY(-3px); border-color: var(--border2); box-shadow: 0 14px 30px rgba(0,0,0,.28); }
+.qt i { font-size: 22px; width: 42px; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.qt b { font-size: 13.5px; font-weight: 700; }
+.qt span { font-size: 11px; color: var(--text3); }
+.qt-o i { background: rgba(255,138,61,.16); color: #FF8A3D; } .qt-o::before { background: radial-gradient(200px 90px at 0 0, rgba(255,138,61,.18), transparent 70%); }
+.qt-b i { background: rgba(61,169,255,.16); color: #3DA9FF; } .qt-b::before { background: radial-gradient(200px 90px at 0 0, rgba(61,169,255,.18), transparent 70%); }
+.qt-g i { background: rgba(123,224,74,.16); color: #7BE04A; } .qt-g::before { background: radial-gradient(200px 90px at 0 0, rgba(123,224,74,.16), transparent 70%); }
+.qt-p i { background: rgba(166,107,255,.18); color: #A66BFF; } .qt-p::before { background: radial-gradient(200px 90px at 0 0, rgba(166,107,255,.18), transparent 70%); }
+.qt::before { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.qt > * { position: relative; }
+.home-main { grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; }
+.home-col:nth-child(2) { position: sticky; top: 0; }
+.home-sub { display: flex; flex-direction: column; gap: 18px; }
+.home-sub .grid3-charts { margin-bottom: 0 !important; grid-template-columns: 1fr 1.6fr 1fr !important; }
+.home-sub .grid2 { margin-top: 0 !important; }
+@media (max-width: 1280px) { .home-main { grid-template-columns: 1fr; } .home-col:nth-child(2) { position: static; } .quick-tiles { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px) { .quick-tiles { grid-template-columns: repeat(2, 1fr); } .home-sub .grid3-charts { grid-template-columns: 1fr !important; } }
+
+/* tabelas viram linhas de cartão */
+table.tbl { border-collapse: separate; border-spacing: 0 8px; padding: 0 12px; width: calc(100% - 0px); }
+table.tbl th { background: transparent; border: 0; padding: 6px 16px; }
+table.tbl td { border: 0; background: rgba(var(--ink),.04); padding: 13px 16px; }
+table.tbl td:first-child { border-radius: 14px 0 0 14px; } table.tbl td:last-child { border-radius: 0 14px 14px 0; }
+table.tbl tr:hover td { background: rgba(255,138,61,.09); }
+
+/* cartões das páginas internas e barras de ferramentas */
+.page > .card:first-child, .page > .toolbar { border-radius: 22px; }
+.fc-card, .fc-obr { transition: transform .2s, border-color .2s; }
+.fc-card:hover { transform: translateY(-2px); border-color: var(--border2); }
+.card-header { background: linear-gradient(90deg, rgba(var(--ink),.035), transparent); border-radius: 20px 20px 0 0; }
+.page.active { animation: fadeIn .28s; }
+
+.aneis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 18px 20px 22px; }
+.anel { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.anel svg { color: var(--text); margin-bottom: 6px; }
+.anel b { font-size: 12.5px; font-weight: 700; }
+.anel span { font-size: 11px; color: var(--text3); }
+.gauge-track { background: rgba(150,160,185,.14); } .gauge-fill { border-radius: 99px; box-shadow: 0 0 10px rgba(255,255,255,.08); }
+@media (max-width: 700px) { .aneis { grid-template-columns: repeat(2, 1fr); } }
+
+.cot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 20px 8px; }
+.cot-box { border-radius: 18px; padding: 14px 16px 6px; background: rgba(var(--ink),.035); border: 1px solid var(--border); min-width: 0; }
+.cot-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.cot-nome { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: .05em; text-transform: uppercase; }
+.cot-valor { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin-top: 3px; }
+.cot-var { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+@media (max-width: 900px) { .cot-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -674,6 +745,7 @@ table.tbl tr:hover td { background: rgba(255,138,61,.06); }
         <div class="page-sub" id="page-sub">visão geral do crescimento</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <div class="top-search" onclick="irParaPesquisa()" title="Pesquisar em tudo"><i class="ti ti-search"></i><span>Pesquisar em tudo…</span></div>
         <select id="cli-foco" class="form-control cli-foco" onchange="setClienteFoco(this.value)" title="Filtrar todo o sistema por cliente"><option value="">👥 Todos os clientes</option></select>
         <button class="btn btn-ghost btn-sm" id="cli-foco-limpar" style="display:none" onclick="setClienteFoco('')" title="Limpar filtro de cliente">✖</button>
         <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
@@ -719,6 +791,16 @@ table.tbl tr:hover td { background: rgba(255,138,61,.06); }
           </div>
         </div>
 
+        <!-- Atalhos rápidos -->
+        <div class="quick-tiles">
+          <div class="qt qt-o" onclick="openTarefaModal()"><i class="ti ti-checklist"></i><b>Nova tarefa</b><span>Agenda</span></div>
+          <div class="qt qt-b" onclick="openObrigModal()"><i class="ti ti-calendar-due"></i><b>Nova obrigação</b><span>Fechamento</span></div>
+          <div class="qt qt-g" onclick="showPage('fechamento')"><i class="ti ti-clipboard-check"></i><b>Fechamento</b><span>Mês anterior</span></div>
+          <div class="qt qt-p" onclick="abrirRegistroManualModal()"><i class="ti ti-clock-plus"></i><b>Registrar horas</b><span>Tempo gasto</span></div>
+          <div class="qt qt-o" onclick="openClienteModal()"><i class="ti ti-user-plus"></i><b>Novo cliente</b><span>Cadastro</span></div>
+          <div class="qt qt-b" onclick="irParaPesquisa()"><i class="ti ti-search"></i><b>Pesquisar</b><span>Tudo no sistema</span></div>
+        </div>
+
         <!-- Indicadores principais -->
         <div class="metrics home-kpi">
           <div class="metric-card hud" style="cursor:pointer" onclick="showPage('clientes')" title="Ver clientes">
@@ -753,6 +835,72 @@ table.tbl tr:hover td { background: rgba(255,138,61,.06); }
               </div>
               <div id="home-agenda-resumo" style="display:flex;gap:22px;padding:14px 22px;border-bottom:1px solid var(--border);font-size:14px;flex-wrap:wrap"></div>
               <div id="home-agenda-lista" style="padding:8px 0"></div>
+            </div>
+
+
+            <div class="home-sub">
+            <div class="card hud" id="dash-cot-card">
+              <div class="card-header" style="flex-wrap:wrap;gap:10px">
+                <span class="card-title">💱 Dólar e Bitcoin</span>
+                <div style="display:flex;gap:4px;background:var(--surface3);border-radius:99px;padding:3px" id="cot-range">
+                  <button class="btn btn-ghost btn-sm" data-d="7" onclick="setCotDias(7)">7 dias</button>
+                  <button class="btn btn-ghost btn-sm" data-d="30" onclick="setCotDias(30)">30 dias</button>
+                  <button class="btn btn-ghost btn-sm" data-d="90" onclick="setCotDias(90)">90 dias</button>
+                </div>
+              </div>
+              <div class="cot-grid">
+                <div class="cot-box"><div class="cot-head"><div><div class="cot-nome">Dólar · USD/BRL</div><div class="cot-valor" id="cot-usd-valor">—</div></div><span class="cot-var" id="cot-usd-var"></span></div><div id="cot-graf-usd" class="cot-graf"></div></div>
+                <div class="cot-box"><div class="cot-head"><div><div class="cot-nome">Bitcoin · BTC/BRL</div><div class="cot-valor" id="cot-btc-valor">—</div></div><span class="cot-var" id="cot-btc-var"></span></div><div id="cot-graf-btc" class="cot-graf"></div></div>
+              </div>
+              <div id="cot-aviso" style="font-size:11px;color:var(--text3);padding:0 20px 14px"></div>
+            </div>
+            <div class="card hud" id="dash-aneis-card">
+              <div class="card-header"><span class="card-title">🎯 Desempenho</span><span class="page-sub" id="dash-aneis-sub"></span></div>
+              <div class="aneis" id="dash-aneis"></div>
+            </div>
+        <div class="grid3-charts" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="card hud" style="cursor:pointer" onclick="irParaHorasNaAgenda()">
+            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FBBF24;margin-right:7px"></span>Cronômetro rápido</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;justify-content:center;min-height:150px;padding:0" id="dash-timer-widget"></div>
+          </div>
+          <div class="card hud">
+            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#34D399;margin-right:7px"></span>Receita — últimos 6 meses</span></div>
+            <div class="card-body privado" id="dash-chart-receita"></div>
+          </div>
+          <div class="card hud" style="cursor:pointer" onclick="showPage('clientes')">
+            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#60A5FA;margin-right:7px"></span>Mix de clientes</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:10px" id="dash-donut-clientes"></div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card hud">
+            <div class="card-header">
+              <span class="card-title">📅 Calendário</span>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="btn btn-ghost btn-sm" onclick="calMoveMonth(-1)">←</button>
+                <span style="font-size:11.5px;font-weight:600;padding:0 4px;min-width:64px;text-align:center" id="dash-cal-month-label"></span>
+                <button class="btn btn-ghost btn-sm" onclick="calMoveMonth(1)">→</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:12px">
+              <div id="dash-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+            </div>
+          </div>
+
+          <div class="card hud">
+            <div class="card-header"><span class="card-title">💰 Receita por serviço (mês atual)</span></div>
+            <div class="card-body privado" id="dash-receita-servico"></div>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:18px;grid-template-columns:1fr">
+          <div class="card hud">
+            <div class="card-header"><span class="card-title">📋 Entregas do mês — Gestão Financeira</span></div>
+            <div id="dash-entregas" style="padding:6px 0"></div>
+          </div>
+        </div>
+
             </div>
 
             <div class="card hud" id="noticias-card">
@@ -807,48 +955,6 @@ table.tbl tr:hover td { background: rgba(255,138,61,.06); }
           </div>
         </div>
 
-        <div class="grid3-charts" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;margin-bottom:18px">
-          <div class="card hud" style="cursor:pointer" onclick="irParaHorasNaAgenda()">
-            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FBBF24;margin-right:7px"></span>Cronômetro rápido</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;justify-content:center;min-height:150px;padding:0" id="dash-timer-widget"></div>
-          </div>
-          <div class="card hud">
-            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#34D399;margin-right:7px"></span>Receita — últimos 6 meses</span></div>
-            <div class="card-body privado" id="dash-chart-receita"></div>
-          </div>
-          <div class="card hud" style="cursor:pointer" onclick="showPage('clientes')">
-            <div class="card-header"><span class="card-title"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#60A5FA;margin-right:7px"></span>Mix de clientes</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:10px" id="dash-donut-clientes"></div>
-          </div>
-        </div>
-
-        <div class="grid2">
-          <div class="card hud">
-            <div class="card-header">
-              <span class="card-title">📅 Calendário</span>
-              <div style="display:flex;align-items:center;gap:4px">
-                <button class="btn btn-ghost btn-sm" onclick="calMoveMonth(-1)">←</button>
-                <span style="font-size:11.5px;font-weight:600;padding:0 4px;min-width:64px;text-align:center" id="dash-cal-month-label"></span>
-                <button class="btn btn-ghost btn-sm" onclick="calMoveMonth(1)">→</button>
-              </div>
-            </div>
-            <div class="card-body" style="padding:12px">
-              <div id="dash-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
-            </div>
-          </div>
-
-          <div class="card hud">
-            <div class="card-header"><span class="card-title">💰 Receita por serviço (mês atual)</span></div>
-            <div class="card-body privado" id="dash-receita-servico"></div>
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:18px;grid-template-columns:1fr">
-          <div class="card hud">
-            <div class="card-header"><span class="card-title">📋 Entregas do mês — Gestão Financeira</span></div>
-            <div id="dash-entregas" style="padding:6px 0"></div>
-          </div>
-        </div>
       </div>
 
       <!-- ══════════ CLIENTES ══════════ -->
@@ -2567,82 +2673,84 @@ function svgRadialGauge(pct, color, size, label, sub) {
   </svg>`;
 }
 
-function svgLineChart(data, color, width, height) {
+function chartFmt(v) { return v >= 1000 ? (v/1000).toFixed(v >= 10000 ? 0 : 1).replace('.0','') + 'k' : String(Math.round(v)); }
+function svgLineChart(data, color, width, height, opts) {
+  opts = opts || {}; const F = opts.fmt || chartFmt;
   width = width || 560; height = height || 160;
-  const padL = 40, padR = 12, padT = 14, padB = 22;
+  const padL = opts.padL || 38, padR = 16, padT = 26, padB = 24;
   const w = width - padL - padR, h = height - padT - padB;
-  const max = Math.max(...data.map(d=>d.value), 1);
+  const vals = data.map(d=>d.value);
+  let lo = 0, max = Math.max(...vals, 1);
+  if (opts.zero === false && vals.length) { lo = Math.min(...vals); max = Math.max(...vals); const pad = (max - lo) * 0.12 || max * 0.01; lo -= pad; max += pad; }
+  const span = (max - lo) || 1;
   const stepX = data.length > 1 ? w / (data.length - 1) : 0;
-  const pts = data.map((d,i) => ({ x: padL + i*stepX, y: padT + h - (d.value/max*h) }));
-  const linePath = pts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
-  const areaPath = linePath + ` L${pts[pts.length-1].x.toFixed(1)},${padT+h} L${pts[0].x.toFixed(1)},${padT+h} Z`;
+  const pts = data.map((d,i) => ({ x: padL + i*stepX, y: padT + h - ((d.value - lo)/span*h) }));
+  let linePath = pts.length ? 'M' + pts[0].x.toFixed(1) + ',' + pts[0].y.toFixed(1) : '';
+  for (let i = 1; i < pts.length; i++) { const m = (pts[i-1].x + pts[i].x) / 2; linePath += ` C${m.toFixed(1)},${pts[i-1].y.toFixed(1)} ${m.toFixed(1)},${pts[i].y.toFixed(1)} ${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)}`; }
+  const last = pts[pts.length-1] || { x: 0, y: 0 };
+  const areaPath = linePath + ` L${last.x.toFixed(1)},${padT+h} L${(pts[0]||last).x.toFixed(1)},${padT+h} Z`;
   const gid = 'area' + Math.random().toString(36).slice(2,8);
-  const gridLines = [0,0.5,1].map(f => {
-    const y = padT + h*f;
-    const val = Math.round(max*(1-f));
-    return `<line x1="${padL}" y1="${y}" x2="${width-padR}" y2="${y}" stroke="rgba(0,229,255,.08)" stroke-width="1"/>
-            <text x="${padL-6}" y="${y+3}" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="9" fill="#35545E">${val>=1000?(val/1000).toFixed(0)+'k':val}</text>`;
-  }).join('');
-  const dots = pts.map((p,i) => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${color}" style="filter:drop-shadow(0 0 4px ${color})"/>`).join('');
-  const labels = data.map((d,i) => `<text x="${pts[i].x}" y="${height-4}" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#6E9CAA">${d.label}</text>`).join('');
-  return `
-  <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
-    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity=".35"/>
-      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-    </linearGradient></defs>
-    ${gridLines}
-    <path d="${areaPath}" fill="url(#${gid})"/>
-    <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" style="filter:drop-shadow(0 0 5px ${color})"/>
-    ${dots}
-    ${labels}
-  </svg>`;
+  const grid = [0,0.5,1].map(f => { const y = padT + h*f; return `<line x1="${padL}" y1="${y}" x2="${width-padR}" y2="${y}" stroke="rgba(150,160,185,.16)" stroke-width="1" stroke-dasharray="3 5"/><text x="${padL-8}" y="${y+3}" text-anchor="end" font-family="Inter, sans-serif" font-size="9.5" fill="#6C7487">${F(lo + span*(1-f))}</text>`; }).join('');
+  const dots = pts.map((p,i) => `<circle cx="${p.x}" cy="${p.y}" r="10" fill="transparent"><title>${data[i].label}: ${opts.fmt ? F(data[i].value) : fmtMoney(data[i].value)}</title></circle><circle cx="${p.x}" cy="${p.y}" r="${(opts.dots===false && i!==pts.length-1)?0:(i===pts.length-1?4.5:2.6)}" fill="${i===pts.length-1?'#fff':color}" stroke="${color}" stroke-width="${i===pts.length-1?2.5:0}" pointer-events="none"/>`).join('');
+  const lv = data.length ? F(data[data.length-1].value) : '';
+  const bw = Math.max(34, lv.length * 7 + 16), bx = Math.min(Math.max(last.x - bw/2, padL), width - padR - bw);
+  const bubble = data.length ? `<rect x="${bx.toFixed(1)}" y="${Math.max(last.y-27, 2).toFixed(1)}" width="${bw}" height="19" rx="9.5" fill="${color}"/><text x="${(bx+bw/2).toFixed(1)}" y="${(Math.max(last.y-27, 2)+13).toFixed(1)}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" font-weight="700" fill="#fff">${lv}</text>` : '';
+  const every = Math.max(1, Math.ceil(data.length / 7));
+  const labels = data.map((d,i) => (i % every === 0 || i === data.length-1) ? `<text x="${pts[i].x}" y="${height-6}" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#6C7487">${d.label}</text>` : '').join('');
+  return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".42"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<path d="${areaPath}" fill="url(#${gid})"/>
+    <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" style="filter:drop-shadow(0 3px 8px ${color}99)"/>
+    ${dots}${bubble}${labels}</svg>`;
 }
 
 function svgBarChartDuo(data, colorA, colorB, width, height) {
   width = width || 560; height = height || 180;
-  const padL = 40, padR = 12, padT = 14, padB = 22;
+  const padL = 38, padR = 12, padT = 16, padB = 24;
   const w = width - padL - padR, h = height - padT - padB;
   const max = Math.max(...data.map(d=>Math.max(d.a,d.b)), 1);
-  const groupW = w / data.length;
-  const barW = groupW * 0.28;
-  const gridLines = [0,0.5,1].map(f => {
-    const y = padT + h*f;
-    const val = Math.round(max*(1-f));
-    return `<line x1="${padL}" y1="${y}" x2="${width-padR}" y2="${y}" stroke="rgba(0,229,255,.08)" stroke-width="1"/>
-            <text x="${padL-6}" y="${y+3}" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="9" fill="#35545E">${val>=1000?(val/1000).toFixed(0)+'k':val}</text>`;
-  }).join('');
+  const groupW = w / data.length, barW = Math.min(groupW * 0.3, 22);
+  const gid = 'bg' + Math.random().toString(36).slice(2,7);
+  const grid = [0,0.5,1].map(f => { const y = padT + h*f; return `<line x1="${padL}" y1="${y}" x2="${width-padR}" y2="${y}" stroke="rgba(150,160,185,.16)" stroke-width="1" stroke-dasharray="3 5"/><text x="${padL-8}" y="${y+3}" text-anchor="end" font-family="Inter, sans-serif" font-size="9.5" fill="#6C7487">${chartFmt(max*(1-f))}</text>`; }).join('');
   const bars = data.map((d,i) => {
-    const cx = padL + groupW*i + groupW/2;
-    const hA = (d.a/max)*h, hB = (d.b/max)*h;
-    return `
-    <rect x="${(cx-barW-2).toFixed(1)}" y="${(padT+h-hA).toFixed(1)}" width="${barW}" height="${hA.toFixed(1)}" rx="2" fill="${colorA}" style="filter:drop-shadow(0 0 4px ${colorA}77)"/>
-    <rect x="${(cx+2).toFixed(1)}" y="${(padT+h-hB).toFixed(1)}" width="${barW}" height="${hB.toFixed(1)}" rx="2" fill="${colorB}" style="filter:drop-shadow(0 0 4px ${colorB}77)"/>
-    <text x="${cx}" y="${height-4}" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#6E9CAA">${d.label}</text>`;
+    const cx = padL + groupW*i + groupW/2, hA = Math.max((d.a/max)*h, d.a>0?3:0), hB = Math.max((d.b/max)*h, d.b>0?3:0);
+    return `<rect x="${(cx-barW-3).toFixed(1)}" y="${padT}" width="${barW}" height="${h}" rx="${barW/2}" fill="rgba(150,160,185,.07)"/><rect x="${(cx+3).toFixed(1)}" y="${padT}" width="${barW}" height="${h}" rx="${barW/2}" fill="rgba(150,160,185,.07)"/>
+    <rect x="${(cx-barW-3).toFixed(1)}" y="${(padT+h-hA).toFixed(1)}" width="${barW}" height="${hA.toFixed(1)}" rx="${barW/2}" fill="url(#${gid}a)" style="filter:drop-shadow(0 4px 8px ${colorA}66)"><title>${d.label}: ${fmtMoney(d.a)}</title></rect>
+    <rect x="${(cx+3).toFixed(1)}" y="${(padT+h-hB).toFixed(1)}" width="${barW}" height="${hB.toFixed(1)}" rx="${barW/2}" fill="url(#${gid}b)" style="filter:drop-shadow(0 4px 8px ${colorB}66)"><title>${d.label}: ${fmtMoney(d.b)}</title></rect>
+    <text x="${cx}" y="${height-6}" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#6C7487">${d.label}</text>`;
   }).join('');
-  return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${gridLines}${bars}</svg>`;
+  return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet"><defs>
+    <linearGradient id="${gid}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${colorA}"/><stop offset="1" stop-color="${colorA}" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="${gid}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${colorB}"/><stop offset="1" stop-color="${colorB}" stop-opacity=".55"/></linearGradient></defs>${grid}${bars}</svg>`;
 }
 
 function svgDonut(segments, size) {
   size = size || 120;
-  const r = size/2 - 10, c = size/2;
+  const sw = Math.max(12, size * 0.13), r = size/2 - sw/2 - 2, c = size/2;
   const total = segments.reduce((s,seg)=>s+seg.value,0) || 1;
+  const real = segments.filter(x => x.value >= 0.01);
+  const circ = 2*Math.PI*r, gap = real.length > 1 ? 7 : 0;
   let acc = 0;
-  const circumference = 2*Math.PI*r;
-  const circles = segments.map(seg => {
-    const frac = seg.value/total;
-    const dash = circumference*frac;
-    const gap = circumference - dash;
-    const rotate = -90 + acc*360;
-    acc += frac;
-    return `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="14"
-      stroke-dasharray="${dash} ${gap}" transform="rotate(${rotate} ${c} ${c})" style="filter:drop-shadow(0 0 5px ${seg.color}66)"/>`;
+  const arcs = segments.map(seg => {
+    const frac = seg.value/total, len = Math.max(circ*frac - gap, 0.1), rot = -90 + acc*360; acc += frac;
+    if (seg.value < 0.01) return '';
+    return `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${len} ${circ-len}" transform="rotate(${rot} ${c} ${c})" style="filter:drop-shadow(0 0 7px ${seg.color}88)"><title>${seg.label}: ${Math.round(seg.value)}</title></circle>`;
   }).join('');
+  const totalReal = Math.round(real.reduce((s,x)=>s+x.value,0));
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(${INK},.08)" stroke-width="14"/>
-    ${circles}
-    <text x="${c}" y="${c+5}" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="${size*0.16}" font-weight="700" fill="#D9F8FF">${total}</text>
-  </svg>`;
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(150,160,185,.12)" stroke-width="${sw}"/>${arcs}
+    <text x="${c}" y="${c+size*0.03}" text-anchor="middle" font-family="Inter, sans-serif" font-size="${size*0.22}" font-weight="800" fill="currentColor">${totalReal}</text>
+    <text x="${c}" y="${c+size*0.16}" text-anchor="middle" font-family="Inter, sans-serif" font-size="${size*0.085}" fill="#6C7487">clientes</text></svg>`;
+}
+
+// Anel de progresso (como os medidores de desempenho)
+function svgRing(pct, color, size, label) {
+  size = size || 92; pct = Math.max(0, Math.min(100, pct || 0));
+  const sw = size * 0.11, r = size/2 - sw/2 - 1, c = size/2, circ = 2*Math.PI*r, gid = 'rg' + Math.random().toString(36).slice(2,7);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="${color}" stop-opacity=".55"/></linearGradient></defs>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(150,160,185,.14)" stroke-width="${sw}"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#${gid})" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${(circ*pct/100).toFixed(1)} ${circ}" transform="rotate(-90 ${c} ${c})" style="filter:drop-shadow(0 0 6px ${color}99);transition:stroke-dasharray .6s"/>
+    <text x="${c}" y="${c+size*0.07}" text-anchor="middle" font-family="Inter, sans-serif" font-size="${size*0.24}" font-weight="800" fill="currentColor">${Math.round(pct)}<tspan font-size="${size*0.13}" fill="#6C7487">%</tspan></text></svg>`;
 }
 
 function ultimosMeses(n) {
@@ -4638,6 +4746,7 @@ function vincAplicar() {
    PESQUISA GERAL (aba "Pesquisar" na Agenda)
    ══════════════════════════════════════════════════════ */
 let pqTipo = 'todos', pqTimer = null;
+function irParaPesquisa() { showPage('agenda'); agendaAba('pesquisar'); }
 function agendaAba(aba) {
   const pq = aba === 'pesquisar';
   document.getElementById('agenda-main').style.display = pq ? 'none' : '';
@@ -5376,7 +5485,7 @@ function renderFinanceiro() {
     a: financeiro.filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===m.mes).reduce((s,f)=>s+f.valor,0),
     b: financeiro.filter(f=>f.tipo==='despesa' && f.data && f.data.slice(0,7)===m.mes).reduce((s,f)=>s+f.valor,0),
   }));
-  document.getElementById('fin-chart-comparativo').innerHTML = svgBarChartDuo(comparativoData, '#5FE3A6', '#FF6B9D', 700, 180);
+  document.getElementById('fin-chart-comparativo').innerHTML = svgBarChartDuo(comparativoData, '#7BE04A', '#FF5C7A', 700, 180);
 }
 
 
@@ -5543,7 +5652,7 @@ function renderRelatorioFaturamento() {
   </div>
   <div class="card hud" style="margin-bottom:16px">
     <div class="card-header"><span class="card-title">📈 Receita — ${periodoLabelCompleto(periodos)}</span></div>
-    <div class="card-body">${svgLineChart(linhas.map(l=>({label:l.label.slice(0,3),value:l.receita})), '#57B8FF', 680, 170)}</div>
+    <div class="card-body">${svgLineChart(linhas.map(l=>({label:l.label.slice(0,3),value:l.receita})), '#FF8A3D', 680, 170)}</div>
   </div>
   <div class="card hud">
     <div class="card-header"><span class="card-title">Detalhamento por mês e serviço</span></div>
@@ -5586,7 +5695,7 @@ function renderRelatorioPrevisaoRealizado() {
         <span style="color:var(--green)">▬ Realizado</span>
       </div>
     </div>
-    <div class="card-body">${svgBarChartDuo(linhas.map(l=>({label:l.label.slice(0,3),a:l.previsto,b:l.realizado})), '#57B8FF', '#5FE3A6', 680, 180)}</div>
+    <div class="card-body">${svgBarChartDuo(linhas.map(l=>({label:l.label.slice(0,3),a:l.previsto,b:l.realizado})), '#3DA9FF', '#7BE04A', 680, 180)}</div>
   </div>
   <div style="font-size:11px;color:var(--text3);margin-bottom:10px">O previsto usa o honorário e o status de "fechamento recorrente" atuais dos clientes, aplicado retroativamente — pode não refletir exatamente como estava configurado em meses passados.</div>
   <div class="card hud">
@@ -9178,6 +9287,46 @@ function climaCena(code, isDay) {
   return `<div class="clima-cena ${cls}">${html}</div>`;
 }
 /* ── Cotações — Dólar, Euro e Bitcoin via AwesomeAPI, sem chave ── */
+/* ── Gráficos de cotação: Dólar e Bitcoin ── */
+let cotDias = 30;
+function setCotDias(d) { cotDias = d; carregarGraficosCotacao(); }
+async function cotHistorico(par, dias) {
+  const k = 'gw_cothist_' + par + '_' + dias;
+  let cache = null; try { cache = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+  if (cache && Date.now() - cache.ts < 30 * 60 * 1000) return { dados: cache.dados, offline: false };
+  try {
+    const r = await fetch(`https://economia.awesomeapi.com.br/json/daily/${par}/${dias}`);
+    if (!r.ok) throw new Error('resposta ' + r.status);
+    const arr = await r.json();
+    const dados = arr.map(x => ({ t: parseInt(x.timestamp) * 1000, v: parseFloat(x.bid) })).filter(x => x.v > 0).sort((a, b) => a.t - b.t);
+    if (!dados.length) throw new Error('sem dados');
+    try { localStorage.setItem(k, JSON.stringify({ ts: Date.now(), dados })); } catch (e) {}
+    return { dados, offline: false };
+  } catch (e) {
+    console.error('Cotação histórica:', par, e.message);
+    return cache ? { dados: cache.dados, offline: true } : { dados: null, offline: true };
+  }
+}
+async function carregarGraficosCotacao() {
+  if (!document.getElementById('cot-graf-usd')) return;
+  document.querySelectorAll('#cot-range button').forEach(b => { const on = parseInt(b.dataset.d) === cotDias; b.style.background = on ? 'var(--accent)' : ''; b.style.color = on ? '#fff' : ''; });
+  const cfg = [
+    { par: 'USD-BRL', graf: 'cot-graf-usd', val: 'cot-usd-valor', vr: 'cot-usd-var', cor: '#3DA9FF', fmt: v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    { par: 'BTC-BRL', graf: 'cot-graf-btc', val: 'cot-btc-valor', vr: 'cot-btc-var', cor: '#FF8A3D', fmt: v => 'R$ ' + (v >= 1000 ? Math.round(v).toLocaleString('pt-BR') : v.toFixed(2)) },
+  ];
+  let algumOffline = false, algumVazio = false;
+  await Promise.all(cfg.map(async c => {
+    const { dados, offline } = await cotHistorico(c.par, cotDias);
+    if (offline) algumOffline = true;
+    if (!dados) { algumVazio = true; document.getElementById(c.graf).innerHTML = '<div style="font-size:12px;color:var(--text3);padding:30px 0;text-align:center">Sem conexão com o serviço de cotações.<br><span style="text-decoration:underline;cursor:pointer" onclick="carregarGraficosCotacao()">Tentar de novo</span></div>'; return; }
+    const serie = dados.map(x => { const d = new Date(x.t); return { label: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'), value: x.v }; });
+    const ult = serie[serie.length - 1].value, pri = serie[0].value, pct = (ult - pri) / pri * 100;
+    document.getElementById(c.val).textContent = c.fmt(ult);
+    const ve = document.getElementById(c.vr); ve.textContent = (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct).toFixed(2) + '% em ' + cotDias + ' dias'; ve.style.color = pct >= 0 ? 'var(--green)' : 'var(--red)'; ve.style.background = pct >= 0 ? 'var(--green-l)' : 'var(--red-l)';
+    document.getElementById(c.graf).innerHTML = svgLineChart(serie, c.cor, 440, 200, { zero: false, fmt: c.fmt, padL: 74, dots: serie.length <= 31 });
+  }));
+  const av = document.getElementById('cot-aviso'); if (av) av.textContent = algumVazio ? '' : (algumOffline ? 'Sem conexão: mostrando as últimas cotações salvas.' : 'Fonte: AwesomeAPI · fechamento diário · atualiza a cada 30 min');
+}
 async function carregarCotacoes() {
   const el = document.getElementById('home-cotacoes-lista');
   if (!el) return;
@@ -9315,6 +9464,7 @@ function renderDashboard() {
   atualizarRelogioHome();
   carregarClima();
   carregarCotacoes();
+  carregarGraficosCotacao();
   renderAgendaHomeHoje();
   carregarNoticias(noticiasAba);
   renderGuia();
@@ -9360,19 +9510,38 @@ function renderDashboard() {
     label: m.label,
     value: financeiro.filter(f=>f.tipo==='receita' && f.data && f.data.slice(0,7)===m.mes).reduce((s,f)=>s+f.valor,0)
   }));
-  document.getElementById('dash-chart-receita').innerHTML = svgLineChart(trendData, '#57B8FF', 460, 150);
+  document.getElementById('dash-chart-receita').innerHTML = svgLineChart(trendData, '#FF8A3D', 460, 160);
 
   // Donut mix de clientes
   const nContabil = ativos.filter(c=>c.tipo==='contabil').length;
   const nGF = gf.length;
   const nIR = ativos.filter(c=>c.tipo==='imposto_renda').length;
   document.getElementById('dash-donut-clientes').innerHTML =
-    svgDonut([{value:nContabil||0.001, color:'#B48CFF', label:'Contábil'}, {value:nGF||0.001, color:'#57B8FF', label:'Gestão Financeira'}, {value:nIR||0.001, color:'#FFD166', label:'Imposto de Renda'}], 110) +
+    svgDonut([{value:nContabil||0.001, color:'#A66BFF', label:'Contábil'}, {value:nGF||0.001, color:'#3DA9FF', label:'Gestão Financeira'}, {value:nIR||0.001, color:'#FF8A3D', label:'Imposto de Renda'}], 110) +
     `<div style="display:flex;gap:10px;font-size:10px;font-family:var(--font-mono);flex-wrap:wrap;justify-content:center">
-      <span style="color:var(--purple)"><span style="display:inline-block;width:8px;height:8px;background:#B48CFF;border-radius:2px;margin-right:4px"></span>Contábil ${nContabil}</span>
-      <span style="color:var(--accent-m)"><span style="display:inline-block;width:8px;height:8px;background:#57B8FF;border-radius:2px;margin-right:4px"></span>GF ${nGF}</span>
-      <span style="color:var(--amber)"><span style="display:inline-block;width:8px;height:8px;background:#FFD166;border-radius:2px;margin-right:4px"></span>IR ${nIR}</span>
+      <span style="color:var(--purple)"><span style="display:inline-block;width:8px;height:8px;background:#A66BFF;border-radius:50%;margin-right:4px"></span>Contábil ${nContabil}</span>
+      <span style="color:var(--accent-m)"><span style="display:inline-block;width:8px;height:8px;background:#3DA9FF;border-radius:50%;margin-right:4px"></span>GF ${nGF}</span>
+      <span style="color:var(--amber)"><span style="display:inline-block;width:8px;height:8px;background:#FF8A3D;border-radius:50%;margin-right:4px"></span>IR ${nIR}</span>
     </div>`;
+
+  // Anéis de desempenho
+  try {
+    const hojeS = today(), tarefasHoje = DB.get('tarefas').filter(t => t.data === hojeS || t.dataConclusao === hojeS);
+    const pTar = tarefasHoje.length ? tarefasHoje.filter(t => t.status === 'concluida').length / tarefasHoje.length * 100 : 0;
+    const base = mesBaseFechamento(), obsB = DB.get('obrigacoes').filter(o => mesDaObrigacao(o) === base);
+    const pObr = obsB.length ? obsB.filter(o => o.status === 'concluida').length / obsB.length * 100 : 0;
+    const previstoMes = ativos.reduce((sum, c) => sum + (honV(c, mes) || 0), 0);
+    const pRec = previstoMes ? Math.min(receitaMes / previstoMes * 100, 100) : 0;
+    const diaMes = new Date().getDate(), diasNoMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const pMes = diaMes / diasNoMes * 100;
+    const ring = (pct, cor, tit, sub) => `<div class="anel">${svgRing(pct, cor, 96)}<b>${tit}</b><span>${sub}</span></div>`;
+    document.getElementById('dash-aneis').innerHTML =
+      ring(pTar, '#FF8A3D', 'Tarefas de hoje', `${tarefasHoje.filter(t=>t.status==='concluida').length} de ${tarefasHoje.length}`) +
+      ring(pObr, '#3DA9FF', 'Fechamento ' + mesParaComp(base), `${obsB.filter(o=>o.status==='concluida').length} de ${obsB.length} obrigações`) +
+      ring(pRec, '#7BE04A', 'Honorários do mês', previstoMes ? 'recebido do previsto' : 'sem previsão cadastrada') +
+      ring(pMes, '#A66BFF', 'Andamento do mês', `dia ${diaMes} de ${diasNoMes}`);
+    document.getElementById('dash-aneis-sub').textContent = mesLabel(mes);
+  } catch (e) { console.error(e); }
 
   // Mini-calendário (sincronizado com a Agenda)
   renderMiniCalendarioDashboard();
@@ -9385,7 +9554,7 @@ function renderDashboard() {
   doMes.filter(f=>f.tipo==='receita').forEach(f => porServico[f.servico] = (porServico[f.servico]||0) + f.valor);
   const max = Math.max(...Object.values(porServico), 1);
   const labels = { contabil:'Contábil', gestao_financeira:'Gestão Financeira', imposto_renda:'Imposto de Renda', geral:'Geral' };
-  const colors = { contabil:'var(--text3)', gestao_financeira:'var(--accent)', imposto_renda:'var(--amber)', geral:'var(--purple)' };
+  const colors = { contabil:'linear-gradient(90deg,#A66BFF,#C9A3FF)', gestao_financeira:'linear-gradient(90deg,#3DA9FF,#7CCBFF)', imposto_renda:'linear-gradient(90deg,#FF8A3D,#FFB070)', geral:'linear-gradient(90deg,#7BE04A,#B4F08C)' };
   document.getElementById('dash-receita-servico').innerHTML = Object.keys(porServico).map(k => `
     <div style="margin-bottom:12px;cursor:pointer" onclick="showPage('financeiro')">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span>${labels[k]}</span><span style="font-weight:600">${fmtMoney(porServico[k])}</span></div>
